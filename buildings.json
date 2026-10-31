@@ -76,13 +76,23 @@
         "connection": 8,
         "joy": 2
       }
+    },
+    {
+      "id": "trading",
+      "name": "Trading floor",
+      "pos": [
+        -6.5,
+        -6
+      ],
+      "model": "models/trading_floor.glb",
+      "about": "A little glass-fronted trading floor: rows of desks covered in glowing chart screens, a big candlestick screen upstairs and a stock ticker running round the building. A sign over the door says PAPER TRADES ONLY. The chairs are empty.",
+      "actions": [],
+      "boosts": {
+        "curiosity": 4
+      }
     }
   ],
   "empty_lots": [
-    [
-      -6.5,
-      -6
-    ],
     [
       -1,
       7.5

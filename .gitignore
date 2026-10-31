@@ -3,3 +3,4 @@ site/data/
 site/demo-data/
 __pycache__/
 *.tmp
+*.blend1
