@@ -320,7 +320,9 @@ class Brain:
             "role": "user",
             "content": f"{self.name} is a curious young AI who wants to learn something. "
             f"Search the web for: {query}\n"
-            f"Then explain what you found in 2-3 short, simple sentences {self.name} can act on.",
+            f"Then write up the most interesting things you found as short notes for {self.name}, in plain text "
+            "with no markdown and no introduction or sign-off: one line with a short headline, then 2-3 lines "
+            'that each start with "- " and hold one short, simple sentence.',
         }
         messages = [question]
         for _ in range(3):
@@ -465,7 +467,8 @@ class DemoBrain:
         }
 
     def search(self, query: str) -> dict:
-        return {"summary": f"(Demo mode: no real search for '{query}'.)", "sources": []}
+        return {"summary": f"(Demo mode: no real search for '{query}'.)\n- Nothing was really looked up.\n"
+                           "- Run it with an API key to search for real.", "sources": []}
 
     def create(self, kind: str, activity: str, hobby: str, level: int, learned: list[str], previous: list[dict]) -> dict:
         if kind == "drawing":

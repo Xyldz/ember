@@ -43,14 +43,47 @@
   .bubble[hidden], .holo[hidden] { display: none; }
 
   #panel { width: 380px; flex: none; display: flex; flex-direction: column; min-height: 0; background: var(--panel); border-left: 1px solid var(--line); }
-  #panel header { padding: 18px 18px 8px; }
-  h1 { margin: 0; font: 900 26px/1.1 Orbitron, var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--cyan);
-    text-shadow: 0 0 14px rgba(63, 240, 255, .75); }
+  #panel header { --form: #3ff0ff; padding: 16px 16px 12px; } /* --form: the colour Ember picked for itself */
+  .who { display: flex; gap: 12px; align-items: center; }
+  /* A little picture of Ember in its current shape and colour */
+  .avatar { position: relative; flex: none; width: 46px; height: 46px; border: 1px solid var(--line); border-radius: 50%;
+    filter: drop-shadow(0 0 7px color-mix(in srgb, var(--form) 55%, transparent)); }
+  .avatar::before { content: ""; position: absolute; inset: 9px; border-radius: 50%; animation: breathe 4s ease-in-out infinite;
+    background: radial-gradient(circle at 35% 30%, #fff 0 7%, var(--form) 38%, color-mix(in srgb, var(--form) 35%, #05060d) 100%); }
+  .avatar[data-shape="cube"]::before { inset: 12px; border-radius: 3px; rotate: 12deg; }
+  .avatar[data-shape="pyramid"]::before { inset: 9px; border-radius: 0; clip-path: polygon(50% 4%, 96% 92%, 4% 92%); }
+  .avatar[data-shape="crystal"]::before { inset: 7px; border-radius: 0; clip-path: polygon(50% 0, 86% 50%, 50% 100%, 14% 50%); }
+  .avatar[data-shape="ring"]::before, .avatar[data-shape="knot"]::before {
+    background: radial-gradient(circle, transparent 0 38%, var(--form) 42% 62%, transparent 66%); }
+  .avatar[data-shape="cluster"]::before { background: radial-gradient(circle at 30% 35%, var(--form) 0 17%, transparent 19%),
+    radial-gradient(circle at 70% 32%, var(--form) 0 13%, transparent 15%), radial-gradient(circle at 52% 72%, var(--form) 0 19%, transparent 21%); }
+  .avatar.asleep::before { opacity: .45; animation-duration: 9s; }
+  @keyframes breathe { 50% { scale: .86; } }
+  .name-row { display: flex; align-items: center; gap: 10px; }
+  h1 { margin: 0; font: 900 24px/1.1 Orbitron, var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--form, var(--cyan));
+    text-shadow: 0 0 14px color-mix(in srgb, var(--form, var(--cyan)) 75%, transparent); }
   h2 { margin: 0 0 6px; font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
-  #identity { margin-top: 4px; color: var(--muted); font-size: 12px; font-style: italic; }
-  #activity { margin-top: 6px; font-weight: 700; }
-  #status { margin-top: 3px; min-height: 1.3em; color: var(--muted); font-size: 12px; }
-  .section { padding: 8px 18px; }
+  .pill { padding: 1px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 9px; font-weight: 700;
+    letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; }
+  .pill::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: currentColor; vertical-align: 1px; }
+  .pill.awake { color: #5bf0a0; border-color: rgba(91, 240, 160, .4); }
+  .pill.awake::before { box-shadow: 0 0 6px currentColor; animation: blink 2.4s ease-in-out infinite; }
+  .pill.asleep { color: #a98bff; border-color: rgba(139, 91, 255, .45); }
+  @keyframes blink { 50% { opacity: .3; } }
+  #identity { margin-top: 4px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+  #about { margin-top: 10px; color: var(--muted); font-size: 12px; font-style: italic; }
+  #about:empty { display: none; }
+  .doing { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px;
+    background: linear-gradient(135deg, rgba(63, 240, 255, .07), rgba(139, 91, 255, .05)); }
+  .doing h2 { margin-bottom: 3px; color: var(--cyan); }
+  #activity { font-size: 13px; font-weight: 700; line-height: 1.45; }
+  .next { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .next .bar { flex: 1 0 40px; height: 3px; }
+  .next .bar[hidden] { display: none; }
+  #status { min-width: 0; color: var(--muted); font-size: 11px; }
+  .glance { padding: 0 16px 8px; }
+  .section { padding: 6px 0; }
+  .section[hidden], .glance .empty[hidden] { display: none; }
   .needs { position: absolute; top: 12px; left: 12px; right: 12px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 12px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 4px; background: rgba(8, 10, 22, .85); }
   .need { overflow: hidden; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .08em;
@@ -91,15 +124,62 @@
   .wish.granted .tag { color: var(--cyan); border-color: rgba(63, 240, 255, .5); }
   .wish a { flex: none; color: var(--muted); font-size: 11px; }
   .empty { color: var(--muted); font-style: italic; font-size: 12px; margin: 4px 0; }
-  .tabs { display: flex; gap: 0; padding: 8px 18px 0; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); }
-  .tabs::-webkit-scrollbar { display: none; }
-  .tabs button { flex: none; padding: 8px 7px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted);
-    font: inherit; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; }
+  .tabs { z-index: 3; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 0 8px; background: var(--panel);
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .tabs button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; padding: 9px 0 7px;
+    border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted); font: inherit; font-size: 9.5px;
+    font-weight: 700; white-space: nowrap; cursor: pointer; }
+  .tabs button:hover { color: var(--ink); }
   .tabs button.on { color: var(--cyan); border-bottom-color: var(--cyan); }
-  #feed { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 18px 16px; }
-  .entry { display: grid; grid-template-columns: 78px 20px 1fr; gap: 4px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
-  .entry time { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
-  .entry.thought .text { color: var(--muted); font-style: italic; }
+  .tabs svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .tabs button.on svg { filter: drop-shadow(0 0 4px rgba(63, 240, 255, .7)); }
+  .tabs .dot { position: absolute; top: 6px; left: calc(50% + 7px); width: 6px; height: 6px; border-radius: 50%;
+    background: var(--magenta); box-shadow: 0 0 6px var(--magenta); }
+  .tabs .dot[hidden] { display: none; }
+  #feed { flex: 1; min-height: 0; overflow-y: auto; padding: 0 16px 20px; }
+
+  /* Today: a timeline of moments, one per thought */
+  .day { position: sticky; top: 0; z-index: 1; margin: 0 -16px; padding: 12px 16px 6px; color: var(--muted); font-size: 10px; font-weight: 700;
+    letter-spacing: .16em; text-transform: uppercase; background: linear-gradient(var(--panel) 75%, transparent); }
+  .new-mark { display: flex; align-items: center; gap: 8px; margin: 2px 0 8px; color: var(--magenta); font-size: 10px; font-weight: 700;
+    letter-spacing: .14em; text-transform: uppercase; }
+  .new-mark::before, .new-mark::after { content: ""; flex: 1; height: 1px; background: rgba(255, 63, 180, .45); }
+  .moment { position: relative; margin-left: 4px; padding: 0 0 16px 18px; border-left: 1px solid var(--line); }
+  .moment::before { content: ""; position: absolute; top: 4px; left: -4px; width: 7px; height: 7px; border: 1px solid var(--muted);
+    border-radius: 50%; background: var(--panel); }
+  .moment.has-thought::before { border-color: var(--cyan); background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+  .moment.fresh::before { border-color: var(--magenta); background: var(--magenta); box-shadow: 0 0 8px var(--magenta); }
+  .stamp { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; letter-spacing: .06em; }
+  .thought { margin: 2px 0 6px; color: #c3cdf0; font-size: 12.5px; font-style: italic; line-height: 1.55; }
+  .line { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 6px; margin: 5px 0; font-size: 12px; line-height: 1.5; }
+  .line .ic { text-align: center; }
+  .line.soft { color: var(--muted); }
+  .line.big { color: var(--amber); font-weight: 700; }
+  .line.jot { color: #b9c4e8; }
+  .kind { margin-right: 6px; padding: 0 5px; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); font-size: 9px;
+    font-weight: 700; letter-spacing: .1em; text-transform: uppercase; vertical-align: 1px; }
+  .say { width: fit-content; max-width: 100%; margin: 6px 0; padding: 6px 10px; border: 1px solid rgba(255, 63, 180, .5);
+    border-radius: 10px 10px 10px 2px; background: rgba(255, 63, 180, .08); color: #ffd6ee; font-size: 12px; }
+
+  /* What it found on the internet: a headline, a few points, where it came from */
+  .note-card { margin: 6px 0; padding: 10px 12px; border: 1px solid rgba(139, 91, 255, .35); border-radius: 6px;
+    background: linear-gradient(rgba(139, 91, 255, .09), rgba(139, 91, 255, .02)); font-size: 12px; }
+  .note-card .looked { color: var(--muted); font-size: 11px; }
+  .note-card .looked b { color: var(--ink); font-weight: 600; }
+  .note-card h4 { margin: 6px 0 4px; color: #e2d6ff; font-size: 12.5px; line-height: 1.4; }
+  .note-card ul { margin: 4px 0 0; padding: 0; list-style: none; }
+  .note-card li { position: relative; margin: 5px 0; padding-left: 14px; line-height: 1.5; }
+  .note-card li::before { content: "›"; position: absolute; left: 2px; color: #8b5bff; font-weight: 700; }
+  .note-card li b { color: #fff; }
+  .note-card p { margin: 6px 0 0; line-height: 1.5; }
+  .note-card:not(.open) .note-body { max-height: 9.5em; overflow: hidden;
+    -webkit-mask-image: linear-gradient(#000 55%, transparent); mask-image: linear-gradient(#000 55%, transparent); }
+  .more { margin-top: 4px; padding: 0; border: 0; background: none; color: var(--cyan); font: inherit; font-size: 11px; cursor: pointer; }
+  .sources { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .sources a { max-width: 100%; overflow: hidden; padding: 1px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted);
+    font-size: 10px; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+  .sources a:hover { color: var(--magenta); border-color: var(--magenta); }
+  .note-card time { display: block; margin-top: 8px; color: var(--muted); font-size: 10px; }
   .card { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--card); font-size: 12px; }
   .card .q { margin-bottom: 4px; color: var(--cyan); font-weight: 700; }
   .card a { display: block; margin-top: 4px; overflow: hidden; color: var(--magenta); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
@@ -119,11 +199,11 @@
     #world { flex: 1 1 52%; }
     #panel { flex: 1 1 48%; width: 100%; overflow-y: auto; border-left: 0; border-top: 1px solid var(--line);
       padding-bottom: env(safe-area-inset-bottom); }
-    #panel header { padding: 12px 16px 4px; }
-    .section, .tabs, #feed, footer { padding-left: 16px; padding-right: 16px; }
+    #panel header { padding: 12px 16px 8px; }
+    footer { padding-left: 16px; padding-right: 16px; }
     #feed { flex: none; overflow: visible; }
-    .tabs { flex-wrap: wrap; overflow: visible; } /* every tab visible, no sideways swiping */
-    .tabs button { padding: 8px 9px; }
+    .tabs { position: sticky; top: 0; padding: 0 4px; } /* the tabs stay put while you scroll */
+    .day { position: static; }
     .holo { display: none; }
     .needs { top: calc(8px + env(safe-area-inset-top)); left: 8px; right: 8px; gap: 8px; padding: 6px 8px; }
     .need { font-size: 9px; letter-spacing: .02em; }
@@ -155,22 +235,34 @@
   </main>
   <aside id="panel">
     <header>
-      <h1 id="name">Ember</h1>
-      <div id="identity"></div>
-      <div id="activity">Connecting…</div>
-      <div id="status"></div>
+      <div class="who">
+        <div id="avatar" class="avatar"></div>
+        <div>
+          <div class="name-row"><h1 id="name">Ember</h1><span id="pill" class="pill">Connecting</span></div>
+          <div id="identity"></div>
+        </div>
+      </div>
+      <div id="about"></div>
+      <div class="doing">
+        <h2>Right now</h2>
+        <div id="activity">Connecting…</div>
+        <div class="next"><div id="next-bar" class="bar"><i style="background: var(--cyan)"></i></div><span id="status"></span></div>
+      </div>
     </header>
-    <div class="section"><h2>Interests</h2><div id="skills"></div></div>
-    <div class="section"><h2>Goals</h2><div id="goals"></div></div>
-    <div class="section"><h2>Wishlist</h2><div id="wishes"></div></div>
+    <div class="glance">
+      <div id="sec-skills" class="section" hidden><h2>Interests</h2><div id="skills"></div></div>
+      <div id="sec-goals" class="section" hidden><h2>Goals</h2><div id="goals"></div></div>
+      <div id="sec-wishes" class="section" hidden><h2>Wishlist</h2><div id="wishes"></div></div>
+      <p id="glance-empty" class="empty" hidden>No interests, goals or wishes yet. It's still finding its feet.</p>
+    </div>
     <nav class="tabs">
-      <button data-tab="today" class="on">Today</button>
-      <button data-tab="diary">Diary</button>
-      <button data-tab="mind">Mind</button>
-      <button data-tab="memory">Memory</button>
-      <button data-tab="city">What's on</button>
-      <button data-tab="gallery">Gallery</button>
-      <button data-tab="research">Research</button>
+      <button data-tab="today" class="on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Today</button>
+      <button data-tab="diary"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H7a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1z"/><path d="M5 18a2 2 0 0 1 2-2h11M9 8h5"/></svg>Diary<i class="dot" hidden></i></button>
+      <button data-tab="mind"><svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></svg>Mind<i class="dot" hidden></i></button>
+      <button data-tab="memory"><svg viewBox="0 0 24 24"><path d="m12 4-9 5 9 5 9-5-9-5z"/><path d="m3 14 9 5 9-5"/></svg>Memory</button>
+      <button data-tab="city"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Events<i class="dot" hidden></i></button>
+      <button data-tab="gallery"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m5 18 5-5 3 3 2-2 4 4"/></svg>Gallery<i class="dot" hidden></i></button>
+      <button data-tab="research"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg>Research<i class="dot" hidden></i></button>
     </nav>
     <div id="feed"></div>
     <footer><span id="cost"></span><a id="support" target="_blank" rel="noopener noreferrer" hidden></a></footer>
@@ -960,7 +1052,7 @@ const needBars = NEEDS.map(([need, colour]) => {
 
 const ICONS = {
   thought: '💭', say: '💬', search: '🔎', learned: '💡', hobby: '⭐', note: '📝', rest: '🔋', play: '🎮',
-  create: '🎨', learn: '📖', explore: '🧭', socialise: '📡', reflect: '🌀', event: '▸', levelup: '🏅', creation: '🖼️',
+  create: '🎨', learn: '📖', explore: '🧭', socialise: '📡', reflect: '🌀', levelup: '🏅', creation: '🖼️',
   wish: '🌠', build: '🏗️', form: '✨', diary: '📓', self: '🪞', forgot: '🌫️', sleep: '💤', wake: '☀️',
   goal: '🎯', weather: '🌦️', city: '📰', event: '🎆', missed: '🕳️', chapter: '📖', rut: '🔁',
 };
@@ -1022,10 +1114,10 @@ function diaryCards(s) {
   });
 }
 
+const dayOfLife = (s) => Math.floor((new Date(`${s.today}T00:00`) - new Date(`${s.born || s.today}T00:00`)) / 86400000) + 1;
 function mindPanel(s) {
   const panel = el('div', 'mind');
-  const age = Math.floor((new Date(`${s.today}T00:00`) - new Date(`${s.born || s.today}T00:00`)) / 86400000) + 1;
-  panel.append(el('p', 'empty', `Day ${age} of ${s.name}'s life. Lines tagged "grew" are ones it wrote about itself while falling asleep; it can only ever add to them.`));
+  panel.append(el('p', 'empty', `Day ${dayOfLife(s)} of ${s.name}'s life. Lines tagged "grew" are ones it wrote about itself while falling asleep; it can only ever add to them.`));
   const chapters = (s.chapters ?? []).slice().reverse();
   panel.append(el('h3', '', 'Chapters of its life'));
   if (!chapters.length) panel.append(el('p', 'empty', 'The first chapter gets written after its first week.'));
@@ -1091,11 +1183,175 @@ function galleryCards(s) {
   });
 }
 
+// Research notes are a headline and a few "- " points. Older ones were one paragraph, sometimes numbered "1. 2. 3."
+const BULLET = /^(?:[-•*]|\d+[.)])\s+/;
+function noteParts(raw) {
+  const text = raw.replace(/^Learned:\s*/, '').replace(/\*\*/g, '').trim();
+  const lines = text.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  let headline = '', points = [];
+  if (lines.slice(1).some((line) => BULLET.test(line))) {
+    for (const line of lines) {
+      if (BULLET.test(line)) points.push(line.replace(BULLET, ''));
+      else if (points.length) points[points.length - 1] += ` ${line}`;
+      else headline = headline ? `${headline} ${line}` : line;
+    }
+  } else {
+    const numbered = text.split(/(?:^|\s)[1-9][.)]\s+/).map((part) => part.trim());
+    if (numbered.length < 3) return { headline: '', points: [], paragraph: text };
+    [headline, ...points] = numbered;
+  }
+  if (/:$/.test(headline) && /\b(found|here|points?)\b/i.test(headline)) headline = ''; // "Here's what I found:" says nothing
+  return { headline: headline.replace(/:$/, ''), points: points.filter(Boolean), paragraph: '' };
+}
+function pointEl(point) {
+  const item = el('li'), colon = point.indexOf(': ');
+  if (colon > 2 && colon < 60) item.append(el('b', '', point.slice(0, colon + 1)), point.slice(colon + 1)); // "Phone calls help: ..."
+  else item.textContent = point;
+  return item;
+}
+const hostOf = (url) => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } };
+const opened = new Set(); // long notes you've opened stay open when new things arrive
+function noteCard(entry, footer = '') {
+  const { headline, points, paragraph } = noteParts(entry.text);
+  const id = `${entry.date} ${entry.time} ${entry.query ?? ''}`;
+  const card = el('div', 'note-card'), body = el('div', 'note-body');
+  if (entry.query) {
+    const looked = el('div', 'looked', '🔎 Looked up ');
+    looked.append(el('b', '', entry.query));
+    card.append(looked);
+  }
+  if (headline) body.append(el('h4', '', headline));
+  if (points.length) body.append(el('ul'));
+  for (const point of points) body.lastChild.append(pointEl(point));
+  if (paragraph) body.append(el('p', '', paragraph));
+  card.append(body);
+  const long = (headline + points.join('') + paragraph).length > 240;
+  card.classList.toggle('open', !long || opened.has(id));
+  if (long) {
+    const more = el('button', 'more', card.classList.contains('open') ? 'Show less' : 'Show more');
+    more.addEventListener('click', () => {
+      const open = card.classList.toggle('open');
+      if (open) opened.add(id); else opened.delete(id);
+      more.textContent = open ? 'Show less' : 'Show more';
+    });
+    card.append(more);
+  }
+  if (entry.sources?.length) {
+    const sources = el('div', 'sources');
+    for (const source of entry.sources) {
+      const link = safeLink(source.url, hostOf(source.url));
+      link.title = source.title || source.url;
+      sources.append(link);
+    }
+    card.append(sources);
+  }
+  if (footer) card.append(el('time', '', footer));
+  return card;
+}
+
+// Today: the log grouped into moments, each one a thought and whatever it led to
+const ACTIVITY_KINDS = new Set(['rest', 'play', 'create', 'learn', 'explore', 'socialise', 'reflect']);
+const BIG_KINDS = new Set(['levelup', 'hobby', 'goal', 'wish', 'form', 'build', 'creation', 'self', 'diary', 'chapter']);
+const SOFT_KINDS = new Set(['weather', 'city', 'sleep', 'wake', 'missed', 'rut', 'forgot', 'search', 'event']);
+const minuteOf = (e) => { const [h, m] = e.time.split(':').map(Number); return h * 60 + m; };
+const stampOf = (e) => `${e.date ?? ''} ${e.time}`;
+function moments(events) {
+  const list = [];
+  let current = null;
+  for (const e of events) {
+    if (e.kind === 'thought' || !current || current.date !== e.date || minuteOf(e) - current.minute > 3) {
+      current = { date: e.date, time: e.time, minute: minuteOf(e), thought: '', items: [] };
+      list.push(current);
+    }
+    if (e.kind === 'thought') current.thought = e.text;
+    else current.items.push(e);
+  }
+  return list;
+}
+function lineEl(e) {
+  if (e.kind === 'say') return el('div', 'say', e.text.replace(/^Said:\s*/, ''));
+  const watched = e.kind === 'event' && /^Watched /.test(e.text);
+  const look = e.kind === 'note' ? 'jot' : BIG_KINDS.has(e.kind) || watched ? 'big' : SOFT_KINDS.has(e.kind) ? 'soft' : '';
+  const row = el('div', `line ${look}`), text = el('span');
+  if (ACTIVITY_KINDS.has(e.kind)) text.append(el('span', 'kind', e.kind));
+  text.append(e.text.replace(/^Made a note:\s*/, ''));
+  row.append(el('span', 'ic', watched ? '🎆' : e.kind === 'event' ? '→' : ICONS[e.kind] ?? '›'), text);
+  return row;
+}
+function momentEl(m, s, fresh) {
+  const box = el('div', `moment${m.thought ? ' has-thought' : ''}${fresh ? ' fresh' : ''}`);
+  box.append(el('div', 'stamp', m.time));
+  if (m.thought) box.append(el('div', 'thought', m.thought));
+  m.items.forEach((e, i) => {
+    if (e.kind === 'search' && m.items[i + 1]?.kind === 'learned') return; // shown on the note it led to
+    if (e.kind !== 'learned') return box.append(lineEl(e));
+    const entry = s.learned.find((l) => l.date === e.date && l.time === e.time && e.text === `Learned: ${l.text}`);
+    const query = m.items[i - 1]?.kind === 'search' ? m.items[i - 1].text.match(/"(.*)"/)?.[1] : '';
+    box.append(noteCard(entry ?? { date: e.date, time: e.time, text: e.text, query }));
+  });
+  return box;
+}
+function dayLabel(date, today) {
+  if (!date || date === today) return 'Today';
+  const yesterday = new Date(`${today}T12:00`);
+  yesterday.setDate(yesterday.getDate() - 1);
+  return date === yesterday.toISOString().slice(0, 10) ? 'Yesterday' : longDate(date);
+}
+
+// Remembered in this browser only, so each visit can show what's new since the last one
+const store = {
+  get(key, fallback) { try { return JSON.parse(localStorage.getItem(`ember.${key}`)) ?? fallback; } catch { return fallback; } },
+  set(key, value) { try { localStorage.setItem(`ember.${key}`, JSON.stringify(value)); } catch { /* private window: forget */ } },
+};
+let seenBefore = store.get('lastSeen', ''), lastSeen = seenBefore; // the newest thing you'd seen on your last visit
+function markSeen(s) {
+  const newest = s.events.at(-1);
+  if (!newest || document.hidden || stampOf(newest) === lastSeen) return;
+  lastSeen = stampOf(newest);
+  store.set('lastSeen', lastSeen);
+}
+function todayItems(s) {
+  const list = moments(s.events.slice(-150)).reverse().slice(0, 40);
+  if (!list.length) return [el('p', 'empty', 'Nothing has happened yet.')];
+  const items = [];
+  let day = null, anyFresh = false, marked = false;
+  for (const m of list) {
+    const fresh = Boolean(seenBefore) && stampOf(m) > seenBefore;
+    if (!fresh && anyFresh && !marked) { items.push(el('div', 'new-mark', 'new since you last looked ▲')); marked = true; }
+    anyFresh ||= fresh;
+    if (m.date !== day) { day = m.date; items.push(el('div', 'day', dayLabel(m.date, s.today))); }
+    items.push(momentEl(m, s, fresh));
+  }
+  return items;
+}
+
+const TAB_KEYS = { // a dot on a tab when it has something you haven't seen
+  diary: (s) => `${s.days.length}|${s.days.at(-1)?.date}`,
+  mind: (s) => `${s.chapters?.length ?? 0}|${Object.values(s.self ?? {}).flat().length}|${s.beliefs.length}`,
+  city: (s) => (s.city ?? []).filter((e) => e.status === 'upcoming').map((e) => e.title).join('|'),
+  gallery: () => String(galleryKey),
+  research: (s) => { const last = s.learned.filter((m) => m.query).at(-1); return last ? stampOf(last) : ''; },
+};
+let seenTabs = store.get('seenTabs', null);
+function updateDots(s) {
+  const keys = Object.fromEntries(Object.entries(TAB_KEYS).map(([name, key]) => [name, key(s)]));
+  const before = JSON.stringify(seenTabs);
+  seenTabs ??= { ...keys }; // first visit: nothing counts as new
+  if (tab in keys && !document.hidden) seenTabs[tab] = keys[tab];
+  if (JSON.stringify(seenTabs) !== before) store.set('seenTabs', seenTabs);
+  document.querySelectorAll('.tabs .dot').forEach((dot) => {
+    const name = dot.parentElement.dataset.tab;
+    dot.hidden = seenTabs[name] === keys[name];
+  });
+}
+
 let tab = 'today', feedKey = '';
 function renderFeed(s) {
+  updateDots(s);
+  if (tab === 'today') markSeen(s);
   const last = s.events.at(-1), lastLearned = s.learned.at(-1);
   const key = {
-    today: () => `t|${s.events.length}|${last?.date}|${last?.time}|${last?.text}`,
+    today: () => `t|${s.events.length}|${last?.date}|${last?.time}|${last?.text}|${seenBefore}`,
     diary: () => `d|${s.days.length}|${s.days.at(-1)?.date}`,
     mind: () => `m|${s.today}|${JSON.stringify([s.personality, s.self, s.beliefs, s.fascinations, s.chapters])}`,
     memory: () => `y|${s.today}|${JSON.stringify(s.memory_view)}`,
@@ -1115,22 +1371,16 @@ function renderFeed(s) {
   } else if (tab === 'city') {
     items = cityCards(s);
   } else if (tab === 'today') {
-    items = s.events.slice(-80).reverse().map((e) => {
-      const row = el('div', `entry ${e.kind}`);
-      row.append(el('time', '', when(e, s.today)), el('span', '', ICONS[e.kind] ?? '▸'), el('span', 'text', e.text));
-      return row;
-    });
-    if (!items.length) items = [el('p', 'empty', 'Nothing has happened yet.')];
+    items = todayItems(s);
   } else if (tab === 'gallery') {
     items = galleryCards(s);
   } else {
     items = s.learned.slice().reverse().map((m) => {
-      const card = el('div', 'card');
-      if (m.query) card.append(el('div', 'q', `> ${m.query}`));
-      card.append(el('div', '', m.text));
-      for (const source of m.sources ?? []) card.append(safeLink(source.url, source.title || source.url));
-      card.append(el('time', '', m.time));
-      return card;
+      if (m.query) return noteCard(m, when(m, s.today));
+      const row = el('div', 'line jot'), text = el('span', '', `${m.text} `);
+      text.append(el('span', 'stamp', when(m, s.today)));
+      row.append(el('span', 'ic', ICONS.note), text);
+      return row;
     });
     if (!items.length) items = [el('p', 'empty', `Nothing yet. What ${s.name} finds on the internet, or decides to remember, shows up here.`)];
   }
@@ -1156,6 +1406,11 @@ function render(s) {
       : `Next thought in ~${Math.round(left / 60)} min`);
   }
   $('status').textContent = status.join(' · ');
+  const nextBar = $('next-bar');
+  nextBar.hidden = s.asleep || Boolean(s.status) || !s.next_think_at;
+  nextBar.firstChild.style.width = `${Math.round(clamp(1 - (s.next_think_at - Date.now() / 1000) / (s.tick_seconds || 600), 0, 1) * 100)}%`;
+  $('pill').className = `pill ${s.asleep ? 'asleep' : 'awake'}`;
+  $('pill').textContent = s.asleep ? 'Asleep' : 'Awake';
 
   NEEDS.forEach(([need], i) => {
     needBars[i].style.width = `${s.needs[need]}%`;
@@ -1182,9 +1437,9 @@ function render(s) {
       row.append(el('span', 'tag', 'done'), el('span', '', goal.text));
       return row;
     }),
-  ] : [el('span', 'empty', 'None yet. It sets its own.')]));
+  ] : []));
 
-  $('skills').replaceChildren(...(s.skills.length ? s.skills.map((skill) => {
+  $('skills').replaceChildren(...s.skills.map((skill) => {
     const row = el('div', 'skill'), name = el('span', '', skill.name);
     if (skill.inspired) {
       const spark = el('span', '', ' ✨');
@@ -1197,14 +1452,18 @@ function render(s) {
     bar.append(fill);
     row.append(name, el('span', 'lv', `LV ${skill.level}`), bar);
     return row;
-  }) : [el('span', 'empty', 'None yet. Give it time.')]));
+  }));
 
-  $('wishes').replaceChildren(...(s.wishes.length ? s.wishes.slice(-5).reverse().map((wish) => {
+  $('wishes').replaceChildren(...s.wishes.slice(-5).reverse().map((wish) => {
     const row = el('div', `wish${wish.granted ? ' granted' : ''}`);
     row.append(el('span', 'tag', wish.granted ? 'built' : 'wish'), el('span', '', wish.text));
     if (wish.issue_url) row.append(safeLink(wish.issue_url, 'issue'));
     return row;
-  }) : [el('span', 'empty', 'No wishes yet.')]));
+  }));
+  $('sec-skills').hidden = !s.skills.length;
+  $('sec-goals').hidden = !activeGoals.length && !finishedGoals.length;
+  $('sec-wishes').hidden = !s.wishes.length;
+  $('glance-empty').hidden = !(s.skills.length + activeGoals.length + finishedGoals.length + s.wishes.length === 0);
 
   const usd = s.costs?.usd ?? 0;
   $('cost').textContent = `Running cost: $${usd.toFixed(usd < 1 ? 3 : 2)} this month`;
@@ -1223,14 +1482,21 @@ function render(s) {
   const research = s.learned.filter((m) => m.query).at(-1);
   researchHolo.hidden = !research || !researchAnchor;
   if (research) {
-    const summary = research.text.length > 150 ? `${research.text.slice(0, 147)}…` : research.text;
+    const { headline, points, paragraph } = noteParts(research.text);
+    const gist = headline || points[0] || paragraph;
+    const summary = gist.length > 150 ? `${gist.slice(0, 147)}…` : gist;
     researchHolo.replaceChildren(el('b', '', `LAST SEARCH: ${research.query.toUpperCase()}`), el('span', '', summary));
   }
 
   asleep = s.asleep;
   charge = s.needs.charge;
   setForm(s.form);
-  $('identity').textContent = s.form ? `${/^[aeiou]/.test(s.form.shape) ? 'An' : 'A'} ${s.form.shape}. "${s.form.about}"` : '';
+  const avatar = $('avatar');
+  avatar.dataset.shape = s.form?.shape ?? 'orb';
+  document.querySelector('#panel header').style.setProperty('--form', s.form?.color ?? '#3ff0ff');
+  avatar.classList.toggle('asleep', s.asleep);
+  $('identity').textContent = `${s.form?.shape ?? 'orb'} · day ${dayOfLife(s)}`;
+  $('about').textContent = s.form?.about ? `"${s.form.about}"` : '';
   if (places[s.location]) moveTo(places[s.location]);
 }
 
@@ -1268,7 +1534,12 @@ async function pollForever() {
   setTimeout(pollForever, POLL_MS);
 }
 pollForever();
-document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); }); // catch up as soon as you open it again
+let hiddenAt = 0;
+document.addEventListener('visibilitychange', () => { // catch up as soon as you open it again
+  if (document.hidden) { hiddenAt = Date.now(); return; }
+  if (Date.now() - hiddenAt > 120000) { seenBefore = lastSeen; feedKey = ''; } // away a while: show what's new since
+  refresh();
+});
 setInterval(() => { if (latest) render(latest); }, 1000); // keeps the countdown ticking between polls
 
 if (BUILDING) { // builder mode lives in its own file, so the public page stays light
