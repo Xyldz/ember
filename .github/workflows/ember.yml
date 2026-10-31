@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
     inputs:
       awake:
-        description: "Wake Ember up even if it's bedtime"
+        description: "Wake Ember up if it's asleep"
         type: boolean
         default: false
       dream:
@@ -61,7 +61,7 @@ jobs:
 
       - name: Live one moment
         if: github.event_name != 'push'
-        run: python tick_once.py ${{ inputs.awake && '--no-sleep' || '' }} ${{ inputs.dream && '--dream' || '' }} ${{ inputs.reset && '--reset' || '' }}
+        run: python tick_once.py ${{ inputs.awake && '--wake' || '' }} ${{ inputs.dream && '--dream' || '' }} ${{ inputs.reset && '--reset' || '' }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -54,6 +54,13 @@
   #now-need { margin-top: 2px; color: var(--amber); font-size: 11px; }
   #now-thought { margin-top: 6px; color: #aebbe0; font-style: italic; }
   #now-thought time { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; font-style: normal; }
+  #now-goal, #now-weather { margin-top: 6px; color: var(--muted); font-size: 11px; }
+  #now-goal:empty, #now-weather:empty { display: none; }
+  .wish.goal .tag { color: var(--cyan); border-color: rgba(63, 240, 255, .4); }
+  .wish.goal.done .tag { color: #5bb974; border-color: rgba(91, 185, 116, .5); }
+  .card.live { border-color: var(--magenta); box-shadow: 0 0 14px rgba(255, 63, 180, .25); }
+  .card .when { margin-top: 6px; color: var(--amber); font-size: 11px; }
+  .card.past { opacity: .6; }
   .mind h3 { margin: 14px 0 4px; color: var(--cyan); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
   .mind .line { display: flex; gap: 8px; align-items: baseline; margin: 4px 0; font-size: 12px; }
   .mind .line .tag { flex: none; padding: 0 5px; border: 1px solid var(--line); color: var(--muted); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
@@ -123,6 +130,8 @@
         <div id="now-activity">Connecting…</div>
         <div id="now-need"></div>
         <div id="now-thought"></div>
+        <div id="now-goal"></div>
+        <div id="now-weather"></div>
       </div>
     </div>
   </main>
@@ -134,12 +143,14 @@
       <div id="status"></div>
     </header>
     <div class="section"><h2>Interests</h2><div id="skills"></div></div>
+    <div class="section"><h2>Goals</h2><div id="goals"></div></div>
     <div class="section"><h2>Wishlist</h2><div id="wishes"></div></div>
     <nav class="tabs">
       <button data-tab="today" class="on">Today</button>
       <button data-tab="diary">Diary</button>
       <button data-tab="mind">Mind</button>
       <button data-tab="memory">Memory</button>
+      <button data-tab="city">What's on</button>
       <button data-tab="gallery">Gallery</button>
       <button data-tab="research">Research</button>
     </nav>
@@ -200,7 +211,8 @@ const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.4, 0.35, 0.55); // 
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
 
-scene.add(new THREE.HemisphereLight(0x6a78c8, 0x15121f, 1.3));
+const skyLight = new THREE.HemisphereLight(0x6a78c8, 0x15121f, 1.3);
+scene.add(skyLight);
 const moon = new THREE.DirectionalLight(0x9d8cff, 0.8);
 moon.position.set(-10, 22, 8);
 moon.castShadow = true;
@@ -339,7 +351,28 @@ function resetDrop(i, anywhere) {
 for (let i = 0; i < DROPS; i++) resetDrop(i, true);
 const rainGeometry = new THREE.BufferGeometry();
 rainGeometry.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3));
-scene.add(new THREE.LineSegments(rainGeometry, new THREE.LineBasicMaterial({ color: 0x7f95d8, transparent: true, opacity: 0.35 })));
+const rainMaterial = new THREE.LineBasicMaterial({ color: 0x7f95d8, transparent: true, opacity: 0.35 });
+scene.add(new THREE.LineSegments(rainGeometry, rainMaterial));
+
+// The rain, snow, fog and lightning follow the real weather Ember feels
+let rainCount = DROPS, rainSpeed = 28, stormy = false, nextFlash = 0, flashLeft = 0;
+function setWeather(weather) {
+  const code = weather?.code ?? 61;
+  const snow = (code >= 71 && code <= 77) || code === 85 || code === 86;
+  rainCount = code <= 3 || code === 45 || code === 48 ? 0
+    : snow ? 1200 : code <= 57 ? 500 : [61, 80].includes(code) ? 1000 : [63, 81].includes(code) ? 1400 : DROPS;
+  rainSpeed = snow ? 5 : 28;
+  rainMaterial.color.set(snow ? 0xdde6ff : 0x7f95d8);
+  rainMaterial.opacity = snow ? 0.7 : 0.35;
+  scene.fog.density = code === 45 || code === 48 ? 0.03 : 0.011;
+  stormy = code >= 95;
+  rainGeometry.setDrawRange(0, rainCount * 2);
+}
+const WEATHER_ICONS = [[3, '☁️'], [48, '🌫️'], [57, '🌦️'], [67, '🌧️'], [77, '🌨️'], [82, '🌧️'], [86, '🌨️'], [99, '⛈️']];
+const weatherIcon = (code) => {
+  if (code <= 1) return new Date().getHours() >= 7 && new Date().getHours() < 19 ? '☀️' : '🌙';
+  return WEATHER_ICONS.find(([max]) => code <= max)?.[1] ?? '🌧️';
+};
 
 // ---------------------------------------------------------------------------
 // Buildings. Each builder gets the spot where Ember stands and returns where its
@@ -632,8 +665,11 @@ function animate() {
     car.rotation.y = c.speed > 0 ? -c.angle - Math.PI / 2 : -c.angle + Math.PI / 2;
   }
   for (const [i, blinker] of blinkers.entries()) blinker.visible = Math.sin(t * 2 + i) > -0.3;
-  for (let i = 0; i < DROPS; i++) {
-    const o = i * 6, fall = 28 * dt;
+  if (stormy && t > nextFlash) { flashLeft = 0.12; nextFlash = t + 4 + Math.random() * 10; }
+  flashLeft -= dt;
+  skyLight.intensity = flashLeft > 0 ? 7 : 1.3; // lightning
+  for (let i = 0; i < rainCount; i++) {
+    const o = i * 6, fall = rainSpeed * dt;
     rainPositions[o + 1] -= fall;
     rainPositions[o + 4] -= fall;
     const overRoof = Math.abs(rainPositions[o]) < ROOF && Math.abs(rainPositions[o + 2]) < ROOF;
@@ -748,8 +784,29 @@ const needBars = NEEDS.map(([need, colour]) => {
 const ICONS = {
   thought: '💭', say: '💬', search: '🔎', learned: '💡', hobby: '⭐', note: '📝', rest: '🔋', play: '🎮',
   create: '🎨', learn: '📖', explore: '🧭', socialise: '📡', reflect: '🌀', event: '▸', levelup: '🏅', creation: '🖼️',
-  wish: '🌠', build: '🏗️', form: '✨', diary: '📓', self: '🪞', forgot: '🌫️',
+  wish: '🌠', build: '🏗️', form: '✨', diary: '📓', self: '🪞', forgot: '🌫️', sleep: '💤', wake: '☀️',
+  goal: '🎯', weather: '🌦️', city: '📰', event: '🎆', missed: '🕳️', chapter: '📖', rut: '🔁',
 };
+const clock = (seconds) => new Date(seconds * 1000).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+const dayClock = (seconds) => new Date(seconds * 1000).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+
+function cityCards(s) {
+  if (!s.city?.length) return [el('p', 'empty', 'Nothing posted yet. New posters go up around the city every few days.')];
+  const nowSeconds = Date.now() / 1000;
+  const upcoming = s.city.filter((e) => e.status === 'upcoming').sort((a, b) => a.start - b.start);
+  const past = s.city.filter((e) => e.status !== 'upcoming').reverse();
+  const where = (e) => s.buildings.find((b) => b.id === e.where)?.name.toLowerCase() ?? 'somewhere';
+  return [...upcoming, ...past].map((event) => {
+    const live = event.status === 'upcoming' && event.start <= nowSeconds;
+    const card = el('div', `card${live ? ' live' : ''}${event.status !== 'upcoming' ? ' past' : ''}`);
+    const when = event.status === 'attended' ? `✓ ${s.name} watched it`
+      : event.status === 'missed' ? `✗ ${s.name} missed it`
+      : live ? `ON NOW until ${clock(event.end)} · watch from the ${where(event)}`
+      : `${dayClock(event.start)}–${clock(event.end)} · watch from the ${where(event)}`;
+    card.append(el('div', 'q', event.title), el('div', '', event.about), el('div', 'when', when));
+    return card;
+  });
+}
 const MEMORY_SECTIONS = [['places_and_things', 'Places & things', 'How it feels about places, things and anyone it meets.'],
   ['facts', 'Facts', 'Things it read or worked out, kept because they connected to something.'],
   ['moments', 'Moments', 'Things that happened that mattered enough to survive the night.']];
@@ -792,6 +849,14 @@ function mindPanel(s) {
   const panel = el('div', 'mind');
   const age = Math.floor((new Date(`${s.today}T00:00`) - new Date(`${s.born || s.today}T00:00`)) / 86400000) + 1;
   panel.append(el('p', 'empty', `Day ${age} of ${s.name}'s life. Lines tagged "grew" are ones it wrote about itself while falling asleep; it can only ever add to them.`));
+  const chapters = (s.chapters ?? []).slice().reverse();
+  panel.append(el('h3', '', 'Chapters of its life'));
+  if (!chapters.length) panel.append(el('p', 'empty', 'The first chapter gets written after its first week.'));
+  for (const chapter of chapters) {
+    const card = el('div', 'card');
+    card.append(el('div', 'q', chapter.title), el('div', '', chapter.text), el('time', '', longDate(chapter.date)));
+    panel.append(card);
+  }
   for (const [key, title] of SECTIONS) {
     panel.append(el('h3', '', title));
     const lines = [...(s.personality?.[key] ?? []).map((text) => [text, false]), ...(s.self?.[key] ?? []).map((text) => [text, true])];
@@ -855,8 +920,9 @@ function renderFeed(s) {
   const key = {
     today: () => `t|${s.events.length}|${last?.date}|${last?.time}|${last?.text}`,
     diary: () => `d|${s.days.length}|${s.days.at(-1)?.date}`,
-    mind: () => `m|${s.today}|${JSON.stringify([s.personality, s.self, s.beliefs, s.fascinations])}`,
+    mind: () => `m|${s.today}|${JSON.stringify([s.personality, s.self, s.beliefs, s.fascinations, s.chapters])}`,
     memory: () => `y|${s.today}|${JSON.stringify(s.memory_view)}`,
+    city: () => `c|${Math.floor(Date.now() / 60000)}|${JSON.stringify(s.city)}`,
     gallery: () => `g|${galleryKey}`,
     research: () => `r|${s.learned.length}|${lastLearned?.time}|${lastLearned?.text}`,
   }[tab]();
@@ -869,6 +935,8 @@ function renderFeed(s) {
     items = mindPanel(s);
   } else if (tab === 'memory') {
     items = memoryPanel(s);
+  } else if (tab === 'city') {
+    items = cityCards(s);
   } else if (tab === 'today') {
     items = s.events.slice(-80).reverse().map((e) => {
       const row = el('div', `entry ${e.kind}`);
@@ -900,7 +968,10 @@ function render(s) {
   if (s.activity !== lastActivity) { drawCode(`> ${s.activity.toLowerCase()}`); lastActivity = s.activity; }
 
   const status = [];
-  if (s.status) status.push(s.status);
+  if (s.asleep && s.sleep) {
+    const minutes = Math.max(10, Math.round((s.sleep.ticks_left * s.tick_seconds) / 60));
+    status.push(`Asleep since ${s.sleep.since} · wakes in about ${minutes < 90 ? `${minutes} min` : `${Math.round(minutes / 60)} h`}`);
+  } else if (s.status) status.push(s.status);
   else if (!s.asleep && s.next_think_at) {
     const left = Math.round(s.next_think_at - Date.now() / 1000);
     status.push(left <= 0 ? 'Next thought: any moment now'
@@ -916,6 +987,25 @@ function render(s) {
   $('now-activity').textContent = s.activity;
   $('now-need').textContent = s.asleep ? 'Asleep' : s.pressing;
   $('now-thought').replaceChildren(...(s.thought ? [el('span', '', `"${s.thought}"`), el('time', '', s.thought_time)] : []));
+  const goals = s.goals ?? [];
+  const activeGoals = goals.filter((g) => g.status === 'active');
+  $('now-goal').textContent = activeGoals.length ? `🎯 Working towards: ${activeGoals[0].text}` : '';
+  $('now-weather').textContent = s.weather ? `${weatherIcon(s.weather.code)} ${s.weather.place} · ${s.weather.temp}°C · ${s.weather.description}` : '';
+  setWeather(s.weather);
+  const finishedGoals = goals.filter((g) => g.status === 'done').slice(-2).reverse();
+  $('goals').replaceChildren(...(activeGoals.length || finishedGoals.length ? [
+    ...activeGoals.map((goal) => {
+      const row = el('div', 'wish goal');
+      const steps = goal.progress.length;
+      row.append(el('span', 'tag', steps ? `${steps} step${steps === 1 ? '' : 's'}` : 'new'), el('span', '', goal.text));
+      return row;
+    }),
+    ...finishedGoals.map((goal) => {
+      const row = el('div', 'wish goal done');
+      row.append(el('span', 'tag', 'done'), el('span', '', goal.text));
+      return row;
+    }),
+  ] : [el('span', 'empty', 'None yet. It sets its own.')]));
 
   $('skills').replaceChildren(...(s.skills.length ? s.skills.map((skill) => {
     const row = el('div', 'skill'), name = el('span', '', skill.name);

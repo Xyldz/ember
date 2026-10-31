@@ -1,11 +1,10 @@
 {
   "name": "Ember",
   "timezone": "Europe/London",
-  "bedtime": 23,
-  "wake_time": 7,
+  "weather": { "place": "London", "latitude": 51.5072, "longitude": -0.1276 },
   "think_every_minutes_local": 2,
   "max_thinks_per_day": 200,
-  "max_searches_per_day": 15,
+  "max_searches_per_day": 20,
   "support_url": "",
   "support_text": "Help keep Ember online"
 }

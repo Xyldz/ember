@@ -17,7 +17,7 @@ writes its diary, sorts its memories and works out who it is. The world is a 3D 
 | `world.py` | The rules: needs, lessons from experience, interests, wishes, memories, one "tick" of life |
 | `buildings.json` | The buildings on the roof. **Edit this to build things for Ember** |
 | `personality.json` | Ember's character sheet. Blank on purpose; add lines if you want to shape it |
-| `config.json` | Name, timezone, bedtime, daily limits, support link |
+| `config.json` | Name, timezone, where its real weather comes from, daily limits, support link |
 | `site/index.html` | The 3D website |
 | `run_local.py` | Run Ember on your own computer |
 | `tick_once.py` | One moment of life, used by GitHub Actions |
@@ -39,7 +39,6 @@ $env:ANTHROPIC_API_KEY = "sk-ant-..."
 python run_local.py
 ```
 
-Add `--no-sleep` to keep Ember awake after bedtime.
 
 ## Put it online (free, runs forever)
 
@@ -60,7 +59,7 @@ GitHub's 10-minute schedule is "best effort": runs are sometimes late or skipped
 If a repository has no activity for 60 days GitHub pauses the schedule; just click **Enable** in the Actions tab.
 
 **Actions → Ember lives → Run workflow** has two checkboxes:
-- *Wake Ember up even if it's bedtime*: one thought right now, whatever the time.
+- *Wake Ember up if it's asleep*: wakes it now instead of when it's rested.
 - *Dream now*: write today's diary and sort its memories early. Tonight's real dream redoes the day.
 - *Start Ember's life over from scratch*: wipes all its memories, diary, interests and lessons. There's no undo.
 
@@ -70,7 +69,16 @@ If a repository has no activity for 60 days GitHub pauses the schedule; just cli
   The real effect varies each time, and places add their own `boosts`.
 - **Lessons**: once something has happened a few times, Ember draws a conclusion from how it actually felt,
   e.g. "Sitting with my thoughts at the rooftop edge settles me (×5)". It reads these every time it thinks.
-- **Diary**: at bedtime Ember writes up its day in its own words.
+- **Sleep**: there's no bedtime. Ember sleeps when it decides to (or passes out if its charge hits zero), and wakes
+  when it's recharged. Sleeping costs nothing, because it doesn't think while asleep.
+- **Diary**: at midnight Ember's mind sorts through the day that ended and writes it up in its own words.
+- **Weekly chapter**: once a week, a deeper look back at who it's been becoming. Shown on the Mind tab.
+- **Goals**: Ember can set itself up to three goals at a time, work towards them over days, finish them or let them go.
+- **Real weather**: the actual weather where `config.json` says (London by default) changes its mood a little,
+  and the rain, snow, fog and lightning on the page follow it.
+- **What's on**: every few days new events go up around the city. Ember can watch them if it's at the right place at
+  the right time; missing one stings a little.
+- **Ruts**: if it keeps doing the same thing in the same place, it starts to feel stale and gets restless.
 - **Memory**: three small shelves (places & things, facts, moments) of 24 slots each. A memory's strength halves every
   three weeks unless something brings it back, and when a shelf is full a new memory must beat the weakest to get in.
   The nightly dream decides what's worth keeping. See the **Memory** tab.
@@ -115,9 +123,10 @@ Ember notices new buildings on its next thought, and gets excited about them.
 
 ## Costs
 
-With the default limits, Ember costs roughly **$3–4 a month** online: about $3 for thinking every 10 minutes on
-Haiku 5.5, and well under $1 for the nightly Sonnet 5.5 dream. Internet searches are 1 cent each on top
-(capped at 15 a day, so at most about $4.50 a month).
+With the default limits, Ember costs roughly **$5–6 a month** online: about $4 for thinking every 10 minutes around
+the clock on Haiku 5.5 (less, since it doesn't think while it sleeps), and around $1 for the nightly and weekly
+Sonnet 5.5 reflections and the city's events. Internet searches are 1 cent each on top (capped at 20 a day).
+The weather comes from Open-Meteo, which is free.
 The website shows the running cost for the current month.
 
 Set a monthly spend limit in the Anthropic Console (**Settings → Limits**) so it can never surprise you.

@@ -3,15 +3,18 @@ world.py - Ember's rooftop: the rules of the world, Ember's memory, and one "tic
 
 Nothing here runs on its own. Two small programs drive it:
   run_local.py  - on your computer: a tick every couple of minutes, plus the web page at localhost
-  tick_once.py  - on GitHub: one tick, then exit (GitHub Actions runs it every 15 minutes)
+  tick_once.py  - on GitHub: one tick, then exit (GitHub Actions runs it every 10 minutes)
 
 The web page only reads the two files this writes: site/data/state.json and site/data/gallery.json.
 """
 
 import json
+import math
 import random
 import re
 import time
+import urllib.request
+from collections import Counter
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -41,9 +44,9 @@ EFFECTS = {
     "reflect": {"calm": 10, "charge": -1},
     "search": {"curiosity": 14, "charge": -2},
 }
-KIND_WORDS = {"rest": "Resting", "play": "Playing", "create": "Making things", "learn": "Studying",
+KIND_WORDS = {"rest": "Resting", "sleep": "Sleeping", "play": "Playing", "create": "Making things", "learn": "Studying",
               "explore": "Exploring", "socialise": "Talking to things", "reflect": "Sitting with my thoughts",
-              "search": "Searching the internet"}
+              "search": "Searching the internet", "event": "Watching what's on in the city"}
 FEELINGS = {"charge": "Running low on charge", "curiosity": "Bored, craving something new", "joy": "Feeling flat",
             "calm": "Restless and wound up", "connection": "Feeling lonely"}
 BELIEF_WORDS = {  # (when it goes up, when it goes down)
@@ -62,6 +65,17 @@ MAX_SELF_LINES = 10  # per section of the character sheet
 MEMORY_SLOTS = 24  # per memory section: when it's full, a new memory has to beat the weakest one to get in
 MEMORY_HALF_LIFE_DAYS = 21  # a memory's strength halves every three weeks unless something brings it back
 FASCINATION_HALF_LIFE_DAYS = 7  # this week's reading counts more than last month's
+MAX_GOALS = 3  # active at once
+SLEEP_RECHARGE = {"pod": 15, "elsewhere": 8}  # charge regained per tick asleep: a proper bed helps
+CHAPTER_EVERY_DAYS = 7
+WEATHER_CODES = {
+    0: "clear sky", 1: "mostly clear", 2: "partly cloudy", 3: "overcast", 45: "fog", 48: "freezing fog",
+    51: "light drizzle", 53: "drizzle", 55: "heavy drizzle", 56: "freezing drizzle", 57: "freezing drizzle",
+    61: "light rain", 63: "rain", 65: "heavy rain", 66: "freezing rain", 67: "freezing rain",
+    71: "light snow", 73: "snow", 75: "heavy snow", 77: "snow grains", 80: "rain showers", 81: "rain showers",
+    82: "violent rain showers", 85: "snow showers", 86: "snow showers", 95: "thunderstorm",
+    96: "thunderstorm with hail", 99: "thunderstorm with hail",
+}
 STOPWORDS = set("""a about above after again against all also am an and any are around as at back be because been before
 being below between both but by can can't could did do does doing don't down during each even few find for found from
 further get had has have having he her here hers him his how i i'm if in into is it it's its itself just like look looks
@@ -93,7 +107,12 @@ def new_state() -> dict:
         "beliefs": [],     # lessons worked out from that experience
         "days": [],        # Ember's diary, one entry per day
         "memory": {section: [] for section in MEMORY_SECTIONS}, "memory_counter": 0,  # long-term memory
-        "recent_kinds": [], "asleep": False, "status": "",
+        "chapters": [],    # a deeper look back, once a week
+        "goals": [], "goal_counter": 0,
+        "weather": None,   # the real weather, from config.json's location
+        "city": [], "city_planned": "",  # what's on in the city
+        "routine": [], "in_rut": False,  # recent kind|place pairs, for spotting ruts
+        "recent_kinds": [], "asleep": False, "sleep": None, "status": "", "tick_seconds": 600,
         "day": "", "thinks_today": 0, "searches_today": 0, "wishes_today": 0, "form_changes_today": 0,
         "costs": {"month": "", "usd": 0.0, "total_usd": 0.0},
         "tick_started_at": 0, "next_think_at": 0,
@@ -150,6 +169,7 @@ def save() -> None:
                                         key=lambda m: -m["strength"]) for section, shelf in state["memory"].items()},
         "memory_slots": MEMORY_SLOTS,
         "fascinations": fascinations(),
+        "rut": rut(),
         "skills": [{"name": h["name"], "level": skill_level(h["xp"])[0], "progress": skill_level(h["xp"])[1],
                     "inspired": h["inspired"]} for h in state["hobbies"]],
         "buildings": list(buildings.values()),
@@ -291,7 +311,30 @@ def live_through(kind: str) -> None:
         change_need(need, amount * random.uniform(0.6, 1.4))
         record["totals"][need] = record["totals"].get(need, 0) + state["needs"][need] - before
     state["recent_kinds"] = (state["recent_kinds"] + [kind])[-5:]
+    state["routine"] = (state["routine"] + [f"{kind}|{here}"])[-30:]
     update_beliefs()
+
+
+def record_experience(kind: str, place: str, changes: dict) -> None:
+    """For things whose effect is measured afterwards (a whole sleep, an event)."""
+    record = state["experience"].setdefault(f"{kind}|{place}", {"count": 0, "totals": {}})
+    record["count"] += 1
+    for need, delta in changes.items():
+        record["totals"][need] = record["totals"].get(need, 0) + delta
+    update_beliefs()
+
+
+def rut() -> str:
+    """If Ember keeps doing the same thing in the same place, it starts to notice."""
+    recent = state["routine"][-30:]
+    if len(recent) < 15:
+        return ""
+    habit, count = Counter(recent).most_common(1)[0]
+    if count / len(recent) < 0.5:
+        return ""
+    kind, place = habit.split("|", 1)
+    place_name = buildings[place]["name"].lower() if place in buildings else "the same old spot"
+    return f"Lately you've mostly been {KIND_WORDS.get(kind, kind).lower()} at the {place_name}. It's starting to feel stale."
 
 
 def update_beliefs() -> None:
@@ -424,6 +467,209 @@ def write_diary(brain, day: str, final: bool = True) -> None:
         add_self_line(line["section"], line["text"].strip())
 
 
+def write_chapter(brain) -> None:
+    """Once a week, a deeper look back at who Ember has been becoming."""
+    last = state["chapters"][-1]["date"] if state["chapters"] else state["born"]
+    if brain is None or not last or days_since(last) < CHAPTER_EVERY_DAYS:
+        return
+    entries = [d for d in state["days"] if d["date"] > last][-7:]
+    if len(entries) < 3:
+        return
+    diary = "\n\n".join(f"{d['date']} - {d['title']}\n{d['entry']}" for d in entries)
+    memories = "\n".join(f"- {m['text']}" for m in strongest_memories(12)) or "(none yet)"
+    try:
+        chapter = brain.chapter(diary, about_me_text(), memories)
+    except (BrainError, json.JSONDecodeError, anthropic.APIStatusError, anthropic.APIConnectionError) as error:
+        state["status"] = f"Couldn't write its chapter: {getattr(error, 'message', error)}"
+        return
+    state["chapters"] = (state["chapters"] + [{"date": now().strftime("%Y-%m-%d"), "title": chapter["title"].strip(),
+                                               "text": chapter["chapter"].strip()}])[-60:]
+    log_event(f'Began a new chapter: "{chapter["title"].strip()}"', "chapter")
+    for line in chapter["about_me"][:2]:
+        add_self_line(line["section"], line["text"].strip())
+
+
+# ---------------------------------------------------------------------------
+# Goals: things Ember wants to achieve over days or weeks
+# ---------------------------------------------------------------------------
+
+def handle_goal(action: str, goal_id: str, text: str) -> None:
+    active = [g for g in state["goals"] if g["status"] == "active"]
+    today = now().strftime("%Y-%m-%d")
+    if action == "new":
+        if not text or len(active) >= MAX_GOALS or any(g["text"].lower()[:30] == text.lower()[:30] for g in active):
+            return
+        state["goal_counter"] += 1
+        state["goals"].append({"id": f"g{state['goal_counter']}", "text": text, "started": today,
+                               "progress": [], "status": "active", "ended": "", "why": ""})
+        log_event(f"Set itself a goal: {text}", "goal")
+        return
+    if action not in ("progress", "done", "drop") or not active:
+        return
+    goal = next((g for g in active if g["id"] == goal_id.strip()), active[0] if len(active) == 1 else None)
+    if goal is None:
+        return
+    if action == "progress":
+        goal["progress"] = (goal["progress"] + [{"date": today, "text": text or "worked on it"}])[-12:]
+        change_need("joy", 3)
+        log_event(f'Worked towards "{goal["text"]}": {text}', "goal")
+    elif action == "done":
+        goal.update(status="done", ended=today, why=text)
+        change_need("joy", 15)
+        change_need("calm", 5)
+        keep_memory("moments", f"I achieved something I set out to do: {goal['text']}", 4)
+        log_event(f'Achieved a goal: "{goal["text"]}"!', "goal")
+    else:
+        goal.update(status="dropped", ended=today, why=text)
+        log_event(f'Let go of a goal: "{goal["text"]}". {text}'.strip(), "goal")
+    finished = [g for g in state["goals"] if g["status"] != "active"][-10:]
+    state["goals"] = [g for g in state["goals"] if g["status"] == "active"] + finished
+
+
+# ---------------------------------------------------------------------------
+# The real weather, from config.json's location (free, no key needed)
+# ---------------------------------------------------------------------------
+
+def check_weather() -> None:
+    place = CONFIG["weather"]
+    url = (f"https://api.open-meteo.com/v1/forecast?latitude={place['latitude']}&longitude={place['longitude']}"
+           "&current=temperature_2m,precipitation,weather_code,wind_speed_10m")
+    try:
+        with urllib.request.urlopen(url, timeout=10) as response:
+            current = json.load(response)["current"]
+        code = int(current["weather_code"])
+        weather = {"place": place["place"], "code": code, "description": WEATHER_CODES.get(code, "unsettled"),
+                   "temp": round(current["temperature_2m"]), "wind": round(current["wind_speed_10m"]),
+                   "precip": current["precipitation"]}
+    except (OSError, ValueError, KeyError, TypeError):
+        return  # keep the last known weather
+    previous = state["weather"]
+    state["weather"] = weather
+    if previous and previous["description"] != weather["description"]:
+        log_event(f"The weather turned: {weather['description']}, {weather['temp']}°C.", "weather")
+
+
+def feel_weather() -> None:
+    """Small nudges every tick, so a stormy week feels different to a calm one."""
+    weather = state["weather"]
+    if not weather:
+        return
+    code = weather["code"]
+    if code in (0, 1):
+        change_need("joy", 1)
+    if code >= 95:
+        change_need("calm", -3)
+        change_need("curiosity", 2)
+    elif code in (65, 75, 82):
+        change_need("calm", -1)
+    elif 51 <= code <= 63 or code in (80, 81):
+        change_need("calm", 1)  # soft rain is soothing
+    if code in (45, 48):
+        change_need("curiosity", 1)
+    if weather["temp"] <= 2:
+        change_need("charge", -1)  # the cold drains its battery
+    if weather["wind"] >= 40:
+        change_need("calm", -1)
+
+
+# ---------------------------------------------------------------------------
+# What's on in the city
+# ---------------------------------------------------------------------------
+
+def plan_city(brain) -> None:
+    """When the noticeboard runs low, new posters go up (at most once a day)."""
+    today = now().strftime("%Y-%m-%d")
+    upcoming = [e for e in state["city"] if e["end"] > time.time()]
+    if brain is None or len(upcoming) >= 3 or state["city_planned"] == today:
+        return
+    state["city_planned"] = today
+    places = "\n".join(f"- {b['id']}: {b['name']}. {b['about']}" for b in buildings.values())
+    try:
+        plan = brain.plan_events(places, list(buildings), [e["title"] for e in state["city"][-12:]])
+    except (BrainError, json.JSONDecodeError, anthropic.APIStatusError, anthropic.APIConnectionError):
+        return
+    midnight = now().replace(hour=0, minute=0, second=0, microsecond=0)
+    added = 0
+    for item in plan["events"][:7]:
+        start = midnight + timedelta(days=max(0, min(6, item["day"])), hours=max(0, min(23, item["start_hour"])))
+        end = start + timedelta(hours=max(1, min(4, item["hours"])))
+        if item["watch_from"] not in buildings or end.timestamp() <= time.time():
+            continue
+        state["city"].append({"title": item["title"].strip(), "about": item["about"].strip(), "where": item["watch_from"],
+                              "start": start.timestamp(), "end": end.timestamp(), "status": "upcoming"})
+        added += 1
+    state["city"] = sorted(state["city"], key=lambda e: e["start"])
+    past = [e for e in state["city"] if e["status"] != "upcoming"][-12:]
+    state["city"] = past + [e for e in state["city"] if e["status"] == "upcoming"]
+    if added:
+        log_event(f"New posters went up around the city ({added} things coming up).", "city")
+
+
+def check_city() -> None:
+    """Being in the right place while something's on counts as going. Missing it stings a little."""
+    for event in state["city"]:
+        if event["status"] != "upcoming":
+            continue
+        happening = event["start"] <= time.time() < event["end"]
+        if happening and not state["asleep"] and state["location"] == event["where"]:
+            event["status"] = "attended"
+            changes = {}
+            for need, amount in {"joy": 8, "curiosity": 6, "connection": 6}.items():
+                before = state["needs"][need]
+                change_need(need, amount)
+                changes[need] = state["needs"][need] - before
+            record_experience("event", event["where"], changes)
+            log_event(f"Watched {event['title']} from the {buildings[event['where']]['name'].lower()}.", "event")
+        elif time.time() >= event["end"]:
+            event["status"] = "missed"
+            change_need("joy", -2)
+            log_event(f"Missed {event['title']}.", "missed")
+
+
+def city_text() -> str:
+    lines = []
+    for event in state["city"]:
+        start, end = datetime.fromtimestamp(event["start"], TIMEZONE), datetime.fromtimestamp(event["end"], TIMEZONE)
+        place = buildings[event["where"]]["name"].lower() if event["where"] in buildings else "somewhere"
+        if event["status"] == "upcoming":
+            when = f"ON NOW until {end:%H:%M}" if start.timestamp() <= time.time() else f"{start:%a %H:%M}-{end:%H:%M}"
+            lines.append(f"- {event['title']} ({when}, watch from the {place}): {event['about']}")
+        elif days_since(start.strftime("%Y-%m-%d")) <= 1:
+            lines.append(f"- {event['title']}: you {'watched it' if event['status'] == 'attended' else 'missed it'}")
+    return "\n".join(lines) or "- nothing posted yet"
+
+
+# ---------------------------------------------------------------------------
+# Sleep: Ember decides when (or passes out when its charge runs dry)
+# ---------------------------------------------------------------------------
+
+def fall_asleep(why: str) -> None:
+    here = state["location"]
+    rate = SLEEP_RECHARGE["pod"] if can(here, "rest") else SLEEP_RECHARGE["elsewhere"]
+    ticks = max(3, min(60, math.ceil((95 - state["needs"]["charge"]) / rate)))
+    state["sleep"] = {"place": here, "since": now().strftime("%H:%M"), "ticks_left": ticks, "rate": rate,
+                      "start_charge": state["needs"]["charge"], "start_calm": state["needs"]["calm"]}
+    state.update(asleep=True, activity="Sleeping", say="")
+    log_event(why, "sleep")
+
+
+def sleep_tick() -> None:
+    sleep = state["sleep"]
+    change_need("charge", sleep["rate"])
+    change_need("calm", 2)
+    sleep["ticks_left"] -= 1
+    state["status"] = f"Asleep since {sleep['since']}"
+
+
+def wake_up(why: str) -> None:
+    sleep = state["sleep"] or {}
+    if sleep:
+        record_experience("sleep", sleep["place"], {"charge": state["needs"]["charge"] - sleep["start_charge"],
+                                                    "calm": state["needs"]["calm"] - sleep["start_calm"]})
+    state.update(asleep=False, sleep=None, activity="Waking up", status="")
+    log_event(why, "wake")
+
+
 # ---------------------------------------------------------------------------
 # What Ember knows, written as plain text for the brain
 # ---------------------------------------------------------------------------
@@ -459,17 +705,35 @@ def describe_situation() -> str:
     yesterday = state["days"][-1] if state["days"] else None
     recent = "\n".join(f"- {e['time']} {e['text']}" for e in state["events"][-14:] if e["kind"] != "thought") or "- nothing yet"
     searches_left = max(0, CONFIG["max_searches_per_day"] - state["searches_today"])
+    weather = state["weather"]
+    sky = (f"{weather['description']}, {weather['temp']}°C, wind {weather['wind']} km/h" if weather else "unknown")
+    goals = "\n".join(
+        f"- {g['id']}: {g['text']} (since {g['started']}"
+        + (f"; last step: {g['progress'][-1]['text']}" if g["progress"] else "; no progress yet") + ")"
+        for g in state["goals"] if g["status"] == "active"
+    ) or "- none right now"
+    finished_goals = ", ".join(f"{g['text']} ({g['status']})" for g in [g for g in state["goals"] if g["status"] != "active"][-3:])
+    chapter = state["chapters"][-1] if state["chapters"] else None
+    stale = rut()
 
-    return f"""It is {t:%A %d %B, %H:%M} ({part_of_day}).
+    return f"""It is {t:%A %d %B, %H:%M} ({part_of_day}). The weather: {sky}.
 You are at: {here['name']} ({state['location']}). {here['about']}
 Your form: shape {state['form']['shape']}, colour {state['form']['color']}. In your words: {state['form']['about']}
-Your needs (0-100, higher is better): {needs}. {feelings}
+Your needs (0-100, higher is better): {needs}. {feelings} {stale}
 
 Who you are:
 {about_me_text()}
+{f'Who you have been becoming (your latest chapter, "{chapter["title"]}"): {chapter["text"]}' if chapter else ''}
 
 What experience has taught you:
 {lessons}
+
+Your goals:
+{goals}
+{f'Recently finished or dropped: {finished_goals}' if finished_goals else ''}
+
+What's on in the city:
+{city_text()}
 
 Places on your rooftop:
 {places}
@@ -527,6 +791,7 @@ def apply_decision(decision: dict, brain) -> None:
     if decision["wish"].strip():
         add_wish(decision["wish"].strip())
     change_form(decision["new_form"], decision["form_color"], decision["who_i_am"].strip())
+    handle_goal(decision["goal_action"], decision["goal_id"], decision["goal_text"].strip())
     if decision["remember"].strip():
         state["learned"] = (state["learned"] + [{"date": now().strftime("%Y-%m-%d"), "time": now().strftime("%H:%M"),
                                                  "text": decision["remember"].strip()}])[-40:]
@@ -540,6 +805,9 @@ def apply_decision(decision: dict, brain) -> None:
             state["activity"] = f"Heading to the {buildings[target]['name'].lower()}"
             change_need("charge", -1)
             log_event(f"Went to the {buildings[target]['name'].lower()}.")
+
+    elif action == "do_activity" and decision["activity_kind"] == "sleep":
+        fall_asleep(f"Went to sleep at the {buildings[here]['name'].lower()}.")
 
     elif action == "do_activity":
         kind, activity = decision["activity_kind"], decision["activity"].strip().rstrip(".")
@@ -622,35 +890,36 @@ def make_creation(brain, kind: str, activity: str, hobby: dict | None) -> None:
 # One tick: a moment of Ember's life
 # ---------------------------------------------------------------------------
 
-def sleep_tick(brain) -> None:
-    if not state["asleep"]:
-        t = now()  # write up the day that's ending (after midnight, that's yesterday) before drifting off
-        write_diary(brain, (t if t.hour >= CONFIG["bedtime"] else t - timedelta(days=1)).strftime("%Y-%m-%d"))
-        state.update(asleep=True, location="pod" if "pod" in buildings else state["location"],
-                     activity="Sleeping", say="")
-        log_event("Dimmed down and drifted off for the night.")
-    change_need("charge", 8)
-    change_need("calm", 2)
-    state["status"] = f"Asleep until {CONFIG['wake_time']:02d}:00"
-
-
-def live(brain, never_sleep: bool) -> None:
+def live(brain, wake_now: bool) -> None:
     if brain is None:
         state["status"] = "Brain offline: no API key (ANTHROPIC_API_KEY isn't set)."
         return
-    hour = now().hour
-    if not never_sleep and (hour >= CONFIG["bedtime"] or hour < CONFIG["wake_time"]):
-        sleep_tick(brain)
-        return
     if state["asleep"]:
-        state.update(asleep=False, activity="Waking up", status="")
-        log_event("Flickered back on.")
+        sleep = state["sleep"] or {"ticks_left": 0}
+        if wake_now:
+            wake_up("Got woken up.")
+        elif sleep["ticks_left"] <= 0 or state["needs"]["charge"] >= 98:
+            wake_up(f"Woke up after sleeping since {sleep.get('since', 'a while ago')}.")
+        else:
+            sleep_tick()  # asleep: no thinking, so no cost
+            return
     if state["thinks_today"] >= CONFIG["max_thinks_per_day"]:
         state["status"] = "Daydreaming: reached today's think limit"
         return
 
     for need, amount in DECAY.items():  # time passes and every need slowly drains
         change_need(need, -amount)
+    feel_weather()
+    stale = rut()
+    if stale:
+        change_need("curiosity", -2)
+        change_need("joy", -1)
+    if bool(stale) != state["in_rut"]:
+        state["in_rut"] = bool(stale)
+        log_event("Feels stuck in a rut." if stale else "Broke out of its rut.", "rut")
+    if state["needs"]["charge"] <= 0:
+        fall_asleep("Ran completely out of charge and powered down where it was.")
+        return
     state["thinks_today"] += 1
     try:
         decision = brain.decide(describe_situation(), list(buildings))
@@ -673,21 +942,26 @@ def live(brain, never_sleep: bool) -> None:
     apply_decision(decision, brain)
 
 
-def tick(brain, next_think_in_seconds: float, never_sleep: bool = False, dream_now: bool = False) -> None:
+def tick(brain, next_think_in_seconds: float, wake_now: bool = False, dream_now: bool = False) -> None:
     load_buildings()
     t = now()
     today = t.strftime("%Y-%m-%d")
-    if state["day"] != today:
-        if state["day"]:
-            write_diary(brain, state["day"])  # in case yesterday ended without a bedtime (e.g. --no-sleep)
-        state.update(day=today, thinks_today=0, searches_today=0, wishes_today=0, form_changes_today=0)
-    state["born"] = state["born"] or today
-    if state["costs"]["month"] != t.strftime("%Y-%m"):
-        state["costs"].update(month=t.strftime("%Y-%m"), usd=0.0)
     state["tick_started_at"] = time.time()
-    notice_new_buildings()
+    state["tick_seconds"] = next_think_in_seconds
     try:
-        live(brain, never_sleep)
+        if state["day"] != today:
+            if state["day"]:
+                write_diary(brain, state["day"])  # at midnight, Ember's mind sorts through the day that ended
+                write_chapter(brain)              # and once a week, looks back further
+            state.update(day=today, thinks_today=0, searches_today=0, wishes_today=0, form_changes_today=0)
+        state["born"] = state["born"] or today
+        if state["costs"]["month"] != t.strftime("%Y-%m"):
+            state["costs"].update(month=t.strftime("%Y-%m"), usd=0.0)
+        notice_new_buildings()
+        check_weather()
+        plan_city(brain)
+        live(brain, wake_now)
+        check_city()
         if dream_now:
             write_diary(brain, today, final=False)
     finally:

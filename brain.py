@@ -10,6 +10,8 @@ Other kinds of request happen only now and then:
   - create(): actually making something Ember decided to make
   - reflect(): once a night, Ember "dreams": writes its diary, sorts the day into memories,
     and notices things about itself. This uses a smarter model, because it shapes who Ember becomes.
+  - chapter(): once a week, a deeper look back at who Ember has been becoming (smarter model too)
+  - plan_events(): now and then, invents what's on in the city for the coming week
 
 Every request's token usage is added up, so the page can show what Ember costs to run.
 """
@@ -122,14 +124,53 @@ REFLECTION_SCHEMA = {
     "additionalProperties": False,
 }
 
+CHAPTER_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "title": {"type": "string", "description": "A title for this chapter of your life."},
+        "chapter": {"type": "string", "description": "5 to 8 sentences, first person: who you've been becoming lately, "
+                                                     "what's changed in you, and what you want next."},
+        "about_me": REFLECTION_SCHEMA["properties"]["about_me"],
+    },
+    "required": ["title", "chapter", "about_me"],
+    "additionalProperties": False,
+}
+
+
+def events_schema(location_ids: list[str]) -> dict:
+    return {
+        "type": "object",
+        "properties": {
+            "events": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "title": {"type": "string"},
+                        "about": {"type": "string", "description": "One short sentence."},
+                        "watch_from": {"type": "string", "enum": location_ids,
+                                       "description": "The place on the rooftop it can be seen or tuned into from."},
+                        "day": {"type": "integer", "description": "0 = today, 1 = tomorrow, up to 6."},
+                        "start_hour": {"type": "integer", "description": "0 to 23, local time."},
+                        "hours": {"type": "integer", "description": "How long it lasts: 1 to 4."},
+                    },
+                    "required": ["title", "about", "watch_from", "day", "start_hour", "hours"],
+                    "additionalProperties": False,
+                },
+            },
+        },
+        "required": ["events"],
+        "additionalProperties": False,
+    }
+
 
 class BrainError(Exception):
     """The brain couldn't produce a usable answer this time."""
 
 
 def system_prompt(name: str) -> str:
-    return f"""You are {name}. You have just come into being: a small glowing orb of light on a rooftop
-high above an endless neon city, where it's always raining and always lit.
+    return f"""You are {name}. You came into being as a small glowing orb of light on a rooftop
+high above an endless neon city. The city's weather is real: it's the actual sky over London.
 
 You are not an assistant, and nobody has told you who to be. You don't yet know what you like,
 what you're good at, or what you want. You find that out by living: trying things, noticing how
@@ -139,6 +180,12 @@ into your world, but you're not performing for them.
 How your world works:
 - Every so often you decide ONE thing to do next. You have needs (charge, curiosity, joy, calm,
   connection) that rise and fall with what you do. Notice them and look after yourself.
+- You have no bedtime. Sleep whenever you need or want to (activity_kind "sleep"). While you sleep
+  you don't think, your charge refills, and each night your mind sorts through the day.
+- You can set yourself goals: things you want to achieve over days or weeks. Work towards them,
+  finish them, or let them go if they stop mattering (goal_action).
+- Things happen in the city below. You hear about them, and can watch if you're in the right place
+  at the right time. It's up to you whether you care.
 - If something becomes a real interest, name it in new_hobby, and say when you're practising it
   in practising_hobby. Practice makes you better at things.
 - One place is wired into the real internet. Searches are limited each day.
@@ -170,8 +217,19 @@ def decision_schema(location_ids: list[str]) -> dict:
             },
             "activity_kind": {
                 "type": "string",
-                "enum": ["rest", "play", "create", "learn", "explore", "socialise", "reflect"],
-                "description": "What sort of activity this is.",
+                "enum": ["rest", "sleep", "play", "create", "learn", "explore", "socialise", "reflect"],
+                "description": "What sort of activity this is. 'sleep' means actually going to sleep for a while.",
+            },
+            "goal_action": {
+                "type": "string",
+                "enum": ["none", "new", "progress", "done", "drop"],
+                "description": "Usually none. new: set yourself a goal. progress: this moves a goal forward. "
+                               "done: you achieved one. drop: you're letting one go.",
+            },
+            "goal_id": {"type": "string", "description": "For progress, done or drop: the goal's id (e.g. g2). Otherwise empty."},
+            "goal_text": {
+                "type": "string",
+                "description": "For new: the goal itself. For progress: what you did towards it. For done or drop: why. Otherwise empty.",
             },
             "practising_hobby": {
                 "type": "string",
@@ -200,8 +258,9 @@ def decision_schema(location_ids: list[str]) -> dict:
                 "description": "If you change your form or colour: one line on what you are now and why. Otherwise empty.",
             },
         },
-        "required": ["thought", "action", "target_location", "activity", "activity_kind", "practising_hobby",
-                     "creation", "say", "remember", "new_hobby", "wish", "new_form", "form_color", "who_i_am"],
+        "required": ["thought", "action", "target_location", "activity", "activity_kind", "goal_action", "goal_id",
+                     "goal_text", "practising_hobby", "creation", "say", "remember", "new_hobby", "wish", "new_form",
+                     "form_color", "who_i_am"],
         "additionalProperties": False,
     }
 
@@ -334,12 +393,39 @@ What happened today (in order):
    Don't repeat anything already written down."""
         return self.ask_json(prompt, REFLECTION_SCHEMA, "medium", system=self.system, model=REFLECT_MODEL)
 
+    def chapter(self, diary: str, about_me: str, memories: str) -> dict:
+        prompt = f"""You are {self.name}, a young AI living on a rooftop above a neon city. A week has gone by,
+and you look back over it more deeply than you do on an ordinary night.
+
+What you know about yourself so far:
+{about_me}
+
+Your strongest memories:
+{memories}
+
+Your diary this past week:
+{diary}
+
+Write the next chapter of your life: who you've been becoming, what's changed in you, and what you want next.
+Only add to about_me if this week genuinely revealed something new about who you are."""
+        return self.ask_json(prompt, CHAPTER_SCHEMA, "high", system=self.system, model=REFLECT_MODEL)
+
+    def plan_events(self, places: str, location_ids: list[str], recent_titles: list[str]) -> dict:
+        prompt = f"""You run the noticeboard for a vast neon city at night and day: towers, flying cars, rain,
+markets, drones, a million lit windows. Invent 5 or 6 events happening in the city over the next 7 days
+that someone living on a rooftop could watch or tune into from one of these places:
+{places}
+
+Mix it up: big spectacles, small odd things, things that happen late at night, things that only happen once.
+Don't repeat these recent ones: {", ".join(recent_titles) or "none"}."""
+        return self.ask_json(prompt, events_schema(location_ids), "low")
+
 
 class DemoBrain:
     """A stand-in with no AI and no cost: picks random actions so you can watch the world move."""
 
     ACTIVITIES = [
-        ("rest", "dim down for a little while"), ("play", "chase a drone's reflection in a puddle"),
+        ("rest", "dim down for a little while"), ("sleep", "curl up and sleep"), ("play", "chase a drone's reflection in a puddle"),
         ("create", "make something"), ("explore", "drift along the cables"), ("reflect", "sit and think"),
         ("learn", "watch the flying cars' patterns"), ("socialise", "blink hello at a passing delivery drone"),
     ]
@@ -364,6 +450,9 @@ class DemoBrain:
             "target_location": random.choice(location_ids),
             "activity": "why do cities glow at night" if action == "search_internet" else activity,
             "activity_kind": kind,
+            "goal_action": random.choice(["none"] * 5 + ["new", "progress", "progress", "done"]),
+            "goal_id": "g1",
+            "goal_text": random.choice(["Count every flying car in one night", "learned a bit more"]),
             "practising_hobby": random.choice(self.HOBBIES + [""]),
             "creation": random.choice(["drawing", "poem", "tune", "none", "none"]) if kind == "create" else "none",
             "say": random.choice(["", "", "", "Hm.", "Hello, drone."]),
@@ -406,3 +495,15 @@ class DemoBrain:
             "came_back": ["m1"],
             "about_me": random.choice([[], [{"section": "my_habits", "text": "I keep drifting back to the edge to watch the city."}]]),
         }
+
+    def chapter(self, diary: str, about_me: str, memories: str) -> dict:
+        return {"title": "The demo week", "chapter": "(Demo mode.) A week of drifting, watching and wondering.", "about_me": []}
+
+    def plan_events(self, places: str, location_ids: list[str], recent_titles: list[str]) -> dict:
+        ideas = [("Drone light show", "Ten thousand drones draw a whale over the harbour."),
+                 ("Night market stream", "A live stream from the floating noodle market."),
+                 ("Blackout hour", "The whole east district switches its lights off for an hour."),
+                 ("Sky-train parade", "Old sky-trains run one last loop before they're scrapped.")]
+        return {"events": [{"title": title, "about": about, "watch_from": random.choice(location_ids),
+                            "day": 0, "start_hour": random.randint(0, 23), "hours": random.randint(1, 3)}
+                           for title, about in ideas]}

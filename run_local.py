@@ -3,7 +3,6 @@ run_local.py - run Ember on your own computer.
 
   python run_local.py              real AI brain (needs ANTHROPIC_API_KEY)
   python run_local.py --demo       no AI and no cost: random actions every few seconds
-  python run_local.py --no-sleep   real brain, but stays awake through the night
 
 Then open http://localhost:8000 to watch. Ctrl+C to stop.
 Memories are saved in site/data/, so Ember picks up where it left off.
@@ -23,7 +22,6 @@ from brain import Brain, DemoBrain
 
 PORT = 8000
 DEMO = "--demo" in sys.argv
-NEVER_SLEEP = DEMO or "--no-sleep" in sys.argv
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -43,7 +41,7 @@ class Handler(SimpleHTTPRequestHandler):
 def life_loop(brain, every_seconds: float) -> None:
     while True:
         try:
-            world.tick(brain, every_seconds, NEVER_SLEEP)
+            world.tick(brain, every_seconds)
         except Exception:
             traceback.print_exc()
         time.sleep(every_seconds)
