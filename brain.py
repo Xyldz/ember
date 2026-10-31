@@ -232,7 +232,7 @@ class Brain:
                 model=MODEL,
                 max_tokens=16000,
                 messages=messages,
-                tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 2}],
+                tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 1}],  # each search costs 1 cent
             )
             self.track(response)
             if response.stop_reason != "pause_turn":

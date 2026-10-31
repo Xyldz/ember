@@ -354,6 +354,7 @@ def research(brain, query: str, hobby: dict | None) -> None:
         "time": now().strftime("%H:%M"), "text": result["summary"], "query": query, "sources": result["sources"],
     }])[-40:]
     change("mood", 6)
+    state["activity"] = f'Reading about "{query}"'
     log_event(f"Learned: {result['summary']}", "learned")
     if hobby:
         add_xp(hobby, RESEARCH_XP)

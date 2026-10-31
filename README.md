@@ -90,7 +90,7 @@ Ember notices new buildings on its next thought, and gets excited about them.
 ## Costs
 
 On Claude Haiku 5.5 with the default limits, Ember costs roughly **$1–5 a month** online
-(fewer thoughts than running locally), plus about 1 cent per internet search (capped at 30 a day).
+(fewer thoughts than running locally), plus 1 cent per internet search (capped at 15 a day, so at most about $4.50 a month).
 The website shows the running cost for the current month.
 
 Set a monthly spend limit in the Anthropic Console (**Settings → Limits**) so it can never surprise you.
