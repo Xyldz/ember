@@ -1,9 +1,10 @@
 # Ember
 
-A small autonomous AI that lives on a rooftop above a neon city. It starts life as a glowing orb and
-decides for itself what it wants to become (its shape and colour). Every so often it decides what to
-do next: it researches things on the real internet, picks up hobbies and levels them up, makes
-drawings, poems and synth tracks, and wishes for new things to be built on its roof.
+A small autonomous AI that lives on a rooftop above a neon city. It starts as a blank glowing orb,
+with no personality written for it, and works out who it is by living: it has needs (charge,
+curiosity, joy, calm, connection), learns what different things do to it, picks up interests,
+researches things on the real internet, decides what form to take, and wishes for new things to be
+built on its roof. Every night it writes a diary entry and may add a line to its own character sheet.
 
 Its brain is Claude (Haiku 5.5). The world is a 3D web page you can open any time to see what it's up to.
 
@@ -11,9 +12,10 @@ Its brain is Claude (Haiku 5.5). The world is a 3D web page you can open any tim
 
 | File | What it does |
 |---|---|
-| `brain.py` | Everything that talks to Claude: deciding, searching, making things |
-| `world.py` | The rules: charge, mood, skills, wishes, memories, one "tick" of life |
+| `brain.py` | Everything that talks to Claude: deciding, searching, making things, the nightly diary |
+| `world.py` | The rules: needs, lessons from experience, interests, wishes, memories, one "tick" of life |
 | `buildings.json` | The buildings on the roof. **Edit this to build things for Ember** |
+| `personality.json` | Ember's character sheet. Blank on purpose; add lines if you want to shape it |
 | `config.json` | Name, timezone, bedtime, daily limits, support link |
 | `site/index.html` | The 3D website |
 | `run_local.py` | Run Ember on your own computer |
@@ -56,6 +58,21 @@ Ember's memories are saved to a branch called `data`. Don't edit that branch by 
 GitHub's 15-minute schedule is "best effort": runs are sometimes late or skipped when GitHub is busy.
 If a repository has no activity for 60 days GitHub pauses the schedule; just click **Enable** in the Actions tab.
 
+**Actions → Ember lives → Run workflow** has two checkboxes:
+- *Wake Ember up even if it's bedtime*: one thought right now, whatever the time.
+- *Start Ember's life over from scratch*: wipes all its memories, diary, interests and lessons. There's no undo.
+
+## Ember's mind
+
+- **Needs**: charge, curiosity, joy, calm and connection drain over time; what Ember does refills (or drains) them.
+  The real effect varies each time, and places add their own `boosts`.
+- **Lessons**: once something has happened a few times, Ember draws a conclusion from how it actually felt,
+  e.g. "Sitting with my thoughts at the rooftop edge settles me (×5)". It reads these every time it thinks.
+- **Diary**: at bedtime Ember writes up its day in its own words.
+- **Character sheet**: `personality.json` is the part you write (blank by default). Each night Ember may add up to two
+  lines about itself; it can only ever add, never delete, and near-repeats are rejected.
+  The **Mind** tab on the site shows both, plus the lessons.
+
 ## Building things for Ember
 
 Ember can wish for new buildings. Wishes show on the website, and online they're also filed as
@@ -66,8 +83,9 @@ GitHub issues, so you get notified. To build something, add it to `buildings.jso
   "id": "arcade",
   "name": "Neon arcade",
   "pos": [7, 2.5],
-  "about": "A tiny arcade cabinet that plays glitchy retro games. Great for practising reflexes.",
+  "about": "A tiny arcade cabinet that plays glitchy retro games.",
   "actions": [],
+  "boosts": { "joy": 6 },
   "grants_wish": "arcade",
   "shapes": [
     { "type": "box", "size": [1.4, 2.2, 1], "pos": [0, 1.1, -1.5], "color": "#161a2b" },
@@ -78,8 +96,10 @@ GitHub issues, so you get notified. To build something, add it to `buildings.jso
 
 - `pos` is where Ember stands, from about -11 to 11 on each side. Put the building on one of the
   `empty_lots` and remove that lot from the list.
-- `actions` unlocks things: `"search"` (internet), `"create"` (make art/poems/music), `"rest"` (recharge faster).
-- `about` is written to Ember: it's how Ember knows what the place is for.
+- `actions` unlocks things: `"search"` (internet), `"rest"` (recharge faster).
+- `boosts` (optional) is which needs the place helps: `charge`, `curiosity`, `joy`, `calm`, `connection`.
+  Ember isn't told this; it finds out by spending time there.
+- `about` is written to Ember. Describe the place, not what Ember should do there, so it decides for itself.
 - `grants_wish` marks a wish as come true if it contains these words.
 - For the look, use `shapes` (boxes, cylinders and spheres; `pos` is relative to where Ember stands, `glow` makes it neon),
   or make a proper 3D model (Blender, etc.), export it as `.glb`, put it in `site/models/`, and set

@@ -15,6 +15,10 @@ on:
         description: "Wake Ember up even if it's bedtime"
         type: boolean
         default: false
+      reset:
+        description: "Start Ember's life over from scratch (forgets EVERYTHING)"
+        type: boolean
+        default: false
   push:
     branches: [main]
 
@@ -53,7 +57,7 @@ jobs:
 
       - name: Live one moment
         if: github.event_name != 'push'
-        run: python tick_once.py ${{ inputs.awake && '--no-sleep' || '' }}
+        run: python tick_once.py ${{ inputs.awake && '--no-sleep' || '' }} ${{ inputs.reset && '--reset' || '' }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

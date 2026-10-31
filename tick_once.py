@@ -3,6 +3,7 @@ tick_once.py - live one moment of Ember's life, then exit.
 
 GitHub Actions runs this every 15 minutes (see .github/workflows/ember.yml).
   python tick_once.py --no-sleep   think even if it's bedtime (the "wake Ember up" checkbox on GitHub)
+  python tick_once.py --reset      start Ember's life over from scratch first (the "start over" checkbox)
 New wishes are also filed as GitHub issues, so you get a notification when Ember wants something built.
 """
 
@@ -44,6 +45,8 @@ def file_wish_issues() -> None:
 
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if "--reset" in sys.argv:
+        world.reset()
     world.load()
     brain = Brain(world.CONFIG["name"]) if os.environ.get("ANTHROPIC_API_KEY") else None
     world.tick(brain, TICK_MINUTES * 60, never_sleep="--no-sleep" in sys.argv)

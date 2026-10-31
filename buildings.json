@@ -2,10 +2,11 @@
   "how_to_add_a_building": [
     "Add an entry to 'buildings'. Ember notices new buildings on its next thought.",
     "id: short unique name. pos: [x, z] where Ember stands (the roof spans about -11 to 11).",
-    "about: what it is, written to Ember. Ember reads this to decide what to do there.",
-    "actions: what it unlocks. 'search' = use the internet, 'create' = make art/poems/music, 'rest' = recharge faster.",
+    "about: what it is, written to Ember. Describe the place, not what Ember should do there.",
+    "actions: what it unlocks. 'search' = use the internet, 'rest' = recharge faster.",
+    "boosts: optional. Needs it helps when Ember does something there, e.g. {\"calm\": 6}. Needs: charge, curiosity, joy, calm, connection.",
     "model: a built-in look ('terminal', 'pod', 'railing'), OR a .glb file you put in site/models/ (e.g. 'models/library.glb'),",
-    "       OR leave it out and add 'shapes' (boxes/cylinders/spheres, see the 'arcade' example in the README).",
+    "       OR leave it out and add 'shapes' (boxes/cylinders/spheres, see the example in the README).",
     "grants_wish: optional. Words from one of Ember's wishes; that wish is marked as come true when the building appears.",
     "empty_lots: glowing squares where new buildings could go. Remove one when you build on it."
   ],
@@ -15,16 +16,18 @@
       "name": "Data terminal",
       "pos": [0, -1.5],
       "model": "terminal",
-      "about": "A big humming terminal wired into the real internet. The only place you can search it, and where you make digital art, poems and synth music.",
-      "actions": ["search", "create"]
+      "about": "A big humming terminal wired into the real internet.",
+      "actions": ["search"],
+      "boosts": {"curiosity": 4}
     },
     {
       "id": "pod",
       "name": "Charging pod",
       "pos": [-6, 2.5],
       "model": "pod",
-      "about": "A padded capsule that glows softly and hums with power. The best place to rest and recharge.",
-      "actions": ["rest"]
+      "about": "A padded capsule that glows softly and hums with power.",
+      "actions": ["rest"],
+      "boosts": {"calm": 4}
     },
     {
       "id": "edge",
@@ -32,7 +35,8 @@
       "pos": [3, -9.3],
       "model": "railing",
       "about": "The edge of the roof. Below: the endless neon city, flying cars, rain and a million lit windows.",
-      "actions": []
+      "actions": [],
+      "boosts": {"calm": 6, "curiosity": 3}
     }
   ],
   "empty_lots": [[-6.5, -6], [7, 2.5], [-1, 7.5]]

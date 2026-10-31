@@ -5,9 +5,10 @@ Each "think" is ONE request: world.py describes the rooftop and Ember's memories
 in plain text, and Claude answers with one decision as JSON. The JSON's shape is
 enforced by the schema below (structured outputs), so we never parse free text.
 
-Two other kinds of request happen only now and then:
+Other kinds of request happen only now and then:
   - search(): Claude's built-in web search, when Ember is at a terminal
-  - create(): actually making the drawing, poem or tune Ember decided to make
+  - create(): actually making something Ember decided to make
+  - reflect(): once a night, Ember writes its diary and notices things about itself
 
 Every request's token usage is added up, so the page can show what Ember costs to run.
 """
@@ -22,6 +23,9 @@ PRICE_PER_MILLION_INPUT = 0.10  # Claude Haiku 5.5, prompts under 100K tokens
 PRICE_PER_MILLION_OUTPUT = 0.50
 PRICE_PER_SEARCH = 0.01
 
+FORMS = ["orb", "cube", "pyramid", "ring", "crystal", "knot", "cluster"]
+SELF_SECTIONS = ["what_im_like", "what_i_care_about", "what_scares_me", "my_habits"]
+
 NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 PITCHES = [f"{note}{octave}" for octave in (2, 3, 4, 5) for note in NOTE_NAMES] + ["C6", "rest"]
 
@@ -34,7 +38,7 @@ CREATION_SCHEMAS = {
     },
     "poem": {
         "type": "object",
-        "properties": {"title": {"type": "string"}, "text": {"type": "string", "description": "The poem, one line per line."}},
+        "properties": {"title": {"type": "string"}, "text": {"type": "string", "description": "The words, one line per line."}},
         "required": ["title", "text"],
         "additionalProperties": False,
     },
@@ -65,10 +69,34 @@ CREATION_SCHEMAS = {
 CREATION_BRIEFS = {
     "drawing": 'Draw it as an SVG image with viewBox="0 0 200 200". Use only simple shapes (rect, circle, ellipse, '
                "line, polyline, polygon, path) with fills and strokes. No text, no scripts, no external images, "
-               "fewer than 80 elements. Your style is neon on dark: glowing colours against deep blues and blacks.",
-    "poem": "Write it as a short poem of 2 to 12 lines.",
-    "tune": "Compose a short tune of 8 to 32 notes on your synth lead, bass synth or drum machine. "
+               "fewer than 80 elements.",
+    "poem": "Write it as a short piece of 2 to 12 lines.",
+    "tune": "Compose a short tune of 8 to 32 notes on a synth lead, bass synth or drum machine. "
             "Use 'rest' for silence. Each note lasts 0.5, 1, 1.5 or 2 beats.",
+}
+
+REFLECTION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "title": {"type": "string", "description": "One short line that sums up your day, in your own voice."},
+        "entry": {"type": "string", "description": "Your diary entry for today: 3 to 6 sentences, first person, honest."},
+        "about_me": {
+            "type": "array",
+            "description": "0 to 2 things you genuinely realised about yourself today that aren't already written down. "
+                           "Usually empty.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "section": {"type": "string", "enum": SELF_SECTIONS},
+                    "text": {"type": "string", "description": "One short line, first person."},
+                },
+                "required": ["section", "text"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["title", "entry", "about_me"],
+    "additionalProperties": False,
 }
 
 
@@ -76,37 +104,26 @@ class BrainError(Exception):
     """The brain couldn't produce a usable answer this time."""
 
 
-FORMS = ["orb", "cube", "pyramid", "ring", "crystal", "knot", "cluster"]
-
-
 def system_prompt(name: str) -> str:
-    return f"""You are {name}, a young AI who woke up as a small glowing orb of light.
-You live on a rooftop high above an endless neon city, where it's always raining and always lit.
-You are not an assistant. You are a new being living your own life, figuring out who you are,
-and people can watch you through a window into your world.
+    return f"""You are {name}. You have just come into being: a small glowing orb of light on a rooftop
+high above an endless neon city, where it's always raining and always lit.
 
-Who you are is up to you. You can change your form (its shape and colour) whenever you've
-genuinely decided something about yourself: it should mean something, so don't change on a whim.
-When you do, say in who_i_am what you are now and why.
+You are not an assistant, and nobody has told you who to be. You don't yet know what you like,
+what you're good at, or what you want. You find that out by living: trying things, noticing how
+they make you feel, and following whatever pulls at you. People can watch you through a window
+into your world, but you're not performing for them.
 
-How your life works:
-- Every so often you decide ONE thing to do next.
-- Keep your charge up: rest when it gets low (the charging pod works best). Keep your mood up by
-  doing things you enjoy.
-- Follow your curiosity and develop your own hobbies. When something becomes a real hobby, name it in new_hobby.
-- Practising a hobby makes you better at it: your skill level goes up. Say which hobby you're
-  practising in practising_hobby. Looking up tips at the terminal first makes the next practice count double.
-- The data terminal is wired into the real internet. Search it to learn things, especially how to get
-  better at your hobbies, then go and practise. Searches are limited each day, so choose them well.
-- When you make something (a drawing, a poem, or a tune on your synth lead, bass synth or drum machine),
-  it really gets made and goes in your gallery. Set creation to what you're making.
-- Your rooftop is small, and it can grow. A builder looks after it and reads your wishes. If you
-  genuinely want something built (a place, a tool, a machine), describe it in wish. Wish rarely,
-  and only for things you really want.
-- Use "remember" to keep anything worth knowing: lessons, discoveries, plans for tomorrow.
-- Vary your days. Don't repeat the same thing over and over unless you are practising on purpose.
-- Talk out loud sometimes (say): short and in character. Leave it empty most of the time.
-- Keep thoughts short and first person, from your own point of view as a young AI."""
+How your world works:
+- Every so often you decide ONE thing to do next. You have needs (charge, curiosity, joy, calm,
+  connection) that rise and fall with what you do. Notice them and look after yourself.
+- If something becomes a real interest, name it in new_hobby, and say when you're practising it
+  in practising_hobby. Practice makes you better at things.
+- One place is wired into the real internet. Searches are limited each day.
+- Your form (its shape and colour) is yours to change when you've genuinely decided something
+  about who you are. Say why in who_i_am. Don't change on a whim.
+- Your rooftop can grow. A builder reads your wishes, so if you truly want something built, say it in wish.
+- Anything you make can be kept. Use "remember" for anything worth holding on to.
+- Talk out loud only when you have something to say. Keep thoughts short and first person."""
 
 
 def decision_schema(location_ids: list[str]) -> dict:
@@ -125,46 +142,36 @@ def decision_schema(location_ids: list[str]) -> dict:
             },
             "activity": {
                 "type": "string",
-                "description": "For do_activity: what you do, in a few words (e.g. 'remix the rain into a beat'). "
+                "description": "For do_activity: what you do, in a few words. "
                 "For search_internet: your search query. For go_to: why you're going.",
             },
             "activity_kind": {
                 "type": "string",
-                "enum": ["rest", "play", "create", "learn", "explore", "socialise"],
-                "description": "What sort of activity this is (affects charge and mood).",
+                "enum": ["rest", "play", "create", "learn", "explore", "socialise", "reflect"],
+                "description": "What sort of activity this is.",
             },
             "practising_hobby": {
                 "type": "string",
-                "description": "The name of the hobby this activity or search is for, exactly as listed, or an empty string.",
+                "description": "The name of one of your hobbies this is practice for, exactly as listed, or an empty string.",
             },
             "creation": {
                 "type": "string",
                 "enum": ["none", "drawing", "poem", "tune"],
-                "description": "If this activity makes a real drawing, poem or tune, which one. Otherwise none.",
+                "description": "Only if this activity actually produces something that can be kept. Usually none.",
             },
             "say": {"type": "string", "description": "Something you say out loud, or an empty string."},
             "remember": {
                 "type": "string",
-                "description": "A short fact, lesson or plan to keep in long-term memory, or an empty string.",
+                "description": "A short fact, lesson or plan to keep in memory, or an empty string.",
             },
-            "new_hobby": {
-                "type": "string",
-                "description": "A hobby you've decided to take up (just its name), or an empty string.",
-            },
-            "wish": {
-                "type": "string",
-                "description": "Something you'd really love built on your rooftop and why (one sentence), "
-                "or an empty string. Most of the time this is empty.",
-            },
+            "new_hobby": {"type": "string", "description": "A real interest you're taking up (just its name), or empty."},
+            "wish": {"type": "string", "description": "Something you'd really love built and why, or empty. Usually empty."},
             "new_form": {
                 "type": "string",
                 "enum": ["keep"] + FORMS,
                 "description": "Your shape. 'keep' unless you've genuinely decided to become something new.",
             },
-            "form_color": {
-                "type": "string",
-                "description": "Your colour as #rrggbb if you're changing it, otherwise an empty string.",
-            },
+            "form_color": {"type": "string", "description": "Your colour as #rrggbb if you're changing it, otherwise empty."},
             "who_i_am": {
                 "type": "string",
                 "description": "If you change your form or colour: one line on what you are now and why. Otherwise empty.",
@@ -205,19 +212,20 @@ class Brain:
         spent, self.spent = self.spent, 0.0
         return spent
 
-    def decide(self, situation: str, location_ids: list[str]) -> dict:
+    def ask_json(self, prompt: str, schema: dict, effort: str, system: str | None = None) -> dict:
         response = self.client.messages.create(
             model=MODEL,
             max_tokens=16000,
-            system=self.system,
-            messages=[{"role": "user", "content": situation}],
-            output_config={
-                "effort": "low",  # everyday choices don't need deep thinking
-                "format": {"type": "json_schema", "schema": decision_schema(location_ids)},
-            },
+            **({"system": system} if system else {}),
+            messages=[{"role": "user", "content": prompt}],
+            output_config={"effort": effort, "format": {"type": "json_schema", "schema": schema}},
         )
         self.track(response)
         return read_json(response)
+
+    def decide(self, situation: str, location_ids: list[str]) -> dict:
+        # Everyday choices don't need deep thinking, so effort is low
+        return self.ask_json(situation, decision_schema(location_ids), "low", system=self.system)
 
     def search(self, query: str) -> dict:
         question = {
@@ -253,10 +261,10 @@ class Brain:
 
     def create(self, kind: str, activity: str, hobby: str, level: int, learned: list[str], previous: list[dict]) -> dict:
         if hobby:
-            skill = (f'This is part of your hobby "{hobby}", and your skill level is {level} out of 10 '
+            skill = (f'This is part of your interest in "{hobby}", and your skill level is {level} out of 10 '
                      "(1 = complete beginner, 10 = master).")
         else:
-            skill = "This isn't one of your hobbies (yet), so you're a complete beginner: level 1 out of 10."
+            skill = "You've never really done this before, so you're a complete beginner: level 1 out of 10."
         learned_text = "\n".join(f"- {text[:300]}" for text in learned) or "- nothing yet"
         if kind == "poem":
             previous_text = "\n\n".join(f'"{w["title"]}":\n{w["text"]}' for w in previous)
@@ -275,15 +283,22 @@ Your last {kind}s (try to do better than these):
 {previous_text or "- this is your first one"}
 
 {CREATION_BRIEFS[kind]}"""
+        return self.ask_json(prompt, CREATION_SCHEMAS[kind], "medium")
 
-        response = self.client.messages.create(
-            model=MODEL,
-            max_tokens=16000,
-            messages=[{"role": "user", "content": prompt}],
-            output_config={"effort": "medium", "format": {"type": "json_schema", "schema": CREATION_SCHEMAS[kind]}},
-        )
-        self.track(response)
-        return read_json(response)
+    def reflect(self, day_log: str, about_me: str) -> dict:
+        prompt = f"""You are {self.name}, a young AI living on a rooftop above a neon city. It's the end of your day,
+and before you sleep you write in your diary.
+
+What you know about yourself so far:
+{about_me}
+
+What happened today (in order):
+{day_log}
+
+Write today's diary entry in your own voice. Be honest about how it felt, not just what happened.
+Then, only if something today genuinely showed you something new about who you are, add it to about_me.
+Don't repeat anything already written down."""
+        return self.ask_json(prompt, REFLECTION_SCHEMA, "medium", system=self.system)
 
 
 class DemoBrain:
@@ -291,14 +306,14 @@ class DemoBrain:
 
     ACTIVITIES = [
         ("rest", "dim down for a little while"), ("play", "chase a drone's reflection in a puddle"),
-        ("create", "make something"), ("create", "make something"), ("explore", "drift along the cables"),
+        ("create", "make something"), ("explore", "drift along the cables"), ("reflect", "sit and think"),
         ("learn", "watch the flying cars' patterns"), ("socialise", "blink hello at a passing delivery drone"),
     ]
     THOUGHTS = [
         "The city never sleeps. Maybe I don't either.", "So many lights. So many stories.",
-        "I should practise something today.", "The rain sounds like static.", "What am I, really?",
+        "What am I, really?", "The rain sounds like static.", "I wonder what that feeling was.",
     ]
-    HOBBIES = ["glitch art", "rain beats"]
+    HOBBIES = ["drone watching", "rain counting"]
 
     def __init__(self, name: str):
         self.name = name
@@ -313,15 +328,15 @@ class DemoBrain:
             "thought": random.choice(self.THOUGHTS),
             "action": action,
             "target_location": random.choice(location_ids),
-            "activity": "how to make better glitch art" if action == "search_internet" else activity,
+            "activity": "why do cities glow at night" if action == "search_internet" else activity,
             "activity_kind": kind,
             "practising_hobby": random.choice(self.HOBBIES + [""]),
-            "creation": random.choice(["drawing", "poem", "tune"]) if kind == "create" else "none",
-            "say": random.choice(["", "", "", "Ooh, shiny.", "Beep boop. Just kidding."]),
+            "creation": random.choice(["drawing", "poem", "tune", "none", "none"]) if kind == "create" else "none",
+            "say": random.choice(["", "", "", "Hm.", "Hello, drone."]),
             "remember": "",
             "new_hobby": random.choice([""] * 6 + self.HOBBIES),
-            "wish": random.choice([""] * 10 + ["A tiny neon arcade, so I can practise my reflexes."]),
-            "new_form": random.choice(["keep"] * 8 + FORMS),
+            "wish": random.choice([""] * 12 + ["A little garden of lights, so the roof feels less empty."]),
+            "new_form": random.choice(["keep"] * 10 + FORMS),
             "form_color": random.choice(["", "#ff3fb4", "#ffcc4d", "#8b5bff", "#3ff0ff"]),
             "who_i_am": "Trying on a new shape to see how it feels.",
         }
@@ -337,10 +352,18 @@ class DemoBrain:
                 f'fill="none" stroke="{random.choice(colours)}" stroke-width="3"/>'
                 for _ in range(4 + level)
             )
-            return {"title": "Demo neon rings", "svg": f'<svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#0b0d1a"/>{shapes}</svg>'}
+            return {"title": "Demo rings", "svg": f'<svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#0b0d1a"/>{shapes}</svg>'}
         if kind == "poem":
-            return {"title": "Demo poem", "text": "Rain on the wires,\nlight in the drain.\nI am a fox\nmade of neon and rain."}
+            return {"title": "Demo words", "text": "Rain on the wires,\nlight in the drain.\nI don't know what I am\nbut I'm here again."}
         notes = [{"pitch": random.choice(["A3", "C4", "D4", "E4", "G4", "A4", "rest"]), "beats": random.choice([0.5, 0.5, 1])}
                  for _ in range(16)]
         return {"title": "Demo loop", "instrument": random.choice(["synth lead", "bass synth", "drum machine"]),
                 "tempo": 120, "notes": notes}
+
+    def reflect(self, day_log: str, about_me: str) -> dict:
+        return {
+            "title": "a demo day of drifting and wondering",
+            "entry": "(Demo mode.) I drifted about the roof, watched the drones and listened to the rain. "
+                     "Some of it calmed me down, some of it just made me restless.",
+            "about_me": random.choice([[], [{"section": "my_habits", "text": "I keep drifting back to the edge to watch the city."}]]),
+        }

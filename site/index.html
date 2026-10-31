@@ -42,8 +42,23 @@
   #activity { margin-top: 6px; font-weight: 700; }
   #status { margin-top: 3px; min-height: 1.3em; color: var(--muted); font-size: 12px; }
   .section { padding: 8px 18px; }
-  .vital { display: grid; grid-template-columns: 64px 1fr 28px; align-items: center; gap: 8px; margin: 3px 0; font-size: 12px; }
-  .vital b { font-weight: 400; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .needs { position: absolute; top: 12px; left: 12px; right: 12px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 4px; background: rgba(8, 10, 22, .85); }
+  .need { overflow: hidden; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+  .need .bar { height: 5px; margin-top: 4px; }
+  .now-card { position: absolute; top: 62px; left: 12px; width: 250px; padding: 10px 12px; border: 1px solid rgba(63, 240, 255, .35);
+    border-radius: 4px; background: rgba(8, 10, 22, .85); font-size: 12px; }
+  .now-card h2 { margin-bottom: 4px; color: var(--cyan); }
+  #now-activity { font-weight: 700; }
+  #now-need { margin-top: 2px; color: var(--amber); font-size: 11px; }
+  #now-thought { margin-top: 6px; color: #aebbe0; font-style: italic; }
+  #now-thought time { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; font-style: normal; }
+  .mind h3 { margin: 14px 0 4px; color: var(--cyan); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+  .mind .line { display: flex; gap: 8px; align-items: baseline; margin: 4px 0; font-size: 12px; }
+  .mind .line .tag { flex: none; padding: 0 5px; border: 1px solid var(--line); color: var(--muted); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+  .mind .line.grown .tag { color: var(--magenta); border-color: rgba(255, 63, 180, .5); }
+  .mind .count { flex: none; color: var(--muted); font-size: 11px; }
   .bar { height: 6px; border-radius: 2px; background: var(--line); overflow: hidden; }
   .bar i { display: block; height: 100%; transition: width .6s; }
   .skill { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 3px 8px; margin: 6px 0; font-size: 12px; }
@@ -54,8 +69,8 @@
   .wish.granted .tag { color: var(--cyan); border-color: rgba(63, 240, 255, .5); }
   .wish a { flex: none; color: var(--muted); font-size: 11px; }
   .empty { color: var(--muted); font-style: italic; font-size: 12px; margin: 4px 0; }
-  .tabs { display: flex; gap: 2px; padding: 8px 18px 0; border-bottom: 1px solid var(--line); }
-  .tabs button { padding: 8px 10px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted);
+  .tabs { display: flex; gap: 0; padding: 8px 18px 0; overflow-x: auto; border-bottom: 1px solid var(--line); }
+  .tabs button { flex: none; padding: 8px 8px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted);
     font: inherit; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; }
   .tabs button.on { color: var(--cyan); border-bottom-color: var(--cyan); }
   #feed { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 18px 16px; }
@@ -82,7 +97,10 @@
     #panel header { padding: 12px 16px 4px; }
     .section, .tabs, #feed, footer { padding-left: 16px; padding-right: 16px; }
     #feed { flex: none; overflow: visible; }
-    .holo { width: 180px; font-size: 10px; }
+    .holo { display: none; }
+    .needs { gap: 8px; padding: 6px 8px; }
+    .need { font-size: 9px; letter-spacing: .02em; }
+    .now-card { top: auto; bottom: 10px; width: calc(100% - 24px); }
   }
 </style>
 </head>
@@ -92,6 +110,13 @@
     <div id="overlay">
       <div id="research" class="holo" hidden></div>
       <div id="bubble" class="bubble" hidden></div>
+      <div id="needs" class="needs"></div>
+      <div class="now-card">
+        <h2>Right now</h2>
+        <div id="now-activity">Connecting…</div>
+        <div id="now-need"></div>
+        <div id="now-thought"></div>
+      </div>
     </div>
   </main>
   <aside id="panel">
@@ -101,11 +126,12 @@
       <div id="activity">Connecting…</div>
       <div id="status"></div>
     </header>
-    <div class="section" id="vitals"></div>
-    <div class="section"><h2>Skills</h2><div id="skills"></div></div>
+    <div class="section"><h2>Interests</h2><div id="skills"></div></div>
     <div class="section"><h2>Wishlist</h2><div id="wishes"></div></div>
     <nav class="tabs">
-      <button data-tab="diary" class="on">Diary</button>
+      <button data-tab="today" class="on">Today</button>
+      <button data-tab="diary">Diary</button>
+      <button data-tab="mind">Mind</button>
       <button data-tab="gallery">Gallery</button>
       <button data-tab="research">Research</button>
     </nav>
@@ -464,7 +490,8 @@ function buildWorld(s) {
   }
   for (const lot of s.empty_lots ?? []) emptyLot(lot, worldGroup);
 
-  const studio = Object.values(places).find((p) => p.building.actions?.includes('create'));
+  const studio = Object.values(places).find((p) => p.building.actions?.includes('create'))
+    ?? Object.values(places).find((p) => p.building.actions?.includes('search'));
   artHolo.userData.placed = Boolean(studio);
   if (studio) artHolo.position.set(studio.x + 2.7, 2.6, studio.z - 1.2);
   const lab = Object.values(places).find((p) => p.building.actions?.includes('search'));
@@ -700,21 +727,57 @@ function safeLink(url, text, className = '') {
   return link;
 }
 
-const VITALS = [['Charge', 'energy', 'linear-gradient(90deg, #1fa3b0, #3ff0ff)'], ['Mood', 'mood', 'linear-gradient(90deg, #a3237a, #ff3fb4)']];
-const vitalBars = VITALS.map(([label, , colour]) => {
-  const row = el('div', 'vital'), bar = el('div', 'bar'), fill = el('i'), value = el('b');
+const NEEDS = [['charge', '#3ff0ff'], ['curiosity', '#8b5bff'], ['joy', '#ffcc4d'], ['calm', '#5aa9ff'], ['connection', '#ff3fb4']];
+const needBars = NEEDS.map(([need, colour]) => {
+  const box = el('div', 'need', need), bar = el('div', 'bar'), fill = el('i');
   fill.style.background = colour;
   bar.append(fill);
-  row.append(el('span', '', label), bar, value);
-  $('vitals').append(row);
-  return { fill, value };
+  box.append(bar);
+  $('needs').append(box);
+  return fill;
 });
 
 const ICONS = {
   thought: '💭', say: '💬', search: '🔎', learned: '💡', hobby: '⭐', note: '📝', rest: '🔋', play: '🎮',
-  create: '🎨', learn: '📖', explore: '🧭', socialise: '📡', event: '▸', levelup: '🏅', creation: '🖼️', wish: '🌠', build: '🏗️',
-  form: '✨',
+  create: '🎨', learn: '📖', explore: '🧭', socialise: '📡', reflect: '🌀', event: '▸', levelup: '🏅', creation: '🖼️',
+  wish: '🌠', build: '🏗️', form: '✨', diary: '📓', self: '🪞',
 };
+const SECTIONS = [['what_im_like', "What I'm like"], ['what_i_care_about', 'What I care about'],
+  ['what_scares_me', 'What scares me'], ['my_habits', 'My habits']];
+const longDate = (date) => new Date(`${date}T00:00`).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+
+function diaryCards(s) {
+  if (!s.days.length) return [el('p', 'empty', `No entries yet. ${s.name} writes up each day before it goes to sleep.`)];
+  return s.days.slice().reverse().map((day) => {
+    const card = el('div', 'card');
+    card.append(el('div', 'q', day.title), el('div', '', day.entry), el('time', '', longDate(day.date)));
+    return card;
+  });
+}
+
+function mindPanel(s) {
+  const panel = el('div', 'mind');
+  const age = Math.floor((new Date(`${s.today}T00:00`) - new Date(`${s.born || s.today}T00:00`)) / 86400000) + 1;
+  panel.append(el('p', 'empty', `Day ${age} of ${s.name}'s life. Lines tagged "grew" are ones it wrote about itself while falling asleep; it can only ever add to them.`));
+  for (const [key, title] of SECTIONS) {
+    panel.append(el('h3', '', title));
+    const lines = [...(s.personality?.[key] ?? []).map((text) => [text, false]), ...(s.self?.[key] ?? []).map((text) => [text, true])];
+    if (!lines.length) panel.append(el('p', 'empty', 'Nothing yet.'));
+    for (const [text, grown] of lines) {
+      const row = el('div', `line${grown ? ' grown' : ''}`);
+      row.append(el('span', 'tag', grown ? 'grew' : 'given'), el('span', '', text));
+      panel.append(row);
+    }
+  }
+  panel.append(el('h3', '', 'What experience has taught it'));
+  if (!s.beliefs.length) panel.append(el('p', 'empty', 'Nothing yet. A lesson appears once something has happened a few times.'));
+  for (const belief of s.beliefs) {
+    const row = el('div', 'line');
+    row.append(el('span', '', belief.text), el('span', 'count', `×${belief.count}`));
+    panel.append(row);
+  }
+  return [panel];
+}
 function when(entry, today) {
   if (!entry.date || entry.date === today) return entry.time;
   const day = new Date(`${entry.date}T00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
@@ -724,7 +787,7 @@ function when(entry, today) {
 let galleryItems = [], galleryKey = null;
 const WORK_TYPES = { drawing: 'Drawing', poem: 'Poem', tune: 'Tune' };
 function galleryCards(s) {
-  if (!galleryItems.length) return [el('p', 'empty', `Nothing yet. When ${s.name} draws, writes or makes a track, it lands here.`)];
+  if (!galleryItems.length) return [el('p', 'empty', `Nothing yet. If ${s.name} ever makes something, it lands here.`)];
   return galleryItems.slice().reverse().map((work) => {
     const card = el('div', 'card work');
     card.append(el('div', 'q', work.title));
@@ -746,15 +809,24 @@ function galleryCards(s) {
   });
 }
 
-let tab = 'diary', feedKey = '';
+let tab = 'today', feedKey = '';
 function renderFeed(s) {
   const last = s.events.at(-1), lastLearned = s.learned.at(-1);
-  const key = tab === 'diary' ? `d|${s.events.length}|${last?.date}|${last?.time}|${last?.text}`
-    : tab === 'gallery' ? `g|${galleryKey}` : `r|${s.learned.length}|${lastLearned?.time}|${lastLearned?.text}`;
+  const key = {
+    today: () => `t|${s.events.length}|${last?.date}|${last?.time}|${last?.text}`,
+    diary: () => `d|${s.days.length}|${s.days.at(-1)?.date}`,
+    mind: () => `m|${s.today}|${JSON.stringify([s.personality, s.self, s.beliefs])}`,
+    gallery: () => `g|${galleryKey}`,
+    research: () => `r|${s.learned.length}|${lastLearned?.time}|${lastLearned?.text}`,
+  }[tab]();
   if (key === feedKey) return;
   feedKey = key;
   let items;
   if (tab === 'diary') {
+    items = diaryCards(s);
+  } else if (tab === 'mind') {
+    items = mindPanel(s);
+  } else if (tab === 'today') {
     items = s.events.slice(-80).reverse().map((e) => {
       const row = el('div', `entry ${e.kind}`);
       row.append(el('time', '', when(e, s.today)), el('span', '', ICONS[e.kind] ?? '▸'), el('span', 'text', e.text));
@@ -794,10 +866,13 @@ function render(s) {
   }
   $('status').textContent = status.join(' · ');
 
-  VITALS.forEach(([, key], i) => {
-    vitalBars[i].fill.style.width = `${s[key]}%`;
-    vitalBars[i].value.textContent = s[key];
+  NEEDS.forEach(([need], i) => {
+    needBars[i].style.width = `${s.needs[need]}%`;
+    needBars[i].parentElement.parentElement.title = `${need}: ${s.needs[need]}/100`;
   });
+  $('now-activity').textContent = s.activity;
+  $('now-need').textContent = s.asleep ? 'Asleep' : s.pressing;
+  $('now-thought').replaceChildren(...(s.thought ? [el('span', '', `"${s.thought}"`), el('time', '', s.thought_time)] : []));
 
   $('skills').replaceChildren(...(s.skills.length ? s.skills.map((skill) => {
     const row = el('div', 'skill'), name = el('span', '', skill.name);
@@ -829,14 +904,11 @@ function render(s) {
 
   renderFeed(s);
 
-  // Bubble: something said out loud during the latest thought, otherwise the latest thought
-  let text = '', speaking = false;
-  if (s.asleep) text = 'Zzz…';
-  else if (s.say && s.said_at >= s.tick_started_at - 1) { text = s.say; speaking = true; }
-  else if (s.thought) text = s.thought.length > 120 ? `${s.thought.slice(0, 117)}…` : s.thought;
+  // Bubble: only for things said out loud during the latest thought (thoughts live in the "right now" card)
+  const speaking = Boolean(s.say) && !s.asleep && s.said_at >= s.tick_started_at - 1;
   bubble.className = speaking ? 'bubble speech' : 'bubble';
-  bubble.textContent = text;
-  bubble.hidden = !text;
+  bubble.textContent = s.asleep ? 'Zzz…' : speaking ? s.say : '';
+  bubble.hidden = !bubble.textContent;
 
   const research = s.learned.filter((m) => m.query).at(-1);
   researchHolo.hidden = !research || !researchAnchor;
@@ -846,9 +918,9 @@ function render(s) {
   }
 
   asleep = s.asleep;
-  charge = s.energy;
+  charge = s.needs.charge;
   setForm(s.form);
-  $('identity').textContent = s.form ? `A ${s.form.shape}. "${s.form.about}"` : '';
+  $('identity').textContent = s.form ? `${/^[aeiou]/.test(s.form.shape) ? 'An' : 'A'} ${s.form.shape}. "${s.form.about}"` : '';
   if (places[s.location]) moveTo(places[s.location]);
 }
 

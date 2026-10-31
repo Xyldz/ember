@@ -9,15 +9,16 @@ The web page only reads the two files this writes: site/data/state.json and site
 """
 
 import json
+import random
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import anthropic
 
-from brain import BrainError
+from brain import SELF_SECTIONS, BrainError
 
 HERE = Path(__file__).parent
 CONFIG = json.loads((HERE / "config.json").read_text(encoding="utf-8"))
@@ -26,25 +27,44 @@ DATA_DIR = HERE / "site" / "data"
 STATE_FILE = DATA_DIR / "state.json"
 GALLERY_FILE = DATA_DIR / "gallery.json"
 
-# How each kind of activity changes Ember's charge and mood
+NEEDS = ["charge", "curiosity", "joy", "calm", "connection"]
+DECAY = {"charge": 2, "curiosity": 3, "joy": 1, "calm": 1, "connection": 2}  # lost every tick
+# What each kind of activity tends to do to Ember's needs. The real effect varies each time,
+# and places add their own "boosts", so Ember has to find out what works for it.
 EFFECTS = {
-    "rest": {"energy": 25},
-    "play": {"mood": 10, "energy": -5},
-    "create": {"mood": 10, "energy": -4},
-    "learn": {"mood": 8, "energy": -3},
-    "explore": {"mood": 7, "energy": -5},
-    "socialise": {"mood": 6, "energy": -2},
+    "rest": {"charge": 22, "calm": 4},
+    "play": {"joy": 10, "charge": -4},
+    "create": {"joy": 8, "calm": 3, "charge": -4},
+    "learn": {"curiosity": 10, "charge": -3},
+    "explore": {"curiosity": 7, "joy": 3, "charge": -4},
+    "socialise": {"connection": 12, "joy": 3, "charge": -2},
+    "reflect": {"calm": 10, "charge": -1},
+    "search": {"curiosity": 14, "charge": -2},
 }
-PRACTICE_XP = 10  # doubled if Ember looked up tips at the terminal first
+KIND_WORDS = {"rest": "Resting", "play": "Playing", "create": "Making things", "learn": "Studying",
+              "explore": "Exploring", "socialise": "Talking to things", "reflect": "Sitting with my thoughts",
+              "search": "Searching the internet"}
+FEELINGS = {"charge": "Running low on charge", "curiosity": "Bored, craving something new", "joy": "Feeling flat",
+            "calm": "Restless and wound up", "connection": "Feeling lonely"}
+BELIEF_WORDS = {  # (when it goes up, when it goes down)
+    "charge": ("recharges me", "drains me"), "curiosity": ("feeds my curiosity", "bores me"),
+    "joy": ("lifts me", "brings me down"), "calm": ("settles me", "winds me up"),
+    "connection": ("makes me feel less alone", "makes me feel more alone"),
+}
+SECTION_TITLES = {"what_im_like": "What I'm like", "what_i_care_about": "What I care about",
+                  "what_scares_me": "What scares me", "my_habits": "My habits"}
+ACTION_WORDS = {"search": "search the internet", "rest": "recharge faster"}
+PRACTICE_XP = 10  # doubled if Ember looked something up about it first
 RESEARCH_XP = 5
 MAX_WISHES_PER_DAY = 2
 MAX_FORM_CHANGES_PER_DAY = 2
-ACTION_WORDS = {"search": "search the internet", "create": "make art, poems and music", "rest": "recharge faster"}
+MAX_SELF_LINES = 10  # per section of the character sheet
 
 state: dict = {}
 gallery: list = []
 buildings: dict = {}
 empty_lots: list = []
+personality: dict = {}
 
 
 # ---------------------------------------------------------------------------
@@ -53,11 +73,16 @@ empty_lots: list = []
 
 def new_state() -> dict:
     return {
-        "name": CONFIG["name"], "location": "terminal", "energy": 80, "mood": 70,
-        "activity": "Flickering into existence", "thought": "", "say": "", "said_at": 0,
+        "name": CONFIG["name"], "location": "terminal", "born": "",
+        "needs": {"charge": 80, "curiosity": 60, "joy": 60, "calm": 60, "connection": 50},
+        "activity": "Flickering into existence", "thought": "", "thought_time": "", "say": "", "said_at": 0,
         "form": {"shape": "orb", "color": "#3ff0ff", "about": "A small glowing orb of light, newly awake."},
         "hobbies": [], "learned": [], "events": [], "wishes": [], "known_buildings": [],
-        "asleep": False, "status": "",
+        "self": {section: [] for section in SELF_SECTIONS},  # what Ember has written about itself
+        "experience": {},  # what each activity, at each place, has done to Ember's needs
+        "beliefs": [],     # lessons worked out from that experience
+        "days": [],        # Ember's diary, one entry per day
+        "recent_kinds": [], "asleep": False, "status": "",
         "day": "", "thinks_today": 0, "searches_today": 0, "wishes_today": 0, "form_changes_today": 0,
         "costs": {"month": "", "usd": 0.0, "total_usd": 0.0},
         "tick_started_at": 0, "next_think_at": 0,
@@ -70,11 +95,14 @@ def use_data_dir(path: Path) -> None:
 
 
 def load_buildings() -> None:
-    """Re-read buildings.json, so buildings you add show up without a restart."""
+    """Re-read buildings.json and personality.json, so your changes show up without a restart."""
     data = json.loads((HERE / "buildings.json").read_text(encoding="utf-8"))
     buildings.clear()
     buildings.update({b["id"]: b for b in data["buildings"]})
     empty_lots[:] = data.get("empty_lots", [])
+    sheet = json.loads((HERE / "personality.json").read_text(encoding="utf-8"))
+    personality.clear()
+    personality.update({section: sheet.get(section, []) for section in SELF_SECTIONS})
 
 
 def load() -> None:
@@ -88,6 +116,12 @@ def load() -> None:
     gallery = json.loads(GALLERY_FILE.read_text(encoding="utf-8")) if GALLERY_FILE.exists() else []
 
 
+def reset() -> None:
+    """Start Ember's life over: forget everything."""
+    for path in (STATE_FILE, GALLERY_FILE):
+        path.unlink(missing_ok=True)
+
+
 def write_json(path: Path, data) -> None:
     temp = path.with_suffix(".tmp")
     temp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
@@ -99,6 +133,8 @@ def save() -> None:
     write_json(STATE_FILE, {
         **state,
         # Extra things only the web page needs
+        "pressing": pressing_need(),
+        "personality": personality,
         "skills": [{"name": h["name"], "level": skill_level(h["xp"])[0], "progress": skill_level(h["xp"])[1],
                     "inspired": h["inspired"]} for h in state["hobbies"]],
         "buildings": list(buildings.values()),
@@ -123,12 +159,19 @@ def now() -> datetime:
 def log_event(text: str, kind: str = "event") -> None:
     t = now()
     state["events"] = (state["events"] + [{"date": t.strftime("%Y-%m-%d"), "time": t.strftime("%H:%M"),
-                                           "kind": kind, "text": text}])[-200:]
+                                           "kind": kind, "text": text}])[-300:]
     print(f"[{t:%H:%M}] {text}")
 
 
-def change(stat: str, amount: float) -> None:
-    state[stat] = max(0, min(100, round(state[stat] + amount)))
+def change_need(need: str, amount: float) -> None:
+    state["needs"][need] = max(0, min(100, round(state["needs"][need] + amount)))
+
+
+def pressing_need() -> str:
+    need = min(NEEDS, key=lambda n: state["needs"][n])
+    if state["needs"][need] < 35:
+        return FEELINGS[need]
+    return "Content" if state["needs"][need] >= 70 else "Doing alright"
 
 
 def can(building_id: str, action: str) -> bool:
@@ -173,8 +216,7 @@ def add_wish(text: str) -> None:
         return
     if any(w["text"].lower()[:30] == text.lower()[:30] for w in state["wishes"]):
         return
-    t = now()
-    state["wishes"] = (state["wishes"] + [{"text": text, "date": t.strftime("%Y-%m-%d"), "granted": False, "issue_url": ""}])[-20:]
+    state["wishes"] = (state["wishes"] + [{"text": text, "date": now().strftime("%Y-%m-%d"), "granted": False, "issue_url": ""}])[-20:]
     state["wishes_today"] += 1
     log_event(f"Made a wish: {text}", "wish")
 
@@ -188,7 +230,8 @@ def change_form(shape: str, color: str, who_i_am: str) -> None:
         return
     state["form"] = {"shape": new_shape, "color": new_color, "about": who_i_am or form["about"]}
     state["form_changes_today"] += 1
-    log_event(f"Changed form: now a {new_shape} ({new_color}). {who_i_am}".strip(), "form")
+    article = "an" if new_shape[0] in "aeiou" else "a"
+    log_event(f"Changed form: now {article} {new_shape} ({new_color}). {who_i_am}".strip(), "form")
 
 
 def notice_new_buildings() -> None:
@@ -196,7 +239,8 @@ def notice_new_buildings() -> None:
     known = set(state["known_buildings"])
     for building in buildings.values():
         if known and building["id"] not in known:
-            change("mood", 15)
+            change_need("joy", 15)
+            change_need("curiosity", 15)
             log_event(f"Something new appeared on the roof: {building['name']}!", "build")
         granted = building.get("grants_wish", "").lower()
         for wish in state["wishes"]:
@@ -209,6 +253,92 @@ def notice_new_buildings() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Needs, experience, and the lessons Ember draws from it
+# ---------------------------------------------------------------------------
+
+def live_through(kind: str) -> None:
+    """Apply what an activity does to Ember's needs, and remember how it felt."""
+    here = state["location"]
+    effects = dict(EFFECTS.get(kind, {}))
+    for need, bonus in buildings[here].get("boosts", {}).items():
+        if need in NEEDS:
+            effects[need] = effects.get(need, 0) + bonus
+    if kind == "rest" and can(here, "rest"):
+        effects["charge"] = effects.get("charge", 0) + 12
+    if state["recent_kinds"][-2:] == [kind, kind]:  # the same thing three times running gets dull
+        effects["joy"] = effects.get("joy", 0) - 6
+        effects["curiosity"] = effects.get("curiosity", 0) - 4
+
+    record = state["experience"].setdefault(f"{kind}|{here}", {"count": 0, "totals": {}})
+    record["count"] += 1
+    for need, amount in effects.items():
+        before = state["needs"][need]
+        change_need(need, amount * random.uniform(0.6, 1.4))
+        record["totals"][need] = record["totals"].get(need, 0) + state["needs"][need] - before
+    state["recent_kinds"] = (state["recent_kinds"] + [kind])[-5:]
+    update_beliefs()
+
+
+def update_beliefs() -> None:
+    """Turn experience into lessons, like 'Sitting with my thoughts at the rooftop edge settles me'."""
+    beliefs = []
+    for key, record in state["experience"].items():
+        if record["count"] < 3:  # needs to have happened a few times before it counts as a lesson
+            continue
+        kind, place = key.split("|", 1)
+        averages = {need: total / record["count"] for need, total in record["totals"].items()}
+        if not averages:
+            continue
+        need, average = max(averages.items(), key=lambda item: abs(item[1]))
+        if abs(average) < 2:
+            continue
+        place_name = buildings[place]["name"].lower() if place in buildings else "a place that's gone now"
+        verb = BELIEF_WORDS[need][0 if average > 0 else 1]
+        beliefs.append({"text": f"{KIND_WORDS[kind]} at the {place_name} {verb}.", "count": record["count"]})
+    state["beliefs"] = sorted(beliefs, key=lambda b: -b["count"])[:12]
+
+
+def about_me_text() -> str:
+    lines = []
+    for section in SELF_SECTIONS:
+        entries = personality.get(section, []) + state["self"][section]
+        if entries:
+            lines.append(f"{SECTION_TITLES[section]}: " + "; ".join(entries))
+    return "\n".join(lines) or "Nothing yet. You're still finding out."
+
+
+def add_self_line(section: str, text: str) -> None:
+    """Ember can add to its character sheet, never take away. The 'drift guard' stops near-repeats."""
+    if section not in state["self"] or not text or len(state["self"][section]) >= MAX_SELF_LINES:
+        return
+    lower = text.lower()
+    for line in personality.get(section, []) + state["self"][section]:
+        if lower[:25] in line.lower() or line.lower()[:25] in lower:
+            return
+    state["self"][section].append(text)
+    log_event(f"Realised something about itself: {text}", "self")
+
+
+def write_diary(brain, day: str) -> None:
+    """Before sleeping, Ember writes up its day, and may notice something new about itself."""
+    if brain is None or any(d["date"] == day for d in state["days"]):
+        return
+    events = [e for e in state["events"] if e.get("date") == day]
+    if not events:
+        return
+    try:
+        reflection = brain.reflect("\n".join(f"{e['time']} {e['text'][:200]}" for e in events[-60:]), about_me_text())
+    except (BrainError, json.JSONDecodeError, anthropic.APIStatusError, anthropic.APIConnectionError) as error:
+        state["status"] = f"Couldn't write the diary: {getattr(error, 'message', error)}"
+        return
+    title = reflection["title"].strip()
+    state["days"] = (state["days"] + [{"date": day, "title": title, "entry": reflection["entry"].strip()}])[-90:]
+    log_event(f'Wrote in its diary: "{title}"', "diary")
+    for line in reflection["about_me"][:2]:
+        add_self_line(line["section"], line["text"].strip())
+
+
+# ---------------------------------------------------------------------------
 # What Ember knows, written as plain text for the brain
 # ---------------------------------------------------------------------------
 
@@ -217,11 +347,8 @@ def describe_situation() -> str:
     part_of_day = ("night" if t.hour < 6 or t.hour >= 21 else "morning" if t.hour < 12
                    else "afternoon" if t.hour < 17 else "evening")
     here = buildings[state["location"]]
-    feelings = []
-    if state["energy"] <= 25:
-        feelings.append("Your battery is running low.")
-    if state["mood"] <= 30:
-        feelings.append("You feel flat and bored.")
+    needs = ", ".join(f"{need} {state['needs'][need]}" for need in NEEDS)
+    feelings = " ".join(f"{FEELINGS[need]}." for need in NEEDS if state["needs"][need] < 35)
 
     def unlocks(building: dict) -> str:
         words = [ACTION_WORDS[a] for a in building.get("actions", []) if a in ACTION_WORDS]
@@ -232,7 +359,8 @@ def describe_situation() -> str:
         f"- {h['name']}: level {skill_level(h['xp'])[0]}/10"
         + (" (you read something that will help next time you practise)" if h["inspired"] else "")
         for h in state["hobbies"]
-    ) or "- none yet. You haven't found one"
+    ) or "- none yet"
+    lessons = "\n".join(f"- {b['text']} (borne out {b['count']} times)" for b in state["beliefs"]) or "- nothing yet"
     made = "\n".join(f'- "{w["title"]}" ({w["type"]})' for w in gallery[-4:]) or "- nothing yet"
     wishes = "\n".join(f'- {w["text"]} ({"came true!" if w["granted"] else "still waiting"})'
                        for w in state["wishes"][-6:]) or "- none yet"
@@ -240,13 +368,20 @@ def describe_situation() -> str:
         f"- {m['text'][:220]}" + (f" (looked up: {m['query']})" if m.get("query") else "")
         for m in state["learned"][-12:]
     ) or "- nothing yet"
+    yesterday = state["days"][-1] if state["days"] else None
     recent = "\n".join(f"- {e['time']} {e['text']}" for e in state["events"][-14:] if e["kind"] != "thought") or "- nothing yet"
     searches_left = max(0, CONFIG["max_searches_per_day"] - state["searches_today"])
 
     return f"""It is {t:%A %d %B, %H:%M} ({part_of_day}).
 You are at: {here['name']} ({state['location']}). {here['about']}
-Your form: a {state['form']['color']} {state['form']['shape']}. In your words: {state['form']['about']}
-Your energy: charge {state['energy']}/100, mood {state['mood']}/100. {' '.join(feelings)}
+Your form: shape {state['form']['shape']}, colour {state['form']['color']}. In your words: {state['form']['about']}
+Your needs (0-100, higher is better): {needs}. {feelings}
+
+Who you are:
+{about_me_text()}
+
+What experience has taught you:
+{lessons}
 
 Places on your rooftop:
 {places}
@@ -254,7 +389,7 @@ There are also {len(empty_lots)} empty lots where new things could be built one 
 
 Internet searches left today: {searches_left}
 
-Your hobbies and skill levels:
+Your interests:
 {hobbies}
 
 Things you've made (newest last):
@@ -265,6 +400,7 @@ Your wishes:
 
 Things you remember (newest last):
 {memories}
+{f'Your last diary entry ({yesterday["date"]}): {yesterday["entry"]}' if yesterday else ''}
 
 What happened recently (newest last):
 {recent}
@@ -278,17 +414,18 @@ What do you do next?"""
 
 def apply_decision(decision: dict, brain) -> None:
     here = state["location"]
-    state["thought"] = decision["thought"].strip()
+    state["thought"], state["thought_time"] = decision["thought"].strip(), now().strftime("%H:%M")
     log_event(state["thought"], "thought")
 
     if decision["say"].strip():
         state["say"], state["said_at"] = decision["say"].strip(), time.time()
+        change_need("connection", 2)
         log_event(f'Said: "{state["say"]}"', "say")
 
     new_hobby = decision["new_hobby"].strip()
     if new_hobby and not find_hobby(new_hobby):
         state["hobbies"].append({"name": new_hobby, "xp": 0, "inspired": False})
-        log_event(f"Took up a new hobby: {new_hobby}!", "hobby")
+        log_event(f"Took up a new interest: {new_hobby}!", "hobby")
         if len(state["hobbies"]) > 6:
             dropped = min(state["hobbies"][:-1], key=lambda h: h["xp"])
             state["hobbies"].remove(dropped)
@@ -308,26 +445,19 @@ def apply_decision(decision: dict, brain) -> None:
         if target in buildings and target != here:
             state["location"] = target
             state["activity"] = f"Heading to the {buildings[target]['name'].lower()}"
-            change("energy", -2)
+            change_need("charge", -1)
             log_event(f"Went to the {buildings[target]['name'].lower()}.")
 
     elif action == "do_activity":
         kind, activity = decision["activity_kind"], decision["activity"].strip().rstrip(".")
-        creation = decision["creation"]
-        if creation != "none" and not can(here, "create"):
-            log_event(f"Wanted to make a {creation}, but there's nothing to make it with at the {buildings[here]['name'].lower()}.")
-            return
-        for stat, amount in EFFECTS.get(kind, {}).items():
-            change(stat, amount)
-        if kind == "rest" and can(here, "rest"):
-            change("energy", 15)
         state["activity"] = activity[:1].upper() + activity[1:]
         log_event(state["activity"] + ".", kind)
+        live_through(kind)
         if hobby:
             add_xp(hobby, PRACTICE_XP * (2 if hobby["inspired"] else 1))
             hobby["inspired"] = False
-        if creation != "none":
-            make_creation(brain, creation, activity, hobby)
+        if decision["creation"] != "none":
+            make_creation(brain, decision["creation"], activity, hobby)
 
     elif action == "search_internet":
         query = decision["activity"].strip()
@@ -353,9 +483,9 @@ def research(brain, query: str, hobby: dict | None) -> None:
     state["learned"] = (state["learned"] + [{
         "time": now().strftime("%H:%M"), "text": result["summary"], "query": query, "sources": result["sources"],
     }])[-40:]
-    change("mood", 6)
     state["activity"] = f'Reading about "{query}"'
     log_event(f"Learned: {result['summary']}", "learned")
+    live_through("search")
     if hobby:
         add_xp(hobby, RESEARCH_XP)
         hobby["inspired"] = True
@@ -389,8 +519,8 @@ def make_creation(brain, kind: str, activity: str, hobby: dict | None) -> None:
     gallery.append({"id": int(time.time() * 1000), "date": t.strftime("%Y-%m-%d"), "time": t.strftime("%H:%M"),
                     "type": kind, "hobby": hobby["name"] if hobby else "", "level": level, **work})
     del gallery[:-100]
-    state["activity"] = f'Admiring "{work["title"]}"'
-    state["say"], state["said_at"] = f'Finished "{work["title"]}"!', time.time()
+    state["activity"] = f'Looking at "{work["title"]}"'
+    state["say"], state["said_at"] = f'Finished "{work["title"]}".', time.time()
     log_event(f'Made a {kind}: "{work["title"]}".', "creation")
 
 
@@ -398,12 +528,15 @@ def make_creation(brain, kind: str, activity: str, hobby: dict | None) -> None:
 # One tick: a moment of Ember's life
 # ---------------------------------------------------------------------------
 
-def sleep_tick() -> None:
+def sleep_tick(brain) -> None:
     if not state["asleep"]:
+        t = now()  # write up the day that's ending (after midnight, that's yesterday) before drifting off
+        write_diary(brain, (t if t.hour >= CONFIG["bedtime"] else t - timedelta(days=1)).strftime("%Y-%m-%d"))
         state.update(asleep=True, location="pod" if "pod" in buildings else state["location"],
-                     activity="Sleeping", thought="Zzz...", say="")
+                     activity="Sleeping", say="")
         log_event("Dimmed down and drifted off for the night.")
-    change("energy", 8)
+    change_need("charge", 8)
+    change_need("calm", 2)
     state["status"] = f"Asleep until {CONFIG['wake_time']:02d}:00"
 
 
@@ -413,7 +546,7 @@ def live(brain, never_sleep: bool) -> None:
         return
     hour = now().hour
     if not never_sleep and (hour >= CONFIG["bedtime"] or hour < CONFIG["wake_time"]):
-        sleep_tick()
+        sleep_tick(brain)
         return
     if state["asleep"]:
         state.update(asleep=False, activity="Waking up", status="")
@@ -422,8 +555,8 @@ def live(brain, never_sleep: bool) -> None:
         state["status"] = "Daydreaming: reached today's think limit"
         return
 
-    change("energy", -2)  # time passes: a little tireder and a little more bored
-    change("mood", -1)
+    for need, amount in DECAY.items():  # time passes and every need slowly drains
+        change_need(need, -amount)
     state["thinks_today"] += 1
     try:
         decision = brain.decide(describe_situation(), list(buildings))
@@ -449,8 +582,12 @@ def live(brain, never_sleep: bool) -> None:
 def tick(brain, next_think_in_seconds: float, never_sleep: bool = False) -> None:
     load_buildings()
     t = now()
-    if state["day"] != t.strftime("%Y-%m-%d"):
-        state.update(day=t.strftime("%Y-%m-%d"), thinks_today=0, searches_today=0, wishes_today=0, form_changes_today=0)
+    today = t.strftime("%Y-%m-%d")
+    if state["day"] != today:
+        if state["day"]:
+            write_diary(brain, state["day"])  # in case yesterday ended without a bedtime (e.g. --no-sleep)
+        state.update(day=today, thinks_today=0, searches_today=0, wishes_today=0, form_changes_today=0)
+    state["born"] = state["born"] or today
     if state["costs"]["month"] != t.strftime("%Y-%m"):
         state["costs"].update(month=t.strftime("%Y-%m"), usd=0.0)
     state["tick_started_at"] = time.time()
