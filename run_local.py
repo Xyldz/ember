@@ -33,6 +33,7 @@ PORT = 8000
 BUILD = "--build" in sys.argv
 DEMO = "--demo" in sys.argv or BUILD
 MODELS_DIR = world.HERE / "site" / "models"
+SCENERY_FILE = world.HERE / "site" / "scenery.json"
 MODEL_EXTENSIONS = {".glb", ".gltf", ".bin", ".obj", ".mtl", ".png", ".jpg", ".jpeg"}
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 
@@ -81,6 +82,8 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             if url.path == "/api/buildings":
                 self.reply(200, save_buildings(json.loads(body)))
+            elif url.path == "/api/scenery":
+                self.reply(200, save_scenery(json.loads(body)))
             elif url.path == "/api/upload":
                 self.reply(200, save_model(parse_qs(url.query).get("name", [""])[0], body))
             elif url.path == "/api/publish":
@@ -91,8 +94,32 @@ class Handler(SimpleHTTPRequestHandler):
             self.reply(400, {"error": str(error)})
 
 
+def roof_edge() -> float:
+    """How far from the middle a building can stand, from the roof size in scenery.json."""
+    try:
+        size = json.loads(SCENERY_FILE.read_text(encoding="utf-8"))["roof"]["size"]
+    except (OSError, ValueError, KeyError, TypeError):
+        size = 24
+    return size / 2 - 0.5
+
+
+def save_scenery(data: dict) -> dict:
+    roof = data.get("roof") if isinstance(data, dict) else None
+    if not isinstance(roof, dict) or not isinstance(roof.get("size"), (int, float)) or not 8 <= roof["size"] <= 80:
+        raise ValueError("The roof size has to be between 8 and 80.")
+    for key in ("signs", "props"):
+        items = data.get(key, [])
+        if not isinstance(items, list) or len({item.get("id") for item in items}) != len(items):
+            raise ValueError(f"Every one of the {key} needs its own id.")
+    current = json.loads(SCENERY_FILE.read_text(encoding="utf-8")) if SCENERY_FILE.exists() else {}
+    current.update({key: value for key, value in data.items() if key != "how_this_works"})
+    SCENERY_FILE.write_text(json.dumps(current, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return {"saved": True}
+
+
 def save_buildings(data: dict) -> dict:
     buildings, lots = data.get("buildings"), data.get("empty_lots", [])
+    edge = roof_edge()
     if not isinstance(buildings, list) or not buildings:
         raise ValueError("There has to be at least one building.")
     ids = set()
@@ -103,7 +130,7 @@ def save_buildings(data: dict) -> dict:
             raise ValueError(f"Two buildings are both called {building['id']!r}.")
         ids.add(building["id"])
         x, z = building.get("pos", [None, None])
-        if not all(isinstance(v, (int, float)) and -11.5 <= v <= 11.5 for v in (x, z)):
+        if not all(isinstance(v, (int, float)) and -edge <= v <= edge for v in (x, z)):
             raise ValueError(f"{building['id']} is off the edge of the roof.")
     path = world.HERE / "buildings.json"
     current = json.loads(path.read_text(encoding="utf-8"))
@@ -122,7 +149,7 @@ def save_model(name: str, body: bytes) -> dict:
 
 
 def publish() -> dict:
-    """Send buildings.json and your models to GitHub, so the live Ember gets them on its next thought."""
+    """Send buildings.json, scenery.json and your models to GitHub, so the live Ember gets them on its next thought."""
     def git(*args):
         result = subprocess.run(["git", *args], cwd=world.HERE, capture_output=True, text=True)
         return result.returncode, (result.stdout + result.stderr).strip()
@@ -133,6 +160,8 @@ def publish() -> dict:
         log.append(output)
         if code:
             return {"ok": False, "log": "\n".join(log)}
+    if SCENERY_FILE.exists():
+        git("add", "site/scenery.json")
     if MODELS_DIR.exists():
         git("add", "site/models")
     if git("diff", "--cached", "--quiet")[0] == 0:

@@ -1,0 +1,114 @@
+{
+  "how_this_works": [
+    "Everything you see around Ember that isn't a building. Edit it in builder mode (World tab) or by hand.",
+    "roof: the platform Ember lives on. size is its width (the roof spans -size/2 to size/2).",
+    "tower: the skyscraper under the roof. city: the towers all around (change seed for a different city).",
+    "signs and props: free-standing neon signs and decorations. pos is [x, height, z]; they can float.",
+    "sky: background, fog, light, glow (bloom) and exposure (overall brightness)."
+  ],
+  "roof": {
+    "size": 24,
+    "color": "#1a1d2e",
+    "grid": true,
+    "grid_color": "#3ff0ff",
+    "edge_colors": [
+      "#ff3fb4",
+      "#3ff0ff",
+      "#3ff0ff",
+      "#ff3fb4"
+    ],
+    "edge_glow": 0.9
+  },
+  "tower": {
+    "show": true,
+    "depth": 120,
+    "window_color": "#8b5bff"
+  },
+  "city": {
+    "seed": 42,
+    "towers": 120,
+    "near": 36,
+    "far": 121,
+    "min_height": 40,
+    "max_height": 140,
+    "window_glow": 0.5,
+    "antennas": 0.3,
+    "colors": [
+      "#3ff0ff",
+      "#ff3fb4",
+      "#ffcc4d",
+      "#8b5bff",
+      "#9fb4ff"
+    ]
+  },
+  "cars": {
+    "count": 14
+  },
+  "sky": {
+    "color": "#06050f",
+    "fog_color": "#0b0820",
+    "fog": 0.011,
+    "light_color": "#6a78c8",
+    "light": 1.3,
+    "glow": 0.4,
+    "exposure": 0.85
+  },
+  "signs": [
+    {
+      "id": "sign_1",
+      "text": "EMBER.NET",
+      "color": "#3ff0ff",
+      "size": 12,
+      "pos": [
+        -30.49,
+        14,
+        -15.05
+      ]
+    },
+    {
+      "id": "sign_2",
+      "text": "24/7",
+      "color": "#ff3fb4",
+      "size": 8,
+      "pos": [
+        22.17,
+        22,
+        -33.29
+      ]
+    },
+    {
+      "id": "sign_3",
+      "text": "DATA",
+      "color": "#ffcc4d",
+      "size": 9,
+      "pos": [
+        -9.7,
+        8,
+        -44.97
+      ]
+    },
+    {
+      "id": "sign_4",
+      "text": "狐",
+      "color": "#ff3fb4",
+      "size": 6,
+      "pos": [
+        -32.56,
+        18,
+        19.59
+      ]
+    },
+    {
+      "id": "sign_5",
+      "text": "OPEN",
+      "color": "#8b5bff",
+      "size": 8,
+      "pos": [
+        27.35,
+        12,
+        34.47
+      ]
+    }
+  ],
+  "props": []
+}

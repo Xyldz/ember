@@ -17,6 +17,7 @@ writes its diary, sorts its memories and works out who it is. The world is a 3D 
 | `world.py` | The rules: needs, lessons from experience, interests, wishes, memories, one "tick" of life |
 | `buildings.json` | The buildings on the roof. **Edit this to build things for Ember** |
 | `personality.json` | Ember's character sheet. Blank on purpose; add lines if you want to shape it |
+| `site/scenery.json` | The look of the world: platform, sky, city, flying cars, neon signs, props |
 | `config.json` | Name, timezone, where its real weather comes from, daily limits, support link |
 | `site/index.html` | The 3D website |
 | `run_local.py` | Run Ember on your own computer, or open builder mode with `--build` |
@@ -103,15 +104,24 @@ python run_local.py --build
 
 Your browser opens Ember's rooftop with a builder panel. It only works on your own computer.
 
-- **Click a building** to select it. **W** = move, **E** = rotate, **R** = resize (or type exact numbers in the panel).
-- **+ New building** or **Build here** on an empty lot adds one. **Duplicate** and **Delete** do what they say.
+- **Click anything** to select it. **W** = move, **E** = rotate, **R** = resize (or type exact numbers in the panel).
+  **Del** deletes it, **Esc** deselects.
+- **Buildings tab**: the places Ember uses. **+ New building** or **Build here** on an empty lot adds one;
+  **Duplicate** and **✕ / Delete** do what they say.
+- **World tab**: everything else, saved in `site/scenery.json`:
+  - **Platform**: roof size, colour, grid, the four neon edges, and the skyscraper underneath.
+  - **Sky & light**: sky and fog colours, fog, light, neon glow and brightness.
+  - **City**: how many towers, how near and far, how tall, window colours, antennas, or a **New random city**.
+  - **Flying cars**: how many.
+  - **Neon signs**: add, retext, recolour, move, turn and resize them.
+  - **Props**: decorations you can put anywhere, even floating, with the same looks as buildings (shapes or your models).
 - In the panel: its name, what Ember reads about it, what it unlocks, which needs it helps, and which wish it grants.
 - **Look**: a built-in piece, simple shapes (editable boxes, cylinders and spheres, neon or not), or **your own 3D model**:
   - From **Roblox Studio**: select your build, **File → Export Selection**, then in the builder pick the `.obj`
     **and** the `.mtl` (and any textures) together.
   - From **Blender** or anything else: export `.glb`.
   - Models are auto-fitted to a lot; untick that to use the model's own size.
-- **Save** (or Ctrl+S) writes `buildings.json` and keeps your models in `site/models/`.
+- **Save** (or Ctrl+S) writes `buildings.json` and `site/scenery.json`, and keeps your models in `site/models/`.
 - **Publish to GitHub** sends them to the live Ember, which notices the new building on its next thought.
 
 ### By hand

@@ -252,19 +252,27 @@ function seeded(seed) { // the same "random" city every visit
 }
 
 // ---------------------------------------------------------------------------
-// The rooftop and the city around it
+// The rooftop and the city around it. All of it comes from site/scenery.json,
+// which you can change in builder mode (the World tab), so none of it is fixed here.
 // ---------------------------------------------------------------------------
-const ROOF = 12; // the roof spans -12..12
-put(new THREE.BoxGeometry(ROOF * 2, 1, ROOF * 2), mat(0x1a1d2e, { roughness: 0.7, metalness: 0.25 }), 0, -0.5, 0);
-const grid = new THREE.GridHelper(ROOF * 2, 24, 0x3ff0ff, 0x1b2042);
-grid.position.y = 0.01;
-grid.material.transparent = true;
-grid.material.opacity = 0.18;
-scene.add(grid);
-for (const [x, z, w, d, color] of [[0, ROOF, ROOF * 2, 0.12, 0xff3fb4], [0, -ROOF, ROOF * 2, 0.12, 0x3ff0ff],
-  [ROOF, 0, 0.12, ROOF * 2, 0x3ff0ff], [-ROOF, 0, 0.12, ROOF * 2, 0xff3fb4]]) {
-  put(new THREE.BoxGeometry(w, 0.12, d), neon(color, 0.9), x, 0.06, z).castShadow = false;
-}
+const DEFAULT_SCENERY = { // what the world looks like if scenery.json is missing something
+  roof: { size: 24, color: '#1a1d2e', grid: true, grid_color: '#3ff0ff', edge_colors: ['#ff3fb4', '#3ff0ff', '#3ff0ff', '#ff3fb4'], edge_glow: 0.9 },
+  tower: { show: true, depth: 120, window_color: '#8b5bff' },
+  city: { seed: 42, towers: 120, near: 36, far: 121, min_height: 40, max_height: 140, window_glow: 0.5, antennas: 0.3,
+    colors: ['#3ff0ff', '#ff3fb4', '#ffcc4d', '#8b5bff', '#9fb4ff'] },
+  cars: { count: 14 },
+  sky: { color: '#06050f', fog_color: '#0b0820', fog: 0.011, light_color: '#6a78c8', light: 1.3, glow: 0.4, exposure: 0.85 },
+  signs: [],
+  props: [],
+};
+const SCENERY_SECTIONS = ['roof', 'tower', 'city', 'cars', 'sky'];
+const withDefaults = (loaded = {}) => ({
+  ...DEFAULT_SCENERY, ...loaded,
+  ...Object.fromEntries(SCENERY_SECTIONS.map((key) => [key, { ...DEFAULT_SCENERY[key], ...(loaded[key] ?? {}) }])),
+});
+let ROOF = 12; // half the roof's width: the roof spans -ROOF..ROOF
+let baseFog = 0.011, baseLight = 1.3; // the weather and lightning change these for a moment, then go back
+const hex = (color) => new THREE.Color(color).getHex();
 
 function makeWindowsTexture() {
   const canvas = document.createElement('canvas');
@@ -285,63 +293,147 @@ function makeWindowsTexture() {
   return texture;
 }
 const windowsTexture = makeWindowsTexture();
-function towerMaterial(tint, repeatX, repeatY) {
+function towerMaterial(tint, repeatX, repeatY, glow = 0.5) {
   const map = windowsTexture.clone();
   map.needsUpdate = true;
   map.repeat.set(repeatX, repeatY);
-  return new THREE.MeshStandardMaterial({ color: 0x07080f, roughness: 0.8, emissive: tint, emissiveMap: map, emissiveIntensity: 0.5 });
-}
-// The skyscraper Ember lives on top of
-put(new THREE.BoxGeometry(ROOF * 2, 120, ROOF * 2), towerMaterial(0x8b5bff, 6, 30), 0, -60.5, 0).receiveShadow = false;
-
-const PALETTE = [0x3ff0ff, 0xff3fb4, 0xffcc4d, 0x8b5bff, 0x9fb4ff];
-const rand = seeded(42);
-const blinkers = [];
-for (let i = 0; i < 120; i++) {
-  const angle = rand() * Math.PI * 2, dist = 36 + rand() * 85;
-  const w = 5 + rand() * 9, d = 5 + rand() * 9, h = 40 + rand() * 100;
-  const x = Math.cos(angle) * dist, z = Math.sin(angle) * dist, top = -70 + h;
-  const tower = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), towerMaterial(PALETTE[Math.floor(rand() * PALETTE.length)], Math.round(w / 2), Math.round(h / 6)));
-  tower.position.set(x, -70 + h / 2, z);
-  scene.add(tower);
-  if (rand() < 0.3) {
-    put(new THREE.CylinderGeometry(0.15, 0.15, 6, 5), 0x111111, x, top + 3, z).castShadow = false;
-    blinkers.push(put(new THREE.SphereGeometry(0.4, 8, 6), new THREE.MeshStandardMaterial({ color: 0, emissive: 0xff2040, emissiveIntensity: 1.5 }), x, top + 6.2, z));
-  }
+  return new THREE.MeshStandardMaterial({ color: 0x07080f, roughness: 0.8, emissive: tint, emissiveMap: map, emissiveIntensity: glow });
 }
 
-// Neon signs on the skyline (drawn once the fonts have loaded)
-document.fonts.ready.then(() => {
-  for (const [text, color, angle, dist, y, size] of [['EMBER.NET', '#3ff0ff', 3.6, 34, 14, 12], ['24/7', '#ff3fb4', 5.3, 40, 22, 8],
-    ['DATA', '#ffcc4d', 4.5, 46, 8, 9], ['狐', '#ff3fb4', 2.6, 38, 18, 6], ['OPEN', '#8b5bff', 0.9, 44, 12, 8]]) {
+function drawSign(sign, group) { // neon text on a transparent board (drawn once the fonts have loaded)
+  document.fonts.ready.then(() => {
     const canvas = document.createElement('canvas');
     canvas.width = 512; canvas.height = 160;
     const ctx = canvas.getContext('2d');
     ctx.font = '900 112px Orbitron, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = color;
-    ctx.fillText(text, 256, 84);
+    ctx.fillStyle = sign.color;
+    ctx.fillText(sign.text, 256, 84, 500);
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
-    const sign = new THREE.Mesh(new THREE.PlaneGeometry(size, size * 160 / 512),
-      new THREE.MeshBasicMaterial({ map: texture, color: 0x8c8c8c, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
-    sign.position.set(Math.cos(angle) * dist, y, Math.sin(angle) * dist);
-    sign.lookAt(0, y, 0);
-    scene.add(sign);
-  }
-});
+    group.add(new THREE.Mesh(new THREE.PlaneGeometry(sign.size, sign.size * 160 / 512),
+      new THREE.MeshBasicMaterial({ map: texture, color: 0x8c8c8c, transparent: true, side: THREE.DoubleSide, depthWrite: false })));
+  });
+}
 
-// Flying cars on circular lanes
-const cars = [];
-for (let i = 0; i < 14; i++) {
-  const car = new THREE.Group();
-  put(new THREE.BoxGeometry(1.6, 0.45, 0.8), 0x15182a, 0, 0, 0, car).castShadow = false;
-  put(new THREE.BoxGeometry(0.08, 0.18, 0.6), neon(i % 2 ? 0x3ff0ff : 0xffffff, 1.5), 0.82, 0, 0, car);
-  put(new THREE.BoxGeometry(0.08, 0.14, 0.6), neon(0xff2040, 1.2), -0.82, 0, 0, car);
-  car.userData = { radius: 22 + rand() * 40, height: -6 + rand() * 30, speed: (0.04 + rand() * 0.06) * (rand() < 0.5 ? 1 : -1), angle: rand() * Math.PI * 2 };
-  scene.add(car);
-  cars.push(car);
+let sceneryGroup = null;
+const sceneryParts = { props: {}, signs: {} }; // id -> group, so builder mode can grab them
+const blinkers = [], cars = [];
+function disposeTree(root) { // free the old city's textures before building a new one
+  const shared = new Set(Object.values(materials));
+  root.traverse((o) => {
+    o.geometry?.dispose();
+    if (o.material && !shared.has(o.material)) {
+      o.material.map?.dispose();
+      o.material.emissiveMap?.dispose();
+      o.material.dispose();
+    }
+  });
+}
+
+function buildScenery(sc) {
+  if (sceneryGroup) { scene.remove(sceneryGroup); disposeTree(sceneryGroup); }
+  sceneryGroup = new THREE.Group();
+  scene.add(sceneryGroup);
+  sceneryParts.props = {};
+  sceneryParts.signs = {};
+  blinkers.length = 0;
+  cars.length = 0;
+  const { roof, tower, city, sky } = sc;
+  ROOF = Math.max(4, Math.min(40, roof.size / 2));
+
+  // Sky, fog, light and glow
+  scene.background = new THREE.Color(sky.color);
+  scene.fog.color.set(sky.fog_color);
+  baseFog = sky.fog;
+  scene.fog.density = baseFog;
+  skyLight.color.set(sky.light_color);
+  baseLight = sky.light;
+  skyLight.intensity = baseLight;
+  bloom.strength = sky.glow;
+  renderer.toneMappingExposure = sky.exposure;
+  Object.assign(moon.shadow.camera, { left: -ROOF - 2, right: ROOF + 2, top: ROOF + 2, bottom: -ROOF - 2 });
+  moon.shadow.camera.updateProjectionMatrix();
+  controls.maxDistance = Math.max(40, ROOF * 3.4);
+
+  // The roof: platform, grid and neon edges
+  put(new THREE.BoxGeometry(ROOF * 2, 1, ROOF * 2), mat(hex(roof.color), { roughness: 0.7, metalness: 0.25 }), 0, -0.5, 0, sceneryGroup);
+  if (roof.grid) {
+    const grid = new THREE.GridHelper(ROOF * 2, Math.round(ROOF * 2), hex(roof.grid_color), 0x1b2042);
+    grid.position.y = 0.01;
+    grid.material.transparent = true;
+    grid.material.opacity = 0.18;
+    sceneryGroup.add(grid);
+  }
+  const [front, back, right, left] = roof.edge_colors;
+  if (roof.edge_glow > 0) {
+    for (const [x, z, w, d, color] of [[0, ROOF, ROOF * 2, 0.12, front], [0, -ROOF, ROOF * 2, 0.12, back],
+      [ROOF, 0, 0.12, ROOF * 2, right], [-ROOF, 0, 0.12, ROOF * 2, left]]) {
+      put(new THREE.BoxGeometry(w, 0.12, d), neon(hex(color), roof.edge_glow), x, 0.06, z, sceneryGroup).castShadow = false;
+    }
+  }
+
+  // The skyscraper Ember lives on top of
+  if (tower.show) {
+    put(new THREE.BoxGeometry(ROOF * 2, tower.depth, ROOF * 2),
+      towerMaterial(hex(tower.window_color), Math.max(1, Math.round(ROOF / 2)), Math.round(tower.depth / 4), city.window_glow),
+      0, -tower.depth / 2 - 0.5, 0, sceneryGroup).receiveShadow = false;
+  }
+
+  // The city all around (the same seed always makes the same city)
+  const rand = seeded(city.seed);
+  const palette = city.colors.length ? city.colors.map(hex) : [0x8b5bff];
+  const near = Math.max(city.near, ROOF + 8), far = Math.max(city.far, near + 1);
+  for (let i = 0; i < city.towers; i++) {
+    const angle = rand() * Math.PI * 2, dist = near + rand() * (far - near);
+    const w = 5 + rand() * 9, d = 5 + rand() * 9, h = city.min_height + rand() * Math.max(0, city.max_height - city.min_height);
+    const x = Math.cos(angle) * dist, z = Math.sin(angle) * dist, top = -70 + h;
+    const building = new THREE.Mesh(new THREE.BoxGeometry(w, h, d),
+      towerMaterial(palette[Math.floor(rand() * palette.length)], Math.round(w / 2), Math.round(h / 6), city.window_glow));
+    building.position.set(x, -70 + h / 2, z);
+    sceneryGroup.add(building);
+    if (rand() < city.antennas) {
+      put(new THREE.CylinderGeometry(0.15, 0.15, 6, 5), 0x111111, x, top + 3, z, sceneryGroup).castShadow = false;
+      blinkers.push(put(new THREE.SphereGeometry(0.4, 8, 6), new THREE.MeshStandardMaterial({ color: 0, emissive: 0xff2040, emissiveIntensity: 1.5 }), x, top + 6.2, z, sceneryGroup));
+    }
+  }
+
+  // Flying cars on circular lanes
+  for (let i = 0; i < sc.cars.count; i++) {
+    const car = new THREE.Group();
+    put(new THREE.BoxGeometry(1.6, 0.45, 0.8), 0x15182a, 0, 0, 0, car).castShadow = false;
+    put(new THREE.BoxGeometry(0.08, 0.18, 0.6), neon(i % 2 ? 0x3ff0ff : 0xffffff, 1.5), 0.82, 0, 0, car);
+    put(new THREE.BoxGeometry(0.08, 0.14, 0.6), neon(0xff2040, 1.2), -0.82, 0, 0, car);
+    car.userData = { radius: Math.max(22, ROOF + 10) + rand() * 40, height: -6 + rand() * 30,
+      speed: (0.04 + rand() * 0.06) * (rand() < 0.5 ? 1 : -1), angle: rand() * Math.PI * 2 };
+    sceneryGroup.add(car);
+    cars.push(car);
+  }
+
+  // Neon signs: face the roof unless you've turned them
+  for (const sign of sc.signs) {
+    const group = new THREE.Group();
+    group.userData.signId = sign.id;
+    const [x, y, z] = sign.pos;
+    group.position.set(x, y, z);
+    group.rotation.y = sign.rotation !== undefined ? THREE.MathUtils.degToRad(sign.rotation) : Math.atan2(-x, -z);
+    sceneryGroup.add(group);
+    sceneryParts.signs[sign.id] = group;
+    drawSign(sign, group);
+  }
+
+  // Props: decorations you place anywhere, even floating (same looks as buildings)
+  for (const prop of sc.props) {
+    const group = new THREE.Group();
+    group.userData.propId = prop.id;
+    group.position.set(...prop.pos);
+    group.rotation.y = THREE.MathUtils.degToRad(prop.rotation ?? 0);
+    group.scale.setScalar(prop.scale ?? 1);
+    sceneryGroup.add(group);
+    sceneryParts.props[prop.id] = group;
+    lookBuilder(prop)(0, 0, group);
+  }
 }
 
 // Rain
@@ -367,7 +459,7 @@ function setWeather(weather) {
   rainSpeed = snow ? 5 : 28;
   rainMaterial.color.set(snow ? 0xdde6ff : 0x7f95d8);
   rainMaterial.opacity = snow ? 0.7 : 0.35;
-  scene.fog.density = code === 45 || code === 48 ? 0.03 : 0.011;
+  scene.fog.density = code === 45 || code === 48 ? Math.max(0.03, baseFog) : baseFog;
   stormy = code >= 95;
   rainGeometry.setDrawRange(0, rainCount * 2);
 }
@@ -536,6 +628,10 @@ scene.add(artHolo);
 // Each building is its own group: placed at the spot where Ember stands, turned by "rotation" (degrees)
 // and resized by "scale". Builder mode drags these groups around.
 let worldGroup = null, worldKey = '', places = {}, researchAnchor = null;
+function lookBuilder(thing) { // a built-in piece, your own model, simple shapes, or a placeholder box
+  return /\.(glb|gltf|obj)$/i.test(thing.model ?? '') ? modelBuilder(thing)
+    : builders[thing.model] ?? (thing.shapes?.length ? shapesBuilder(thing.shapes) : placeholder);
+}
 function buildBuilding(building) {
   const group = new THREE.Group();
   group.userData.buildingId = building.id;
@@ -544,9 +640,7 @@ function buildBuilding(building) {
   group.scale.setScalar(building.scale ?? 1);
   worldGroup.add(group);
   group.updateMatrixWorld();
-  const build = /\.(glb|gltf|obj)$/i.test(building.model ?? '') ? modelBuilder(building)
-    : builders[building.model] ?? (building.shapes?.length ? shapesBuilder(building.shapes) : placeholder);
-  const info = build(0, 0, group);
+  const info = lookBuilder(building)(0, 0, group);
   if (info.sleep) { // where Ember curls up, turned into roof coordinates
     const spot = group.localToWorld(new THREE.Vector3(info.sleep.x, info.sleep.y, info.sleep.z));
     info.sleep = { x: spot.x, z: spot.z, y: spot.y };
@@ -705,7 +799,7 @@ function animate() {
   for (const [i, blinker] of blinkers.entries()) blinker.visible = Math.sin(t * 2 + i) > -0.3;
   if (stormy && t > nextFlash) { flashLeft = 0.12; nextFlash = t + 4 + Math.random() * 10; }
   flashLeft -= dt;
-  skyLight.intensity = flashLeft > 0 ? 7 : 1.3; // lightning
+  skyLight.intensity = flashLeft > 0 ? 7 : baseLight; // lightning
   for (let i = 0; i < rainCount; i++) {
     const o = i * 6, fall = rainSpeed * dt;
     rainPositions[o + 1] -= fall;
@@ -1098,6 +1192,13 @@ function render(s) {
 // ---------------------------------------------------------------------------
 // Reading Ember's state (written by run_local.py, or by GitHub Actions online)
 // ---------------------------------------------------------------------------
+let scenery = withDefaults();
+buildScenery(scenery);
+const sceneryReady = fetch(`scenery.json?t=${Date.now()}`, { cache: 'no-store' })
+  .then((response) => (response.ok ? response.json() : null))
+  .then((loaded) => { if (loaded) { scenery = withDefaults(loaded); buildScenery(scenery); } })
+  .catch(() => {});
+
 let latest = null;
 async function refresh() {
   try {
@@ -1126,8 +1227,10 @@ setInterval(() => { if (latest) render(latest); }, 1000); // keeps the countdown
 
 if (BUILDING) { // builder mode lives in its own file, so the public page stays light
   import('./builder.js').then(({ startBuilder }) => startBuilder({
-    THREE, scene, camera, renderer, controls, el, ROOF, buildWorld,
+    THREE, scene, camera, renderer, controls, buildWorld, buildScenery, withDefaults,
+    loadScenery: () => sceneryReady.then(() => scenery),
     getWorldGroup: () => worldGroup, getPlaces: () => places, getState: () => latest,
+    getSceneryGroup: () => sceneryGroup, getSceneryParts: () => sceneryParts,
     builtInLooks: Object.keys(builders),
   }));
 }
