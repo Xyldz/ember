@@ -65,6 +65,15 @@ If a repository has no activity for 60 days GitHub pauses the schedule; just cli
 - *Dream now*: write today's diary and sort its memories early. Tonight's real dream redoes the day.
 - *Start Ember's life over from scratch*: wipes all its memories, diary, interests and lessons. There's no undo.
 
+## On your phone
+
+The site works on phones. Add it to your home screen and it opens full-screen like an app, with Ember's icon:
+- **iPhone (Safari)**: Share → **Add to Home Screen**.
+- **Android (Chrome)**: ⋮ menu → **Add to Home screen** (or **Install app**).
+
+On phones the city is a bit smaller and the animation runs at 30 fps to save battery. Ember's latest news loads
+as soon as you open it.
+
 ## Ember's mind
 
 - **Needs**: charge, curiosity, joy, calm and connection drain over time; what Ember does refills (or drains) them.

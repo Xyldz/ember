@@ -2,8 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ember</title>
+<meta name="description" content="Ember: a small autonomous AI living on a neon rooftop.">
+<meta name="theme-color" content="#05060d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ember">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
@@ -104,17 +113,26 @@
   #support { padding: 6px 12px; border-radius: 3px; background: var(--magenta); color: #05060d; font-weight: 700;
     text-decoration: none; box-shadow: 0 0 14px rgba(255, 63, 180, .5); white-space: nowrap; }
   #support[hidden] { display: none; }
-  @media (max-width: 760px) {
+  #panel > :not(#feed) { flex-shrink: 0; } /* only the feed scrolls; everything above it keeps its height */
+  @media (max-width: 760px) { /* phones: the 3D view on top, everything else scrolls underneath */
     #app { flex-direction: column; }
-    #world { flex: 1 1 55%; }
-    #panel { flex: 1 1 45%; width: 100%; overflow-y: auto; border-left: 0; border-top: 1px solid var(--line); }
+    #world { flex: 1 1 52%; }
+    #panel { flex: 1 1 48%; width: 100%; overflow-y: auto; border-left: 0; border-top: 1px solid var(--line);
+      padding-bottom: env(safe-area-inset-bottom); }
     #panel header { padding: 12px 16px 4px; }
     .section, .tabs, #feed, footer { padding-left: 16px; padding-right: 16px; }
     #feed { flex: none; overflow: visible; }
+    .tabs { flex-wrap: wrap; overflow: visible; } /* every tab visible, no sideways swiping */
+    .tabs button { padding: 8px 9px; }
     .holo { display: none; }
-    .needs { gap: 8px; padding: 6px 8px; }
+    .needs { top: calc(8px + env(safe-area-inset-top)); left: 8px; right: 8px; gap: 8px; padding: 6px 8px; }
     .need { font-size: 9px; letter-spacing: .02em; }
-    .now-card { top: auto; bottom: 10px; width: calc(100% - 24px); }
+    .now-card { top: auto; bottom: 8px; left: 8px; right: 8px; width: auto; padding: 8px 10px; }
+    .now-card h2 { display: none; }
+    #now-thought { margin-top: 4px; }
+    #now-thought span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    #now-goal { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .place { font-size: 10px; padding: 1px 6px; }
   }
 </style>
 </head>
@@ -184,13 +202,14 @@ const $ = (id) => document.getElementById(id);
 const IS_LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
 const POLL_MS = IS_LOCAL ? 4000 : 60000; // online, Ember only thinks every 10 minutes
 const BUILDING = IS_LOCAL && new URLSearchParams(location.search).has('build'); // builder mode: only on your own computer
+const IS_PHONE = matchMedia('(max-width: 760px), (pointer: coarse)').matches; // phones get a lighter world to save battery
 
 // ---------------------------------------------------------------------------
 // Renderer, camera, glow
 // ---------------------------------------------------------------------------
 const worldEl = $('world');
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_PHONE ? 1.5 : 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.85;
 renderer.shadowMap.enabled = true;
@@ -221,7 +240,7 @@ scene.add(skyLight);
 const moon = new THREE.DirectionalLight(0x9d8cff, 0.8);
 moon.position.set(-10, 22, 8);
 moon.castShadow = true;
-moon.shadow.mapSize.set(2048, 2048);
+moon.shadow.mapSize.setScalar(IS_PHONE ? 1024 : 2048);
 Object.assign(moon.shadow.camera, { left: -14, right: 14, top: 14, bottom: -14, near: 1, far: 60 });
 moon.shadow.camera.updateProjectionMatrix();
 scene.add(moon);
@@ -387,7 +406,7 @@ function buildScenery(sc) {
   const rand = seeded(city.seed);
   const palette = city.colors.length ? city.colors.map(hex) : [0x8b5bff];
   const near = Math.max(city.near, ROOF + 8), far = Math.max(city.far, near + 1);
-  for (let i = 0; i < city.towers; i++) {
+  for (let i = 0; i < (IS_PHONE ? Math.min(city.towers, 80) : city.towers); i++) {
     const angle = rand() * Math.PI * 2, dist = near + rand() * (far - near);
     const w = 5 + rand() * 9, d = 5 + rand() * 9, h = city.min_height + rand() * Math.max(0, city.max_height - city.min_height);
     const x = Math.cos(angle) * dist, z = Math.sin(angle) * dist, top = -70 + h;
@@ -458,6 +477,7 @@ function setWeather(weather) {
   const snow = (code >= 71 && code <= 77) || code === 85 || code === 86;
   rainCount = code <= 3 || code === 45 || code === 48 ? 0
     : snow ? 1200 : code <= 57 ? 500 : [61, 80].includes(code) ? 1000 : [63, 81].includes(code) ? 1400 : DROPS;
+  if (IS_PHONE) rainCount = Math.min(rainCount, 900);
   rainSpeed = snow ? 5 : 28;
   rainMaterial.color.set(snow ? 0xdde6ff : 0x7f95d8);
   rainMaterial.opacity = snow ? 0.7 : 0.35;
@@ -782,9 +802,13 @@ new ResizeObserver(resize).observe(worldEl);
 resize();
 
 const timer = new THREE.Clock();
+let sinceFrame = 0;
 function animate() {
   requestAnimationFrame(animate);
-  const dt = Math.min(timer.getDelta(), 0.1), t = timer.elapsedTime;
+  sinceFrame += timer.getDelta();
+  if (IS_PHONE && sinceFrame < 1 / 30) return; // 30 frames a second is plenty on a phone, and saves battery
+  const dt = Math.min(sinceFrame, 0.1), t = timer.elapsedTime;
+  sinceFrame = 0;
 
   const dx = goal.x - avatar.position.x, dz = goal.z - avatar.position.z, dist = Math.hypot(dx, dz);
   const moving = placed && dist > 0.05;
@@ -1244,6 +1268,7 @@ async function pollForever() {
   setTimeout(pollForever, POLL_MS);
 }
 pollForever();
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); }); // catch up as soon as you open it again
 setInterval(() => { if (latest) render(latest); }, 1000); // keeps the countdown ticking between polls
 
 if (BUILDING) { // builder mode lives in its own file, so the public page stays light
