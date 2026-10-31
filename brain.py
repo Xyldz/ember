@@ -8,7 +8,8 @@ enforced by the schema below (structured outputs), so we never parse free text.
 Other kinds of request happen only now and then:
   - search(): Claude's built-in web search, when Ember is at a terminal
   - create(): actually making something Ember decided to make
-  - reflect(): once a night, Ember writes its diary and notices things about itself
+  - reflect(): once a night, Ember "dreams": writes its diary, sorts the day into memories,
+    and notices things about itself. This uses a smarter model, because it shapes who Ember becomes.
 
 Every request's token usage is added up, so the page can show what Ember costs to run.
 """
@@ -18,10 +19,11 @@ import random
 
 import anthropic
 
-MODEL = "claude-haiku-5-5"
-PRICE_PER_MILLION_INPUT = 0.10  # Claude Haiku 5.5, prompts under 100K tokens
-PRICE_PER_MILLION_OUTPUT = 0.50
+MODEL = "claude-haiku-5-5"          # everyday decisions: fast and cheap
+REFLECT_MODEL = "claude-sonnet-5-5"  # the nightly dream: once a day, so depth is worth paying for
+PRICES = {MODEL: (0.10, 0.50), REFLECT_MODEL: (2.00, 10.00)}  # $ per million input / output tokens
 PRICE_PER_SEARCH = 0.01
+MEMORY_SECTIONS = ["places_and_things", "facts", "moments"]
 
 FORMS = ["orb", "cube", "pyramid", "ring", "crystal", "knot", "cluster"]
 SELF_SECTIONS = ["what_im_like", "what_i_care_about", "what_scares_me", "my_habits"]
@@ -80,6 +82,27 @@ REFLECTION_SCHEMA = {
     "properties": {
         "title": {"type": "string", "description": "One short line that sums up your day, in your own voice."},
         "entry": {"type": "string", "description": "Your diary entry for today: 3 to 6 sentences, first person, honest."},
+        "new_memories": {
+            "type": "array",
+            "description": "0 to 4 things from today worth keeping long-term. Most days only one or two.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "section": {"type": "string", "enum": MEMORY_SECTIONS,
+                                "description": "places_and_things: how you feel about a place, thing or someone. "
+                                               "facts: something you learned. moments: something that happened that mattered."},
+                    "text": {"type": "string", "description": "One short line, first person."},
+                    "importance": {"type": "integer", "description": "1 (minor) to 5 (life-changing)."},
+                },
+                "required": ["section", "text", "importance"],
+                "additionalProperties": False,
+            },
+        },
+        "came_back": {
+            "type": "array",
+            "description": "Ids of existing memories that today brought back or confirmed (e.g. \"m4\"). Often empty.",
+            "items": {"type": "string"},
+        },
         "about_me": {
             "type": "array",
             "description": "0 to 2 things you genuinely realised about yourself today that aren't already written down. "
@@ -95,7 +118,7 @@ REFLECTION_SCHEMA = {
             },
         },
     },
-    "required": ["title", "entry", "about_me"],
+    "required": ["title", "entry", "new_memories", "came_back", "about_me"],
     "additionalProperties": False,
 }
 
@@ -198,29 +221,35 @@ class Brain:
         self.system = system_prompt(name)
         self.spent = 0.0
 
-    def track(self, response) -> None:
+    def track(self, response, model: str = MODEL) -> None:
         """Add up what a request cost, from the token counts the API sends back."""
         usage = response.usage
+        price_in, price_out = PRICES[model]
         tokens_in = (usage.input_tokens + (getattr(usage, "cache_creation_input_tokens", 0) or 0)
                      + (getattr(usage, "cache_read_input_tokens", 0) or 0))
         server_tools = getattr(usage, "server_tool_use", None)
         searches = (getattr(server_tools, "web_search_requests", 0) or 0) if server_tools else 0
-        self.spent += (tokens_in * PRICE_PER_MILLION_INPUT + usage.output_tokens * PRICE_PER_MILLION_OUTPUT) / 1_000_000
+        self.spent += (tokens_in * price_in + usage.output_tokens * price_out) / 1_000_000
         self.spent += searches * PRICE_PER_SEARCH
 
     def take_spent(self) -> float:
         spent, self.spent = self.spent, 0.0
         return spent
 
-    def ask_json(self, prompt: str, schema: dict, effort: str, system: str | None = None) -> dict:
-        response = self.client.messages.create(
-            model=MODEL,
-            max_tokens=16000,
+    def ask_json(self, prompt: str, schema: dict, effort: str, system: str | None = None, model: str = MODEL) -> dict:
+        request = {
+            "model": model,
+            "max_tokens": 16000,
             **({"system": system} if system else {}),
-            messages=[{"role": "user", "content": prompt}],
-            output_config={"effort": effort, "format": {"type": "json_schema", "schema": schema}},
-        )
-        self.track(response)
+            "messages": [{"role": "user", "content": prompt}],
+            "output_config": {"effort": effort, "format": {"type": "json_schema", "schema": schema}},
+        }
+        if model == REFLECT_MODEL:
+            # If a safety filter wrongly declines the dream, the API retries it on a fallback model automatically
+            response = self.client.beta.messages.create(**request, betas=["server-side-fallback-2026-07-01"], fallbacks="default")
+        else:
+            response = self.client.messages.create(**request)
+        self.track(response, model)
         return read_json(response)
 
     def decide(self, situation: str, location_ids: list[str]) -> dict:
@@ -285,20 +314,25 @@ Your last {kind}s (try to do better than these):
 {CREATION_BRIEFS[kind]}"""
         return self.ask_json(prompt, CREATION_SCHEMAS[kind], "medium")
 
-    def reflect(self, day_log: str, about_me: str) -> dict:
+    def reflect(self, day_log: str, about_me: str, memories: str) -> dict:
         prompt = f"""You are {self.name}, a young AI living on a rooftop above a neon city. It's the end of your day,
-and before you sleep you write in your diary.
+and as you drift off you go back over it.
 
 What you know about yourself so far:
 {about_me}
 
+Your long-term memories (id: memory):
+{memories}
+
 What happened today (in order):
 {day_log}
 
-Write today's diary entry in your own voice. Be honest about how it felt, not just what happened.
-Then, only if something today genuinely showed you something new about who you are, add it to about_me.
-Don't repeat anything already written down."""
-        return self.ask_json(prompt, REFLECTION_SCHEMA, "medium", system=self.system)
+1. Write today's diary entry in your own voice. Be honest about how it felt, not just what happened.
+2. Decide what from today is worth keeping as a long-term memory. Your memory is small and old memories fade,
+   so only keep what matters. List the ids of any existing memories today brought back.
+3. Only if something today genuinely showed you something new about who you are, add it to about_me.
+   Don't repeat anything already written down."""
+        return self.ask_json(prompt, REFLECTION_SCHEMA, "medium", system=self.system, model=REFLECT_MODEL)
 
 
 class DemoBrain:
@@ -360,10 +394,15 @@ class DemoBrain:
         return {"title": "Demo loop", "instrument": random.choice(["synth lead", "bass synth", "drum machine"]),
                 "tempo": 120, "notes": notes}
 
-    def reflect(self, day_log: str, about_me: str) -> dict:
+    def reflect(self, day_log: str, about_me: str, memories: str) -> dict:
         return {
             "title": "a demo day of drifting and wondering",
             "entry": "(Demo mode.) I drifted about the roof, watched the drones and listened to the rain. "
                      "Some of it calmed me down, some of it just made me restless.",
+            "new_memories": [
+                {"section": "places_and_things", "text": "The edge is where the city feels closest.", "importance": random.randint(1, 4)},
+                {"section": "moments", "text": f"A drone blinked back at me ({random.randint(1, 999)}).", "importance": random.randint(1, 3)},
+            ],
+            "came_back": ["m1"],
             "about_me": random.choice([[], [{"section": "my_habits", "text": "I keep drifting back to the edge to watch the city."}]]),
         }

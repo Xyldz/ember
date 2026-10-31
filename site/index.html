@@ -59,6 +59,12 @@
   .mind .line .tag { flex: none; padding: 0 5px; border: 1px solid var(--line); color: var(--muted); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
   .mind .line.grown .tag { color: var(--magenta); border-color: rgba(255, 63, 180, .5); }
   .mind .count { flex: none; color: var(--muted); font-size: 11px; }
+  .mind .words { display: flex; flex-wrap: wrap; gap: 6px; }
+  .mind .word { padding: 2px 8px; border: 1px solid rgba(139, 91, 255, .5); border-radius: 3px; color: #c9b6ff; font-size: 12px; }
+  .memory-item { margin: 8px 0; font-size: 12px; }
+  .memory-item .bar { height: 3px; margin-top: 4px; }
+  .memory-item small { color: var(--muted); font-size: 10px; }
+  .slots { color: var(--muted); font-size: 10px; font-weight: 400; letter-spacing: 0; text-transform: none; }
   .bar { height: 6px; border-radius: 2px; background: var(--line); overflow: hidden; }
   .bar i { display: block; height: 100%; transition: width .6s; }
   .skill { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 3px 8px; margin: 6px 0; font-size: 12px; }
@@ -69,8 +75,9 @@
   .wish.granted .tag { color: var(--cyan); border-color: rgba(63, 240, 255, .5); }
   .wish a { flex: none; color: var(--muted); font-size: 11px; }
   .empty { color: var(--muted); font-style: italic; font-size: 12px; margin: 4px 0; }
-  .tabs { display: flex; gap: 0; padding: 8px 18px 0; overflow-x: auto; border-bottom: 1px solid var(--line); }
-  .tabs button { flex: none; padding: 8px 8px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted);
+  .tabs { display: flex; gap: 0; padding: 8px 18px 0; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs button { flex: none; padding: 8px 7px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted);
     font: inherit; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; }
   .tabs button.on { color: var(--cyan); border-bottom-color: var(--cyan); }
   #feed { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 18px 16px; }
@@ -132,6 +139,7 @@
       <button data-tab="today" class="on">Today</button>
       <button data-tab="diary">Diary</button>
       <button data-tab="mind">Mind</button>
+      <button data-tab="memory">Memory</button>
       <button data-tab="gallery">Gallery</button>
       <button data-tab="research">Research</button>
     </nav>
@@ -740,8 +748,33 @@ const needBars = NEEDS.map(([need, colour]) => {
 const ICONS = {
   thought: '💭', say: '💬', search: '🔎', learned: '💡', hobby: '⭐', note: '📝', rest: '🔋', play: '🎮',
   create: '🎨', learn: '📖', explore: '🧭', socialise: '📡', reflect: '🌀', event: '▸', levelup: '🏅', creation: '🖼️',
-  wish: '🌠', build: '🏗️', form: '✨', diary: '📓', self: '🪞',
+  wish: '🌠', build: '🏗️', form: '✨', diary: '📓', self: '🪞', forgot: '🌫️',
 };
+const MEMORY_SECTIONS = [['places_and_things', 'Places & things', 'How it feels about places, things and anyone it meets.'],
+  ['facts', 'Facts', 'Things it read or worked out, kept because they connected to something.'],
+  ['moments', 'Moments', 'Things that happened that mattered enough to survive the night.']];
+
+function memoryPanel(s) {
+  const panel = el('div', 'mind');
+  panel.append(el('p', 'empty', `${s.name}'s memory is small: ${s.memory_slots} slots per section. A memory fades by half every three weeks unless something brings it back, and when a section is full a new memory has to beat the weakest one to get in. Memories are sorted out each night while it sleeps.`));
+  for (const [key, title, about] of MEMORY_SECTIONS) {
+    const shelf = s.memory_view?.[key] ?? [];
+    const heading = el('h3', '', `${title} `);
+    heading.append(el('span', 'slots', `${shelf.length} of ${s.memory_slots}`));
+    panel.append(heading, el('p', 'empty', about));
+    for (const memory of shelf) {
+      const item = el('div', 'memory-item'), bar = el('div', 'bar'), fill = el('i');
+      fill.style.width = `${Math.round(memory.strength * 100)}%`;
+      fill.style.background = '#8b5bff';
+      bar.append(fill);
+      const since = memory.times > 1 ? `came back ${memory.times - 1}×` : `since ${new Date(`${memory.first}T00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
+      item.append(el('div', '', memory.text), bar, el('small', '', since));
+      item.style.opacity = 0.45 + memory.strength * 0.55; // faded memories look faded
+      panel.append(item);
+    }
+  }
+  return [panel];
+}
 const SECTIONS = [['what_im_like', "What I'm like"], ['what_i_care_about', 'What I care about'],
   ['what_scares_me', 'What scares me'], ['my_habits', 'My habits']];
 const longDate = (date) => new Date(`${date}T00:00`).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
@@ -768,6 +801,13 @@ function mindPanel(s) {
       row.append(el('span', 'tag', grown ? 'grew' : 'given'), el('span', '', text));
       panel.append(row);
     }
+  }
+  panel.append(el('h3', '', 'What keeps coming back'));
+  if (!s.fascinations?.length) panel.append(el('p', 'empty', 'Nothing yet. Words that keep turning up in what it reads online show up here.'));
+  else {
+    const words = el('div', 'words');
+    for (const f of s.fascinations) words.append(el('span', 'word', `${f.word} ×${f.score}`));
+    panel.append(words);
   }
   panel.append(el('h3', '', 'What experience has taught it'));
   if (!s.beliefs.length) panel.append(el('p', 'empty', 'Nothing yet. A lesson appears once something has happened a few times.'));
@@ -815,7 +855,8 @@ function renderFeed(s) {
   const key = {
     today: () => `t|${s.events.length}|${last?.date}|${last?.time}|${last?.text}`,
     diary: () => `d|${s.days.length}|${s.days.at(-1)?.date}`,
-    mind: () => `m|${s.today}|${JSON.stringify([s.personality, s.self, s.beliefs])}`,
+    mind: () => `m|${s.today}|${JSON.stringify([s.personality, s.self, s.beliefs, s.fascinations])}`,
+    memory: () => `y|${s.today}|${JSON.stringify(s.memory_view)}`,
     gallery: () => `g|${galleryKey}`,
     research: () => `r|${s.learned.length}|${lastLearned?.time}|${lastLearned?.text}`,
   }[tab]();
@@ -826,6 +867,8 @@ function renderFeed(s) {
     items = diaryCards(s);
   } else if (tab === 'mind') {
     items = mindPanel(s);
+  } else if (tab === 'memory') {
+    items = memoryPanel(s);
   } else if (tab === 'today') {
     items = s.events.slice(-80).reverse().map((e) => {
       const row = el('div', `entry ${e.kind}`);

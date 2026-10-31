@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo
 
 import anthropic
 
-from brain import SELF_SECTIONS, BrainError
+from brain import MEMORY_SECTIONS, SELF_SECTIONS, BrainError
 
 HERE = Path(__file__).parent
 CONFIG = json.loads((HERE / "config.json").read_text(encoding="utf-8"))
@@ -59,6 +59,16 @@ RESEARCH_XP = 5
 MAX_WISHES_PER_DAY = 2
 MAX_FORM_CHANGES_PER_DAY = 2
 MAX_SELF_LINES = 10  # per section of the character sheet
+MEMORY_SLOTS = 24  # per memory section: when it's full, a new memory has to beat the weakest one to get in
+MEMORY_HALF_LIFE_DAYS = 21  # a memory's strength halves every three weeks unless something brings it back
+FASCINATION_HALF_LIFE_DAYS = 7  # this week's reading counts more than last month's
+STOPWORDS = set("""a about above after again against all also am an and any are around as at back be because been before
+being below between both but by can can't could did do does doing don't down during each even few find for found from
+further get had has have having he her here hers him his how i i'm if in into is it it's its itself just like look looks
+made make many may me might more most much my new no nor not now of off on once one only or other our out over own really
+same see she should so some something still such than that that's the their them then there there's these they thing
+things this those through to too under until up use used using very via was way we well were what when where which while
+who whom why will with would you you're your ember""".split())
 
 state: dict = {}
 gallery: list = []
@@ -82,6 +92,7 @@ def new_state() -> dict:
         "experience": {},  # what each activity, at each place, has done to Ember's needs
         "beliefs": [],     # lessons worked out from that experience
         "days": [],        # Ember's diary, one entry per day
+        "memory": {section: [] for section in MEMORY_SECTIONS}, "memory_counter": 0,  # long-term memory
         "recent_kinds": [], "asleep": False, "status": "",
         "day": "", "thinks_today": 0, "searches_today": 0, "wishes_today": 0, "form_changes_today": 0,
         "costs": {"month": "", "usd": 0.0, "total_usd": 0.0},
@@ -135,6 +146,10 @@ def save() -> None:
         # Extra things only the web page needs
         "pressing": pressing_need(),
         "personality": personality,
+        "memory_view": {section: sorted(({**m, "strength": round(memory_strength(m) / 5, 2)} for m in shelf),
+                                        key=lambda m: -m["strength"]) for section, shelf in state["memory"].items()},
+        "memory_slots": MEMORY_SLOTS,
+        "fascinations": fascinations(),
         "skills": [{"name": h["name"], "level": skill_level(h["xp"])[0], "progress": skill_level(h["xp"])[1],
                     "inspired": h["inspired"]} for h in state["hobbies"]],
         "buildings": list(buildings.values()),
@@ -319,21 +334,92 @@ def add_self_line(section: str, text: str) -> None:
     log_event(f"Realised something about itself: {text}", "self")
 
 
-def write_diary(brain, day: str) -> None:
-    """Before sleeping, Ember writes up its day, and may notice something new about itself."""
-    if brain is None or any(d["date"] == day for d in state["days"]):
+# ---------------------------------------------------------------------------
+# Long-term memory: small, and it fades
+# ---------------------------------------------------------------------------
+
+def days_since(date: str) -> int:
+    try:
+        return max(0, (now().date() - datetime.strptime(date, "%Y-%m-%d").date()).days)
+    except ValueError:
+        return 0
+
+
+def memory_strength(memory: dict) -> float:
+    return memory["importance"] * 0.5 ** (days_since(memory["last_seen"]) / MEMORY_HALF_LIFE_DAYS)
+
+
+def bring_back(memory_id: str) -> None:
+    """Something reminded Ember of a memory, so it stops fading for now."""
+    for shelf in state["memory"].values():
+        for memory in shelf:
+            if memory["id"] == memory_id:
+                memory["last_seen"] = now().strftime("%Y-%m-%d")
+                memory["times"] += 1
+
+
+def keep_memory(section: str, text: str, importance: int) -> None:
+    if section not in state["memory"] or not text:
+        return
+    shelf = state["memory"][section]
+    for memory in shelf:
+        if memory["text"].lower()[:30] == text.lower()[:30]:  # already holding this one
+            bring_back(memory["id"])
+            return
+    importance = max(1, min(5, int(importance)))
+    if len(shelf) >= MEMORY_SLOTS:
+        weakest = min(shelf, key=memory_strength)
+        if memory_strength(weakest) >= importance:
+            return  # not worth more than anything already there, so it never gets in
+        shelf.remove(weakest)
+        log_event(f"Forgot: {weakest['text']}", "forgot")
+    state["memory_counter"] += 1
+    today = now().strftime("%Y-%m-%d")
+    shelf.append({"id": f"m{state['memory_counter']}", "text": text, "importance": importance,
+                  "first": today, "last_seen": today, "times": 1})
+
+
+def strongest_memories(count: int) -> list[dict]:
+    everything = [m for shelf in state["memory"].values() for m in shelf]
+    return sorted(everything, key=memory_strength, reverse=True)[:count]
+
+
+def fascinations() -> list[dict]:
+    """Words that keep turning up in what Ember reads online. Attraction, not opinion."""
+    scores = {}
+    for item in state["learned"]:
+        if not item.get("query"):
+            continue
+        weight = 0.5 ** (days_since(item.get("date", "")) / FASCINATION_HALF_LIFE_DAYS)
+        for word in re.findall(r"[a-z][a-z-]{2,}", f"{item['query']} {item['text']}".lower().replace("'", "")):
+            if word not in STOPWORDS:
+                scores[word] = scores.get(word, 0) + weight
+    top = sorted(scores.items(), key=lambda item: -item[1])[:8]
+    return [{"word": word, "score": round(score, 1)} for word, score in top if score >= 2]
+
+
+def write_diary(brain, day: str, final: bool = True) -> None:
+    """Ember 'dreams' over a day: writes its diary, sorts the day into long-term memory, and may notice
+    something new about itself. final=False is the 'dream now' button; the real dream that night redoes the day."""
+    if brain is None or any(d["date"] == day and d.get("final", True) for d in state["days"]):
         return
     events = [e for e in state["events"] if e.get("date") == day]
     if not events:
         return
+    memories = "\n".join(f"{m['id']}: {m['text']}" for shelf in state["memory"].values() for m in shelf) or "(none yet)"
     try:
-        reflection = brain.reflect("\n".join(f"{e['time']} {e['text'][:200]}" for e in events[-60:]), about_me_text())
+        reflection = brain.reflect("\n".join(f"{e['time']} {e['text'][:200]}" for e in events[-60:]), about_me_text(), memories)
     except (BrainError, json.JSONDecodeError, anthropic.APIStatusError, anthropic.APIConnectionError) as error:
-        state["status"] = f"Couldn't write the diary: {getattr(error, 'message', error)}"
+        state["status"] = f"Couldn't dream: {getattr(error, 'message', error)}"
         return
     title = reflection["title"].strip()
-    state["days"] = (state["days"] + [{"date": day, "title": title, "entry": reflection["entry"].strip()}])[-90:]
+    state["days"] = [d for d in state["days"] if d["date"] != day]
+    state["days"] = (state["days"] + [{"date": day, "title": title, "entry": reflection["entry"].strip(), "final": final}])[-90:]
     log_event(f'Wrote in its diary: "{title}"', "diary")
+    for memory_id in reflection["came_back"]:
+        bring_back(memory_id.strip())
+    for memory in reflection["new_memories"][:4]:
+        keep_memory(memory["section"], memory["text"].strip(), memory["importance"])
     for line in reflection["about_me"][:2]:
         add_self_line(line["section"], line["text"].strip())
 
@@ -364,10 +450,12 @@ def describe_situation() -> str:
     made = "\n".join(f'- "{w["title"]}" ({w["type"]})' for w in gallery[-4:]) or "- nothing yet"
     wishes = "\n".join(f'- {w["text"]} ({"came true!" if w["granted"] else "still waiting"})'
                        for w in state["wishes"][-6:]) or "- none yet"
-    memories = "\n".join(
+    long_term = "\n".join(f"- {m['text']}" for m in strongest_memories(10)) or "- nothing yet"
+    notes = "\n".join(
         f"- {m['text'][:220]}" + (f" (looked up: {m['query']})" if m.get("query") else "")
-        for m in state["learned"][-12:]
+        for m in state["learned"][-8:]
     ) or "- nothing yet"
+    keeps_coming_up = ", ".join(f["word"] for f in fascinations()) or "nothing yet"
     yesterday = state["days"][-1] if state["days"] else None
     recent = "\n".join(f"- {e['time']} {e['text']}" for e in state["events"][-14:] if e["kind"] != "thought") or "- nothing yet"
     searches_left = max(0, CONFIG["max_searches_per_day"] - state["searches_today"])
@@ -398,8 +486,12 @@ Things you've made (newest last):
 Your wishes:
 {wishes}
 
-Things you remember (newest last):
-{memories}
+Your strongest memories:
+{long_term}
+
+Notes and things you've read lately (newest last):
+{notes}
+Words that keep coming up in what you read: {keeps_coming_up}
 {f'Your last diary entry ({yesterday["date"]}): {yesterday["entry"]}' if yesterday else ''}
 
 What happened recently (newest last):
@@ -436,7 +528,8 @@ def apply_decision(decision: dict, brain) -> None:
         add_wish(decision["wish"].strip())
     change_form(decision["new_form"], decision["form_color"], decision["who_i_am"].strip())
     if decision["remember"].strip():
-        state["learned"] = (state["learned"] + [{"time": now().strftime("%H:%M"), "text": decision["remember"].strip()}])[-40:]
+        state["learned"] = (state["learned"] + [{"date": now().strftime("%Y-%m-%d"), "time": now().strftime("%H:%M"),
+                                                 "text": decision["remember"].strip()}])[-40:]
         log_event(f"Made a note: {decision['remember'].strip()}", "note")
 
     action = decision["action"]
@@ -481,7 +574,8 @@ def research(brain, query: str, hobby: dict | None) -> None:
         log_event("The terminal's connection dropped.")
         return
     state["learned"] = (state["learned"] + [{
-        "time": now().strftime("%H:%M"), "text": result["summary"], "query": query, "sources": result["sources"],
+        "date": now().strftime("%Y-%m-%d"), "time": now().strftime("%H:%M"),
+        "text": result["summary"], "query": query, "sources": result["sources"],
     }])[-40:]
     state["activity"] = f'Reading about "{query}"'
     log_event(f"Learned: {result['summary']}", "learned")
@@ -579,7 +673,7 @@ def live(brain, never_sleep: bool) -> None:
     apply_decision(decision, brain)
 
 
-def tick(brain, next_think_in_seconds: float, never_sleep: bool = False) -> None:
+def tick(brain, next_think_in_seconds: float, never_sleep: bool = False, dream_now: bool = False) -> None:
     load_buildings()
     t = now()
     today = t.strftime("%Y-%m-%d")
@@ -594,6 +688,8 @@ def tick(brain, next_think_in_seconds: float, never_sleep: bool = False) -> None
     notice_new_buildings()
     try:
         live(brain, never_sleep)
+        if dream_now:
+            write_diary(brain, today, final=False)
     finally:
         spent = brain.take_spent() if brain else 0.0
         state["costs"]["usd"] = round(state["costs"]["usd"] + spent, 5)

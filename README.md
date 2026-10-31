@@ -6,7 +6,8 @@ curiosity, joy, calm, connection), learns what different things do to it, picks 
 researches things on the real internet, decides what form to take, and wishes for new things to be
 built on its roof. Every night it writes a diary entry and may add a line to its own character sheet.
 
-Its brain is Claude (Haiku 5.5). The world is a 3D web page you can open any time to see what it's up to.
+Its brain is Claude: Haiku 5.5 for everyday decisions, and Sonnet 5.5 for the nightly "dream" where it
+writes its diary, sorts its memories and works out who it is. The world is a 3D web page you can open any time.
 
 ## What's in here
 
@@ -20,7 +21,7 @@ Its brain is Claude (Haiku 5.5). The world is a 3D web page you can open any tim
 | `site/index.html` | The 3D website |
 | `run_local.py` | Run Ember on your own computer |
 | `tick_once.py` | One moment of life, used by GitHub Actions |
-| `.github/workflows/ember.yml` | Runs Ember every 15 minutes on GitHub and publishes the site |
+| `.github/workflows/ember.yml` | Runs Ember every 10 minutes on GitHub and publishes the site |
 
 ## Run it on your computer
 
@@ -42,7 +43,7 @@ Add `--no-sleep` to keep Ember awake after bedtime.
 
 ## Put it online (free, runs forever)
 
-GitHub runs Ember every 15 minutes and hosts the website. The repository must be **public**
+GitHub runs Ember every 10 minutes and hosts the website. The repository must be **public**
 (that's what makes Actions and Pages free).
 
 1. Create a new public repository on GitHub and upload everything in this folder
@@ -55,11 +56,12 @@ GitHub runs Ember every 15 minutes and hosts the website. The repository must be
 Your site will be at `https://<your-username>.github.io/<repository-name>/`.
 Ember's memories are saved to a branch called `data`. Don't edit that branch by hand.
 
-GitHub's 15-minute schedule is "best effort": runs are sometimes late or skipped when GitHub is busy.
+GitHub's 10-minute schedule is "best effort": runs are sometimes late or skipped when GitHub is busy.
 If a repository has no activity for 60 days GitHub pauses the schedule; just click **Enable** in the Actions tab.
 
 **Actions → Ember lives → Run workflow** has two checkboxes:
 - *Wake Ember up even if it's bedtime*: one thought right now, whatever the time.
+- *Dream now*: write today's diary and sort its memories early. Tonight's real dream redoes the day.
 - *Start Ember's life over from scratch*: wipes all its memories, diary, interests and lessons. There's no undo.
 
 ## Ember's mind
@@ -69,6 +71,10 @@ If a repository has no activity for 60 days GitHub pauses the schedule; just cli
 - **Lessons**: once something has happened a few times, Ember draws a conclusion from how it actually felt,
   e.g. "Sitting with my thoughts at the rooftop edge settles me (×5)". It reads these every time it thinks.
 - **Diary**: at bedtime Ember writes up its day in its own words.
+- **Memory**: three small shelves (places & things, facts, moments) of 24 slots each. A memory's strength halves every
+  three weeks unless something brings it back, and when a shelf is full a new memory must beat the weakest to get in.
+  The nightly dream decides what's worth keeping. See the **Memory** tab.
+- **Fascinations**: words that keep turning up in what it reads, weighted towards this week.
 - **Character sheet**: `personality.json` is the part you write (blank by default). Each night Ember may add up to two
   lines about itself; it can only ever add, never delete, and near-repeats are rejected.
   The **Mind** tab on the site shows both, plus the lessons.
@@ -109,8 +115,9 @@ Ember notices new buildings on its next thought, and gets excited about them.
 
 ## Costs
 
-On Claude Haiku 5.5 with the default limits, Ember costs roughly **$1–5 a month** online
-(fewer thoughts than running locally), plus 1 cent per internet search (capped at 15 a day, so at most about $4.50 a month).
+With the default limits, Ember costs roughly **$3–4 a month** online: about $3 for thinking every 10 minutes on
+Haiku 5.5, and well under $1 for the nightly Sonnet 5.5 dream. Internet searches are 1 cent each on top
+(capped at 15 a day, so at most about $4.50 a month).
 The website shows the running cost for the current month.
 
 Set a monthly spend limit in the Anthropic Console (**Settings → Limits**) so it can never surprise you.
