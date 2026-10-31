@@ -19,7 +19,8 @@ writes its diary, sorts its memories and works out who it is. The world is a 3D 
 | `personality.json` | Ember's character sheet. Blank on purpose; add lines if you want to shape it |
 | `config.json` | Name, timezone, where its real weather comes from, daily limits, support link |
 | `site/index.html` | The 3D website |
-| `run_local.py` | Run Ember on your own computer |
+| `run_local.py` | Run Ember on your own computer, or open builder mode with `--build` |
+| `site/builder.js` | Builder mode: the rooftop editor |
 | `tick_once.py` | One moment of life, used by GitHub Actions |
 | `.github/workflows/ember.yml` | Runs Ember every 10 minutes on GitHub and publishes the site |
 
@@ -90,7 +91,32 @@ If a repository has no activity for 60 days GitHub pauses the schedule; just cli
 ## Building things for Ember
 
 Ember can wish for new buildings. Wishes show on the website, and online they're also filed as
-GitHub issues, so you get notified. To build something, add it to `buildings.json`:
+GitHub issues, so you get notified.
+
+### Builder mode (the easy way)
+
+In this folder, run:
+
+```
+python run_local.py --build
+```
+
+Your browser opens Ember's rooftop with a builder panel. It only works on your own computer.
+
+- **Click a building** to select it. **W** = move, **E** = rotate, **R** = resize (or type exact numbers in the panel).
+- **+ New building** or **Build here** on an empty lot adds one. **Duplicate** and **Delete** do what they say.
+- In the panel: its name, what Ember reads about it, what it unlocks, which needs it helps, and which wish it grants.
+- **Look**: a built-in piece, simple shapes (editable boxes, cylinders and spheres, neon or not), or **your own 3D model**:
+  - From **Roblox Studio**: select your build, **File → Export Selection**, then in the builder pick the `.obj`
+    **and** the `.mtl` (and any textures) together.
+  - From **Blender** or anything else: export `.glb`.
+  - Models are auto-fitted to a lot; untick that to use the model's own size.
+- **Save** (or Ctrl+S) writes `buildings.json` and keeps your models in `site/models/`.
+- **Publish to GitHub** sends them to the live Ember, which notices the new building on its next thought.
+
+### By hand
+
+Everything builder mode does is stored in `buildings.json`, so you can also edit it directly:
 
 ```json
 {
@@ -116,8 +142,8 @@ GitHub issues, so you get notified. To build something, add it to `buildings.jso
 - `about` is written to Ember. Describe the place, not what Ember should do there, so it decides for itself.
 - `grants_wish` marks a wish as come true if it contains these words.
 - For the look, use `shapes` (boxes, cylinders and spheres; `pos` is relative to where Ember stands, `glow` makes it neon),
-  or make a proper 3D model (Blender, etc.), export it as `.glb`, put it in `site/models/`, and set
-  `"model": "models/arcade.glb"` (plus `"scale"` if it's the wrong size).
+  or a model in `site/models/`: `"model": "models/arcade.glb"`, or `"model": "models/arcade.obj"` with `"mtl": "models/arcade.mtl"`.
+- `rotation` (degrees) and `scale` turn and resize the whole building. `"autofit": false` uses a model's own size.
 
 Ember notices new buildings on its next thought, and gets excited about them.
 

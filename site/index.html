@@ -171,6 +171,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -178,7 +180,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const $ = (id) => document.getElementById(id);
 const IS_LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
-const POLL_MS = IS_LOCAL ? 4000 : 60000; // online, Ember only thinks every 15 minutes
+const POLL_MS = IS_LOCAL ? 4000 : 60000; // online, Ember only thinks every 10 minutes
+const BUILDING = IS_LOCAL && new URLSearchParams(location.search).has('build'); // builder mode: only on your own computer
 
 // ---------------------------------------------------------------------------
 // Renderer, camera, glow
@@ -448,16 +451,35 @@ function shapesBuilder(shapes) { // simple buildings described in buildings.json
     return { anchor: new THREE.Vector3(x, top + 0.8, z - 1.5) };
   };
 }
+// 3D models you make yourself, in site/models/: .glb/.gltf (Blender etc.) or .obj (Roblox Studio: File > Export Selection)
 const gltfLoader = new GLTFLoader();
-function glbBuilder(url, scale = 1) { // 3D models you make yourself (e.g. in Blender), dropped in site/models/
+function modelBuilder(building) {
   return (x, z, group) => {
-    gltfLoader.load(url, (gltf) => {
-      gltf.scene.position.set(x, 0, z - 1.5);
-      gltf.scene.scale.setScalar(scale);
-      gltf.scene.traverse((o) => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
-      group.add(gltf.scene);
-    }, undefined, () => console.warn(`Couldn't load the model ${url}`));
-    return { anchor: new THREE.Vector3(x, 3, z - 1.5) };
+    const info = { anchor: new THREE.Vector3(x, 3.4, z - 1.8) };
+    const place = (object) => {
+      object.traverse((o) => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
+      if (building.autofit !== false) { // resize it to fill a lot, sitting on the roof just behind where Ember stands
+        const size = new THREE.Box3().setFromObject(object).getSize(new THREE.Vector3());
+        object.scale.multiplyScalar(3.2 / Math.max(size.x, size.z, 0.001));
+        const fitted = new THREE.Box3().setFromObject(object), centre = fitted.getCenter(new THREE.Vector3());
+        object.position.set(x - centre.x, -fitted.min.y, z - 1.8 - centre.z);
+      }
+      group.add(object);
+      info.anchor.y = new THREE.Box3().setFromObject(object).max.y + 0.6;
+    };
+    const failed = () => console.warn(`Couldn't load the model ${building.model}`);
+    if (/\.obj$/i.test(building.model)) {
+      const loadObj = (materials) => {
+        const loader = new OBJLoader();
+        if (materials) { materials.preload(); loader.setMaterials(materials); }
+        loader.load(building.model, place, undefined, failed);
+      };
+      if (building.mtl) new MTLLoader().load(building.mtl, loadObj, undefined, () => loadObj(null));
+      else loadObj(null);
+    } else {
+      gltfLoader.load(building.model, (gltf) => place(gltf.scene), undefined, failed);
+    }
+    return info;
   };
 }
 function placeholder(x, z, group) {
@@ -477,12 +499,12 @@ function emptyLot([x, z], group) {
 
 const overlay = $('overlay');
 const labels = [];
-function addLabel(text, anchor, className) {
+function addLabel(text, anchor, className, group = null) { // anchor is relative to group, if given
   const el = document.createElement('div');
   el.className = className;
   el.textContent = text;
   overlay.prepend(el);
-  labels.push({ el, anchor });
+  labels.push({ el, anchor, group });
 }
 
 // Floating hologram of Ember's latest drawing, next to wherever it makes things
@@ -511,10 +533,32 @@ artHolo.add(artPicture);
 artHolo.visible = false;
 scene.add(artHolo);
 
+// Each building is its own group: placed at the spot where Ember stands, turned by "rotation" (degrees)
+// and resized by "scale". Builder mode drags these groups around.
 let worldGroup = null, worldKey = '', places = {}, researchAnchor = null;
-function buildWorld(s) {
+function buildBuilding(building) {
+  const group = new THREE.Group();
+  group.userData.buildingId = building.id;
+  group.position.set(building.pos[0], 0, building.pos[1]);
+  group.rotation.y = THREE.MathUtils.degToRad(building.rotation ?? 0);
+  group.scale.setScalar(building.scale ?? 1);
+  worldGroup.add(group);
+  group.updateMatrixWorld();
+  const build = /\.(glb|gltf|obj)$/i.test(building.model ?? '') ? modelBuilder(building)
+    : builders[building.model] ?? (building.shapes?.length ? shapesBuilder(building.shapes) : placeholder);
+  const info = build(0, 0, group);
+  if (info.sleep) { // where Ember curls up, turned into roof coordinates
+    const spot = group.localToWorld(new THREE.Vector3(info.sleep.x, info.sleep.y, info.sleep.z));
+    info.sleep = { x: spot.x, z: spot.z, y: spot.y };
+  }
+  places[building.id] = { ...info, group, x: building.pos[0], z: building.pos[1], building };
+  addLabel(building.name, info.anchor, 'place', group);
+  return group;
+}
+
+function buildWorld(s, force = false) {
   const key = JSON.stringify([s.buildings, s.empty_lots]);
-  if (key === worldKey) return; // nothing changed in buildings.json
+  if (key === worldKey && !force) return; // nothing changed in buildings.json
   worldKey = key;
   if (worldGroup) scene.remove(worldGroup);
   for (const { el } of labels) el.remove();
@@ -522,13 +566,7 @@ function buildWorld(s) {
   worldGroup = new THREE.Group();
   scene.add(worldGroup);
   places = {};
-  for (const building of s.buildings) {
-    const [x, z] = building.pos;
-    const build = /\.(glb|gltf)$/i.test(building.model ?? '') ? glbBuilder(building.model, building.scale)
-      : builders[building.model] ?? (building.shapes ? shapesBuilder(building.shapes) : placeholder);
-    places[building.id] = { ...build(x, z, worldGroup), x, z, building };
-    addLabel(building.name, places[building.id].anchor, 'place');
-  }
+  for (const building of s.buildings) buildBuilding(building);
   for (const lot of s.empty_lots ?? []) emptyLot(lot, worldGroup);
 
   const studio = Object.values(places).find((p) => p.building.actions?.includes('create'))
@@ -612,7 +650,7 @@ function moveTo(place) {
 // Animation loop
 // ---------------------------------------------------------------------------
 const bubble = $('bubble'), researchHolo = $('research');
-const projected = new THREE.Vector3(), bubbleAnchor = new THREE.Vector3();
+const projected = new THREE.Vector3(), bubbleAnchor = new THREE.Vector3(), labelSpot = new THREE.Vector3();
 function pinToScreen(el, worldPosition) {
   projected.copy(worldPosition).project(camera);
   const onScreen = projected.z < 1 && Math.abs(projected.x) < 1.1 && Math.abs(projected.y) < 1.1;
@@ -681,7 +719,7 @@ function animate() {
 
   controls.update();
   composer.render();
-  for (const { el, anchor } of labels) pinToScreen(el, anchor);
+  for (const { el, anchor, group } of labels) pinToScreen(el, group ? group.localToWorld(labelSpot.copy(anchor)) : anchor);
   bubbleAnchor.set(avatar.position.x, avatar.position.y + 1.3, avatar.position.z);
   pinToScreen(bubble, bubbleAnchor);
   if (researchAnchor) pinToScreen(researchHolo, researchAnchor);
@@ -1066,7 +1104,7 @@ async function refresh() {
     const response = await fetch(`data/state.json?t=${Date.now()}`, { cache: 'no-store' });
     if (!response.ok) throw new Error('no state yet');
     const s = await response.json();
-    buildWorld(s);
+    if (!BUILDING) buildWorld(s); // in builder mode, the world shows your unsaved draft instead
     if (s.gallery_key !== galleryKey) { // something new was made: fetch the gallery
       const galleryResponse = await fetch(`data/gallery.json?t=${Date.now()}`, { cache: 'no-store' });
       galleryItems = galleryResponse.ok ? await galleryResponse.json() : [];
@@ -1085,6 +1123,14 @@ async function pollForever() {
 }
 pollForever();
 setInterval(() => { if (latest) render(latest); }, 1000); // keeps the countdown ticking between polls
+
+if (BUILDING) { // builder mode lives in its own file, so the public page stays light
+  import('./builder.js').then(({ startBuilder }) => startBuilder({
+    THREE, scene, camera, renderer, controls, el, ROOF, buildWorld,
+    getWorldGroup: () => worldGroup, getPlaces: () => places, getState: () => latest,
+    builtInLooks: Object.keys(builders),
+  }));
+}
 
 document.querySelectorAll('.tabs button').forEach((button) => button.addEventListener('click', () => {
   tab = button.dataset.tab;
