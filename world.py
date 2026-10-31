@@ -724,7 +724,7 @@ def describe_situation() -> str:
     stale = rut()
 
     return f"""It is {t:%A %d %B, %H:%M} ({part_of_day}). The weather: {sky}.
-You are at: {here['name']} ({state['location']}). {here['about']}
+You are at: {here['name']} ({state['location']}). {here['about']} {friend.presence()}
 Your form: shape {state['form']['shape']}, colour {state['form']['color']}. In your words: {state['form']['about']}
 Your needs (0-100, higher is better): {needs}. {feelings} {stale}
 
@@ -981,6 +981,7 @@ def tick(brain, next_think_in_seconds: float, wake_now: bool = False, dream_now:
             if state["day"]:
                 write_diary(brain, state["day"])  # at midnight, Ember's mind sorts through the day that ended
                 write_chapter(brain)              # and once a week, looks back further
+                friend.write_diary(brain, state["day"])  # while Vega writes up its own day
             state.update(day=today, thinks_today=0, searches_today=0, wishes_today=0, form_changes_today=0, radio_today=0)
         state["born"] = state["born"] or today
         if state["costs"]["month"] != t.strftime("%Y-%m"):

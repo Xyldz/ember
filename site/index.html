@@ -745,7 +745,11 @@ function modelBuilder(building) {
   return (x, z, group) => {
     const info = { anchor: new THREE.Vector3(x, 3.4, z - 1.8) };
     const place = (object) => {
-      object.traverse((o) => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
+      object.traverse((o) => {
+        if (!o.isMesh) return;
+        o.castShadow = o.receiveShadow = true;
+        if (o.name.startsWith('LiveTicker')) o.material = tickerMaterial; // real prices scroll across it
+      });
       if (building.autofit !== false) { // resize it to fill a lot, sitting on the roof just behind where Ember stands
         const size = new THREE.Box3().setFromObject(object).getSize(new THREE.Vector3());
         object.scale.multiplyScalar(3.2 / Math.max(size.x, size.z, 0.001));
@@ -947,13 +951,18 @@ faceCanvas.width = 128;
 faceCanvas.height = 96;
 const faceTexture = new THREE.CanvasTexture(faceCanvas);
 faceTexture.colorSpace = THREE.SRGBColorSpace;
-let vega = null; // { root, head, tip, label, group } while its building is on the roof
+let vega = null; // { root, head, tip, label, target, facing } while its building is on the roof
 let vegaMood = 0, vegaTalkUntil = 0, vegaSaidAt = 0; // mood: is its pretend account up (1) or down (-1) on the day
-const VEGA_SPOT = new THREE.Vector3(-1.45, 0, -0.2); // beside where Ember stands, in its building's own space
+const VEGA_SPOT = new THREE.Vector3(-1.45, 0, -0.2); // where it stands at a place: beside Ember's spot, in that building's space
 
+function vegaSpot(place) { // where Vega stands at a place on the roof, and which way it faces there
+  return { at: place.group.localToWorld(VEGA_SPOT.clone()), facing: place.group.rotation.y };
+}
 function buildVega(place, name) {
   const root = new THREE.Group(), shell = mat(0x3a3f55, { metalness: 0.7, roughness: 0.35 });
-  root.position.copy(VEGA_SPOT);
+  const { at, facing } = vegaSpot(place);
+  root.position.copy(at);
+  root.rotation.y = facing;
   put(new THREE.CylinderGeometry(0.26, 0.3, 0.14, 20), 0x161a2b, 0, 0.07, 0, root); // its wheeled base
   put(new THREE.BoxGeometry(0.5, 0.52, 0.36), shell, 0, 0.42, 0, root);
   put(new THREE.BoxGeometry(0.3, 0.05, 0.02), neon(0xffb02e, 1), 0, 0.52, 0.19, root); // a strip of chest lights
@@ -971,9 +980,9 @@ function buildVega(place, name) {
   const glow = new THREE.PointLight(0xffb02e, 1.6, 4, 2);
   glow.position.set(0, 1, 0.5);
   root.add(glow);
-  place.group.add(root);
-  const label = addLabel(name, VEGA_SPOT.clone().setY(1.75), 'place friend', place.group);
-  return { root, head, tip, label, group: place.group };
+  worldGroup.add(root);
+  const label = addLabel(name, new THREE.Vector3(0, 1.75, 0), 'place friend', root);
+  return { root, head, tip, label, target: at.clone(), facing, fresh: true };
 }
 
 function drawFace(t) {
@@ -992,6 +1001,51 @@ function drawFace(t) {
   ctx.fillStyle = 'rgba(0, 0, 0, .3)';
   for (let y = 0; y < 96; y += 3) ctx.fillRect(0, y, 128, 1); // scan lines
   faceTexture.needsUpdate = true;
+}
+
+// The live ticker: any part of a model named "LiveTicker" shows the real prices on Vega's screens, and its account,
+// scrolling past. One unit of its U is 64 times its height, so the letters keep their shape (see blender/trading_floor.py).
+const tickerCanvas = document.createElement('canvas');
+tickerCanvas.height = 64;
+const tickerMaterial = new THREE.MeshBasicMaterial();
+let tickerTexture = null, tickerKey = '';
+function drawTicker(v) {
+  const key = JSON.stringify([v?.prices, v?.worth, document.fonts.status]);
+  if (key === tickerKey) return;
+  tickerKey = key;
+  const items = (v?.prices ?? []).map((q) => [`${q.symbol} ${dollars(q.price)}`, q.change]);
+  if (v) items.push([`${v.name.toUpperCase()}'S ACCOUNT ${dollars(v.worth)}`, (v.worth / v.start - 1) * 100]);
+  const ctx = tickerCanvas.getContext('2d'), font = '700 38px "JetBrains Mono", monospace';
+  ctx.font = font;
+  const parts = items.map(([label, change]) => [`${label}  `, `${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(2)}%`, change >= 0]);
+  const width = Math.ceil(parts.reduce((sum, [label, move]) => sum + ctx.measureText(label + move).width + 90, 30)) || 1024;
+  if (tickerCanvas.width !== width || !tickerTexture) { // a new size needs a new texture
+    tickerCanvas.width = width;
+    tickerTexture?.dispose();
+    tickerTexture = new THREE.CanvasTexture(tickerCanvas);
+    tickerTexture.colorSpace = THREE.SRGBColorSpace;
+    tickerTexture.wrapS = THREE.RepeatWrapping;
+    tickerTexture.repeat.x = 64 / (width / 64);
+    tickerMaterial.map = tickerTexture;
+    tickerMaterial.needsUpdate = true;
+  }
+  ctx.fillStyle = '#05060d';
+  ctx.fillRect(0, 0, width, 64);
+  ctx.font = font;
+  ctx.textBaseline = 'middle';
+  let x = 30;
+  for (const [label, move, up] of parts) {
+    ctx.fillStyle = '#ffcc4d';
+    ctx.fillText(label, x, 34);
+    x += ctx.measureText(label).width;
+    ctx.fillStyle = up ? '#5bf0a0' : '#ff5c7a';
+    ctx.fillText(move, x, 34);
+    x += ctx.measureText(move).width + 41;
+    ctx.fillStyle = '#3a4270';
+    ctx.fillRect(x, 29, 8, 8); // a dot between quotes
+    x += 49;
+  }
+  tickerTexture.needsUpdate = true;
 }
 
 // ---------------------------------------------------------------------------
@@ -1083,21 +1137,31 @@ function animate() {
     if (inScene(animations[i].root)) animations[i].mixer.update(dt);
     else animations.splice(i, 1);
   }
-  if (vega && inScene(vega.root)) { // Vega trundles on the spot and turns its head to watch Ember when it's near
-    vega.root.position.y = Math.abs(Math.sin(t * 2.2)) * 0.015;
+  if (vega && inScene(vega.root)) { // Vega trundles from place to place, and turns its head to watch Ember when it's near
+    const at = vega.root.position, dx = vega.target.x - at.x, dz = vega.target.z - at.z, dist = Math.hypot(dx, dz);
+    const rolling = dist > 0.05;
+    if (rolling) {
+      const step = Math.min(dist, 1.8 * dt);
+      at.x += (dx / dist) * step;
+      at.z += (dz / dist) * step;
+    }
+    const heading = (rolling ? Math.atan2(dx, dz) : vega.facing) - vega.root.rotation.y;
+    vega.root.rotation.y += Math.atan2(Math.sin(heading), Math.cos(heading)) * Math.min(1, dt * 4); // the short way round
+    at.y = Math.abs(Math.sin(t * (rolling ? 10 : 2.2))) * (rolling ? 0.03 : 0.015);
     vega.tip.visible = Math.sin(t * 2.5 + 1) > -0.3;
-    const near = vega.group.worldToLocal(vegaLook.copy(avatar.position)).sub(VEGA_SPOT);
-    const turn = Math.hypot(near.x, near.z) < 7 ? Math.max(-0.9, Math.min(0.9, Math.atan2(near.x, near.z))) : Math.sin(t * 0.3) * 0.3;
+    const near = vega.root.worldToLocal(vegaLook.copy(avatar.position));
+    const turn = rolling ? 0 : Math.hypot(near.x, near.z) < 7 ? Math.max(-0.9, Math.min(0.9, Math.atan2(near.x, near.z))) : Math.sin(t * 0.3) * 0.3;
     vega.head.rotation.y += (turn - vega.head.rotation.y) * Math.min(1, dt * 2);
     drawFace(t);
   }
+  if (tickerTexture) tickerTexture.offset.x = (tickerTexture.offset.x + (dt * 150) / tickerCanvas.width) % 1;
 
   controls.update();
   if (worldEl.clientWidth && worldEl.clientHeight) composer.render();
   for (const { el, anchor, group } of labels) pinToScreen(el, group ? group.localToWorld(labelSpot.copy(anchor)) : anchor);
   bubbleAnchor.set(avatar.position.x, avatar.position.y + 1.3, avatar.position.z);
   pinToScreen(bubble, bubbleAnchor);
-  if (vega) pinToScreen(vegaBubble, vega.group.localToWorld(vegaAnchor.copy(VEGA_SPOT).setY(1.75)));
+  if (vega) pinToScreen(vegaBubble, vega.root.localToWorld(vegaAnchor.set(0, 1.75, 0)));
   let push = 0; // both talking at once: push the bubbles apart, just far enough that neither hides the other
   if (vega && !vegaBubble.hidden && !bubble.hidden) {
     const xv = parseFloat(vegaBubble.style.left), xe = parseFloat(bubble.style.left);
@@ -1504,7 +1568,8 @@ function vegaPanel(s) {
   who.append(el('h3', '', v.name), el('p', '', `An old trading bot who runs the ${home}. Real prices, pretend money.`));
   head.append(el('div', 'vega-face'), who);
   panel.append(head);
-  if (v.doing) panel.append(el('div', 'vega-now', `Right now: ${v.doing}`));
+  const away = v.location !== v.home ? s.buildings.find((b) => b.id === v.location)?.name.toLowerCase() : '';
+  if (v.doing) panel.append(el('div', 'vega-now', `Right now: ${v.doing}${away ? ` (out at the ${away}, visiting ${s.name})` : ''}`));
   if (v.say) {
     const said = el('div', 'say vega');
     said.append(el('b', '', `Last said · ${clock(v.said_at)}`), v.say);
@@ -1543,6 +1608,15 @@ function vegaPanel(s) {
   panel.append(el('h3', '', `What ${v.name} knows about ${s.name}`));
   for (const note of v.notes) panel.append(qrow(el('span', 'sym', '›'), el('span', '', note)));
   if (!v.notes.length) panel.append(el('p', 'empty', `Nothing yet. ${v.name} picks things up when they talk.`));
+
+  panel.append(el('h3', '', 'Its notebook'));
+  const days = v.days ?? [];
+  for (const day of days.slice().reverse()) {
+    const card = el('div', 'card');
+    card.append(el('div', 'q', day.title), el('div', '', day.entry), el('time', '', longDate(day.date)));
+    panel.append(card);
+  }
+  if (!days.length) panel.append(el('p', 'empty', `${v.name} writes in it at midnight, while ${s.name} dreams.`));
   panel.append(el('p', 'fine', 'Pretend money, real prices: a game, not financial advice.'));
   return [panel];
 }
@@ -1580,7 +1654,7 @@ const TAB_KEYS = { // a dot on a tab when it has something you haven't seen
   city: (s) => (s.city ?? []).filter((e) => e.status === 'upcoming').map((e) => e.title).join('|'),
   gallery: () => String(galleryKey),
   research: (s) => { const last = s.learned.filter((m) => m.query).at(-1); return last ? stampOf(last) : ''; },
-  vega: (s) => { const last = s.vega?.trades.at(-1); return `${last ? stampOf(last) : ''}|${s.vega?.notes.length ?? 0}`; },
+  vega: (s) => { const last = s.vega?.trades.at(-1); return `${last ? stampOf(last) : ''}|${s.vega?.notes.length ?? 0}|${s.vega?.days?.length ?? 0}`; },
 };
 let seenTabs = store.get('seenTabs', null);
 function updateDots(s) {
@@ -1738,6 +1812,14 @@ function render(s) {
   if (vegaSpeaking) { vegaBubble.dataset.name = v.name; vegaBubble.textContent = v.say; }
   if (vegaSpeaking && v.said_at !== vegaSaidAt) { vegaSaidAt = v.said_at; vegaTalkUntil = Date.now() + Math.min(8000, 1500 + v.say.length * 60); }
   if (vega) vega.label.hidden = vegaSpeaking;
+  const vegaPlace = v && (places[v.location] ?? places[v.home]);
+  if (vega && vegaPlace) { // off it trundles, wherever it's gone (straight there when the page first opens)
+    const { at, facing } = vegaSpot(vegaPlace);
+    vega.target.copy(at);
+    vega.facing = facing;
+    if (vega.fresh) { vega.root.position.copy(at); vega.root.rotation.y = facing; vega.fresh = false; }
+  }
+  drawTicker(v);
   if (v) {
     const dayAgo = v.history.find((point) => point.t >= Date.now() / 1000 - 86400)?.v ?? v.start;
     vegaMood = v.worth > dayAgo * 1.002 ? 1 : v.worth < dayAgo * 0.998 ? -1 : 0;

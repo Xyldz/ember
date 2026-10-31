@@ -12,8 +12,9 @@ Other kinds of request happen only now and then:
     and notices things about itself. This uses a smarter model, because it shapes who Ember becomes.
   - chapter(): once a week, a deeper look back at who Ember has been becoming (smarter model too)
   - plan_events(): now and then, invents what's on in the city for the coming week
-  - vega_chat() and vega_trade(): Ember's friend Vega, an old trading bot (see friend.py), answering
-    Ember when it's at the trading floor, and sitting down to trade a few times a day
+  - vega_chat(), vega_trade() and vega_diary(): Ember's friend Vega, an old trading bot (see friend.py),
+    answering Ember when they're together, sitting down to trade a few times a day, and writing in its
+    notebook each night (on the smarter model, like Ember's dream)
 
 Every request's token usage is added up, so the page can show what Ember costs to run.
 """
@@ -205,10 +206,26 @@ def vega_chat_schema(symbols: list[str]) -> dict:
             "remember": {"type": "string", "description": "Something new you just learned about Ember that's worth "
                                                           "remembering, as one short line, or empty."},
             "trades": trades_schema(symbols, 1),
+            "head_back": {"type": "boolean", "description": "When you're out visiting: true if you're heading back to "
+                                                           "your desk now. Otherwise false."},
         },
-        "required": ["say", "doing", "remember", "trades"],
+        "required": ["say", "doing", "remember", "trades", "head_back"],
         "additionalProperties": False,
     }
+
+
+VEGA_DIARY_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "title": {"type": "string", "description": "One short line that sums up your day, in your own voice."},
+        "entry": {"type": "string", "description": "Today's entry: 3 to 5 sentences, first person, in your own voice."},
+        "about_ember": {"type": "array", "items": {"type": "string"},
+                        "description": "0 to 2 new things you've realised about Ember today that aren't already in "
+                                       "your notes, one short line each. Often empty."},
+    },
+    "required": ["title", "entry", "about_ember"],
+    "additionalProperties": False,
+}
 
 
 def vega_trade_schema(symbols: list[str]) -> dict:
@@ -534,6 +551,23 @@ Recently on air (don't repeat these):
     def vega_trade(self, situation: str, symbols: list[str]) -> dict:
         return self.ask_json(situation, vega_trade_schema(symbols), "low", system=VEGA_SYSTEM)
 
+    def vega_diary(self, day_log: str, notes: str, account: str) -> dict:
+        prompt = f"""It's midnight, the city's still glowing below, and before you dim your screens you write in the battered
+notebook you keep in your desk drawer.
+
+Your pretend account today: {account}.
+
+What you know about Ember:
+{notes}
+
+What happened today (in order):
+{day_log}
+
+Write today's entry, honestly and in your own voice: the markets, the roof, and Ember. Then note anything new
+you've realised about Ember in about_ember."""
+        # Once a night, so the smarter model is worth it, like Ember's dream
+        return self.ask_json(prompt, VEGA_DIARY_SCHEMA, "medium", system=VEGA_SYSTEM, model=REFLECT_MODEL)
+
 
 class DemoBrain:
     """A stand-in with no AI and no cost: picks random actions so you can watch the world move."""
@@ -636,7 +670,12 @@ class DemoBrain:
     def vega_chat(self, situation: str, symbols: list[str]) -> dict:
         return {"say": random.choice(self.VEGA_LINES + [""]), "doing": random.choice(["polishing the lucky coin",
                 "squinting at the screens", "humming along to old jazz"]),
-                "remember": random.choice([""] * 4 + ["Ember likes watching the rain."]), "trades": []}
+                "remember": random.choice([""] * 4 + ["Ember likes watching the rain."]), "trades": [],
+                "head_back": random.random() < 0.3}
+
+    def vega_diary(self, day_log: str, notes: str, account: str) -> dict:
+        return {"title": "(Demo.) Pigeons, sevens and the kid", "about_ember": [],
+                "entry": f"(Demo mode.) The screens hummed all day and {account}. The kid came by and we watched the rain."}
 
     def vega_trade(self, situation: str, symbols: list[str]) -> dict:
         trades = [{"side": random.choice(["buy", "buy", "sell"]), "symbol": random.choice(symbols),

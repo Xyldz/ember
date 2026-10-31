@@ -242,6 +242,7 @@ def make_materials():
     M["dark"] = material("Dark metal", (0.035, 0.038, 0.05), metallic=0.6, roughness=0.45)
     M["steel"] = material("Steel", (0.3, 0.32, 0.36), metallic=0.8, roughness=0.35)
     M["panel"] = material("Sign backing", (0.02, 0.02, 0.03), roughness=0.4)
+    M["live ticker"] = material("Live ticker", (0.02, 0.02, 0.03), roughness=0.4)  # Ember's site paints the prices on
     M["white"] = material("White metal", (0.75, 0.77, 0.8), metallic=0.3, roughness=0.35)
     M["solar"] = material("Solar panels", (0.02, 0.04, 0.14), metallic=0.4, roughness=0.15)
     M["leaves"] = material("Leaves", (0.05, 0.35, 0.08), roughness=0.7)
@@ -477,6 +478,15 @@ def build():
         colour = M["green"] if change.startswith("+") else M["red"]
         text(f"Ticker {name}", name, 0.17, Vector((x, y, band)) - along * 0.3, M["amber"], latin, rotation=(math.pi / 2, 0, turn))
         text(f"Ticker {name} change", change, 0.17, Vector((x, y, band)) + along * 0.32, colour, latin, rotation=(math.pi / 2, 0, turn))
+    # The live ticker: on Ember's roof these strips show real prices and Vega's account scrolling past (the site
+    # finds them by their name, "LiveTicker"). One unit of U is 64 times a strip's height, so the letters keep their
+    # shape on any length of strip. Renders here don't show them, so the made-up quotes stay in the pictures.
+    for width, location, rotation in ((W, (0, FRONT - 0.13, band), (0, 0, 0)),
+                                      (D - 0.4, (W / 2 + 0.13, -0.15, band), (0, 0, math.pi / 2))):
+        strip = picture("LiveTicker", width, 0.3, location, M["live ticker"], rotation=rotation, group="Signs")
+        for loop in strip.data.uv_layers[0].data:
+            loop.uv.x *= width / 0.3 / 64
+        strip.hide_render = True
 
     bx, bz, bw, bh = 0.75, UP + 1.25, 3.5, 1.45
     box("Big screen frame", (bw + 0.16, 0.12, bh + 0.16), (bx, FRONT - 0.06, bz), M["dark"], group="Signs")

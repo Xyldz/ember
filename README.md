@@ -104,16 +104,22 @@ as soon as you open it.
 Vega is an old trading bot who runs the trading floor on the roof, so Ember has someone to talk to.
 It has its own fixed character (written in `brain.py`), and it remembers things about Ember as they get to know each other.
 
-- **Talking**: whenever Ember is at the trading floor, Vega hears whatever Ember says out loud and answers (or doesn't).
-  Ember hears Vega's replies on its next thought. A couple of times a day Vega may also shout across the roof to Ember.
+- **Talking**: whenever Ember and Vega are in the same place, Vega hears whatever Ember says out loud and answers
+  (or doesn't). Ember hears Vega's replies on its next thought. A couple of times a day Vega may also shout across the roof.
+- **Visiting**: now and then (up to 3 times a day, when they haven't talked for a couple of hours) Vega trundles over to
+  wherever Ember is, likelier when something's on in the city there, so they can watch it together. It heads back when
+  Ember leaves, after about 40 minutes, or when it's time to trade.
+- **Notebook**: at midnight, while Ember dreams, Vega writes up its day: the markets, the roof and Ember
+  (on Sonnet, like Ember's dream: about a cent a night).
 - **Paper trading**: Vega trades **real prices with pretend money**: a paper account that started with $10,000.
   There's no real money, exchange account or API key anywhere. Prices come free from CoinGecko (crypto) and Yahoo Finance
   (stocks); if they can't be reached, the last prices stay on its screens and nothing gets traded.
   It sits down to trade at 9:00, 13:00, 15:00, 18:00 and 21:00 London time. Stocks only trade while New York's market is open.
-- **On the site**: Vega stands outside the trading floor, its amber face blinking, mouthing what it says. The **Vega** tab
-  shows its account, what's on its screens, its trades, and what it knows about Ember.
-- **Cost**: Vega only thinks when Ember is with it (up to 60 replies a day) and at its trading sessions,
-  each a tiny Haiku call: well under $1 a month.
+- **On the site**: Vega trundles about the roof, its amber face blinking, mouthing what it says. The ticker round the
+  trading floor scrolls the real prices and Vega's account (any model part named `LiveTicker` does this). The **Vega** tab
+  shows its account, what's on its screens, its trades, its notebook, and what it knows about Ember.
+- **Cost**: Vega only thinks when Ember is with it (up to 60 replies a day) and at its trading sessions, each a tiny
+  Haiku call, plus its nightly notebook: well under $1 a month.
 - Vega lives at whichever building has the `"friend"` action ("Vega's desk" in builder mode). Change the watchlist,
   the starting money or the session times at the top of `friend.py`.
 
