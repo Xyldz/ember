@@ -1568,7 +1568,7 @@ const ICONS = {
   create: '🎨', learn: '📖', explore: '🧭', socialise: '📡', reflect: '🌀', levelup: '🏅', creation: '🖼️',
   wish: '🌠', build: '🏗️', form: '✨', diary: '📓', self: '🪞', forgot: '🌫️', sleep: '💤', wake: '☀️',
   goal: '🎯', weather: '🌦️', city: '📰', event: '🎆', missed: '🕳️', chapter: '📖', rut: '🔁', radio: '📻',
-  friend: '🤖', trade: '💹',
+  friend: '🤖', trade: '💹', together: '🤝',
 };
 const clock = (seconds) => new Date(seconds * 1000).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 const dayClock = (seconds) => new Date(seconds * 1000).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
@@ -1765,7 +1765,7 @@ function noteCard(entry, footer = '') {
 
 // Today: the log grouped into moments, each one a thought and whatever it led to
 const ACTIVITY_KINDS = new Set(['rest', 'play', 'create', 'learn', 'explore', 'socialise', 'reflect']);
-const BIG_KINDS = new Set(['levelup', 'hobby', 'goal', 'wish', 'form', 'build', 'creation', 'self', 'diary', 'chapter']);
+const BIG_KINDS = new Set(['levelup', 'hobby', 'goal', 'wish', 'form', 'build', 'creation', 'self', 'diary', 'chapter', 'together']);
 const SOFT_KINDS = new Set(['weather', 'city', 'sleep', 'wake', 'missed', 'rut', 'forgot', 'search', 'event']);
 const minuteOf = (e) => { const [h, m] = e.time.split(':').map(Number); return h * 60 + m; };
 const stampOf = (e) => `${e.date ?? ''} ${e.time}`;
@@ -1912,12 +1912,12 @@ function renderVega(s) {
 }
 
 // Vega's tabs
-const OWN_ICONS = { move: '🛞', power: '💤', goal: '🎯', notebook: '📓', doing: '·' };
+const OWN_ICONS = { move: '🛞', power: '💤', goal: '🎯', notebook: '📓', doing: '·', together: '🤝' };
 function vegaLine(e) {
   if (e.kind === 'own-thought') return el('div', 'thought', `${e.time} · “${e.text}”`);
   if (e.kind === 'own-said') return el('div', 'mutter', `${e.time} · ${e.text}`);
   if (e.kind.startsWith('own-')) { // the rest of its own day: pottering, wandering, powering down, goals
-    const own = e.kind.slice(4), row = el('div', `line ${own === 'goal' || own === 'notebook' ? 'big' : 'soft'}`), text = el('span', '', `${e.text} `);
+    const own = e.kind.slice(4), row = el('div', `line ${['goal', 'notebook', 'together'].includes(own) ? 'big' : 'soft'}`), text = el('span', '', `${e.text} `);
     text.append(el('span', 'stamp', e.time));
     row.append(el('span', 'ic', OWN_ICONS[own] ?? '·'), text);
     return row;

@@ -116,6 +116,9 @@ It has its own fixed character (written in `brain.py`), and it remembers things 
 
 - **Talking**: whenever Ember and Vega are in the same place, Vega hears whatever Ember says out loud and answers
   (or doesn't). Ember hears Vega's replies on its next thought. A couple of times a day Vega may also shout across the roof.
+- **Together**: when they're in the same place, Vega may join in with whatever Ember's doing: a hand of cards,
+  watching something on in the city, showing it the charts. These shared moments lift Ember more than talking does,
+  and Ember learns that over time.
 - **Its own life**: every tick, like Ember, Vega thinks for itself: it has moods, wanders the roof on its own business,
   talks to itself and the pigeons, sets itself little goals, and powers down when its battery runs flat (waking for its
   trading sessions). Its own day stays on its side of the panel; Ember can see where it is and how it seems.

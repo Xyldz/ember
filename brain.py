@@ -215,8 +215,12 @@ def vega_chat_schema(symbols: list[str]) -> dict:
             "trades": trades_schema(symbols, 1),
             "head_back": {"type": "boolean", "description": "When you're out visiting: true if you're heading back to "
                                                            "your desk now. Otherwise false."},
+            "together": {"type": "string", "description": "If you join in with what Ember's doing, or the two of you "
+                                                          "do something together right now (a hand of cards, watching "
+                                                          "something, you showing it the charts...): what, and how it "
+                                                          "goes, in a few words. Otherwise empty."},
         },
-        "required": ["say", "doing", "remember", "trades", "head_back"],
+        "required": ["say", "doing", "remember", "trades", "head_back", "together"],
         "additionalProperties": False,
     }
 
@@ -702,7 +706,8 @@ class DemoBrain:
         return {"say": random.choice(self.VEGA_LINES + [""]), "doing": random.choice(["polishing the lucky coin",
                 "squinting at the screens", "humming along to old jazz"]),
                 "remember": random.choice([""] * 4 + ["Ember likes watching the rain."]), "trades": [],
-                "head_back": random.random() < 0.3}
+                "head_back": random.random() < 0.3,
+                "together": random.choice(["", "a hand of Sevens: the kid won, the deck's rigged", "watching the drones"])}
 
     VEGA_DOINGS = ["feeding the pigeons", "tinkering with a loose panel", "fiddling with the radio dial",
                    "polishing the lucky coin", "watching the flying cars", "humming old jazz"]

@@ -302,6 +302,9 @@ Your recent trades (newest last):
 What you know about Ember:
 {notes}
 
+What's on in the city:
+{world.city_text()}
+
 {ember_text()}
 
 What you and Ember have said lately (newest last):
@@ -543,6 +546,17 @@ def after_ember_thinks(brain, decision: dict, came_from: str) -> None:
         for order in reply["trades"][:1]:  # Ember might talk it into something
             trade(order, source="chat")
     remember(reply["remember"].strip())
+    together = reply["together"].strip()
+    if together and not s["asleep"]:  # doing something together counts for more than talking
+        changes = {}
+        for need, boost in {"connection": 6, "joy": 3}.items():
+            before = s["needs"][need]
+            world.change_need(need, boost)
+            changes[need] = s["needs"][need] - before
+        world.record_experience("together", where(), changes)
+        world.log_event(f"{s['name']} and {NAME}: {together}", "together")
+        log_own(f"With Ember: {together}", "together")
+        friend["doing"] = together
     if reply["say"].strip():
         speak(reply["say"].strip())
     if reply["head_back"] and where() != home():
@@ -610,6 +624,5 @@ def presence() -> str:
         return ""
     if me()["asleep"]:
         return f"{NAME} is here too, powered down and recharging."
-    if where() == home():
-        return f"{NAME} is here with you."
-    return f"{NAME} has trundled over from the {place_name(home())} and is here with you."
+    here = "is here with you" if where() == home() else f"has trundled over from the {place_name(home())} and is here with you"
+    return f"{NAME} {here}: whatever you do here, it might join in."

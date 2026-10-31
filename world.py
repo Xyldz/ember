@@ -47,7 +47,7 @@ EFFECTS = {
 }
 KIND_WORDS = {"rest": "Resting", "sleep": "Sleeping", "play": "Playing", "create": "Making things", "learn": "Studying",
               "explore": "Exploring", "socialise": "Talking to things", "reflect": "Sitting with my thoughts",
-              "search": "Searching the internet", "event": "Watching what's on in the city"}
+              "search": "Searching the internet", "event": "Watching what's on in the city", "together": "Doing things with Vega"}
 FEELINGS = {"charge": "Running low on charge", "curiosity": "Bored, craving something new", "joy": "Feeling flat",
             "calm": "Restless and wound up", "connection": "Feeling lonely"}
 BELIEF_WORDS = {  # (when it goes up, when it goes down)
