@@ -122,6 +122,9 @@ It has its own fixed character (written in `brain.py`), and it remembers things 
 - **Its own life**: every tick, like Ember, Vega thinks for itself: it has moods, wanders the roof on its own business,
   talks to itself and the pigeons, sets itself little goals, and powers down when its battery runs flat (waking for its
   trading sessions). Its own day stays on its side of the panel; Ember can see where it is and how it seems.
+- **Notes on its desk**: open a GitHub issue titled `Note for Vega: ...` (or tap "Leave Vega a note" on its side of the
+  panel). It goes on Vega's desk; Vega reads it next time it's there and decides for itself what to make of it, and its
+  answer is posted on the issue, which then closes. Only issues opened by the repository's owner count.
 - **Wishes**: Vega can wish for things to be built too (at most one a day). Like Ember's, they're filed as GitHub issues
   and come true when a building has `"grants_wish"` with words from the wish.
 - **Notebook**: at midnight, while Ember dreams, Vega writes up its day: the markets, the roof and Ember

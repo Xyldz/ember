@@ -52,6 +52,7 @@ def new_friend() -> dict:
             "thought": "", "thought_time": "", "mood": "content", "battery": 100.0, "asleep": False,
             "goals": [], "log": [],  # its own little goals, and its own day (kept apart from Ember's feed)
             "wishes": [], "wishes_today": 0,  # things it'd love built, filed as GitHub issues like Ember's
+            "desk": [],  # notes the builder leaves it (GitHub issues, see tick_once.py)
             "since": "", "location": "", "visit_since": 0, "last_talk": 0, "last_session": "", "day": "",
             "replies_today": 0, "calls_today": 0, "thinks_today": 0}
 
@@ -424,10 +425,19 @@ What you've been up to lately (newest last):
 {log}
 
 It's a moment to yourself. What do you do?"""
+    note = next((n for n in friend["desk"] if not n["read"]), None)
+    reading = note if note and where() == home() else None
+    if reading:
+        moment += f'\n\nThere\'s a note on your desk from the builder (whoever builds things up here): "{note["text"]}"'
+    elif note:
+        moment += f"\n\nThere's a note waiting on your desk at the {place_name(home())}. You'll see it when you're back."
     try:
         plan = brain.vega_live(situation(moment), list(world.buildings), MOODS)
     except BRAIN_ERRORS:
         return
+    if reading:  # its reaction goes back to whoever left the note
+        reading.update(read=True, reply=plan["say"].strip() or plan["thought"].strip())
+        log_own(f'Read a note from the builder: "{reading["text"][:160]}"', "note")
     t = world.now()
     friend.update(thought=plan["thought"].strip(), thought_time=t.strftime("%H:%M"),
                   mood=plan["mood"] if plan["mood"] in MOODS else friend["mood"],

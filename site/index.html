@@ -97,6 +97,8 @@
   #panel.vega .day { color: #b8935a; }
   .tabs.six { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   #v-goals h2 { margin: 10px 0 2px; }
+  .note-link { display: inline-block; margin: 2px 0 4px; color: var(--vega); font-size: 11px; font-weight: 700; text-decoration: none; }
+  .note-link[hidden] { display: none; }
   .acct { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center; }
   .acct .worth { font-size: 20px; }
   .alloc { display: flex; height: 8px; margin: 8px 0 2px; overflow: hidden; border-radius: 4px; background: var(--line); }
@@ -424,6 +426,7 @@
       <div id="v-alloc"></div>
       <div id="v-goals"></div>
       <div class="section"><h2>Wishlist</h2><div id="v-wishes"></div></div>
+      <a id="v-note" class="note-link" target="_blank" rel="noopener noreferrer" hidden>📌 Leave Vega a note on its desk</a>
     </div>
     <nav id="vega-tabs" class="tabs six" hidden>
       <button data-tab="v-today"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Today</button>
@@ -1912,12 +1915,12 @@ function renderVega(s) {
 }
 
 // Vega's tabs
-const OWN_ICONS = { move: '🛞', power: '💤', goal: '🎯', notebook: '📓', doing: '·', together: '🤝' };
+const OWN_ICONS = { move: '🛞', power: '💤', goal: '🎯', notebook: '📓', doing: '·', together: '🤝', note: '📌' };
 function vegaLine(e) {
   if (e.kind === 'own-thought') return el('div', 'thought', `${e.time} · “${e.text}”`);
   if (e.kind === 'own-said') return el('div', 'mutter', `${e.time} · ${e.text}`);
   if (e.kind.startsWith('own-')) { // the rest of its own day: pottering, wandering, powering down, goals
-    const own = e.kind.slice(4), row = el('div', `line ${['goal', 'notebook', 'together'].includes(own) ? 'big' : 'soft'}`), text = el('span', '', `${e.text} `);
+    const own = e.kind.slice(4), row = el('div', `line ${['goal', 'notebook', 'together', 'note'].includes(own) ? 'big' : 'soft'}`), text = el('span', '', `${e.text} `);
     text.append(el('span', 'stamp', e.time));
     row.append(el('span', 'ic', OWN_ICONS[own] ?? '·'), text);
     return row;
@@ -2370,6 +2373,10 @@ function setWho(side) {
   selectTab(lastTab[who]);
 }
 document.querySelectorAll('#switch button').forEach((button) => button.addEventListener('click', () => setWho(button.dataset.who)));
+if (location.hostname.endsWith('.github.io')) { // a note for Vega is an issue on this site's own repository (see tick_once.py)
+  $('v-note').href = `https://github.com/${location.hostname.split('.')[0]}/${location.pathname.split('/')[1]}/issues/new?title=${encodeURIComponent('Note for Vega: ')}`;
+  $('v-note').hidden = false;
+}
 
 // The camera bar: follow Ember or Vega (or not), back to the whole roof, and real sky or night all the time
 document.querySelectorAll('#cam [data-follow]').forEach((button) => button.addEventListener('click', () => {
