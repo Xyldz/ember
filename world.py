@@ -839,7 +839,7 @@ def apply_decision(decision: dict, brain) -> None:
             state["searches_today"] += 1
             research(brain, query, hobby)
 
-    friend.after_ember_thinks(brain, decision, arrived=state["location"] != here)
+    friend.after_ember_thinks(brain, decision, came_from=here)
 
 
 def research(brain, query: str, hobby: dict | None) -> None:

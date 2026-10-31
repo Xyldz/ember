@@ -389,11 +389,16 @@ def remember(note: str) -> None:
         friend["notes"] = (friend["notes"] + [note])[-MAX_NOTES:]
 
 
-def after_ember_thinks(brain, decision: dict, arrived: bool) -> None:
+def after_ember_thinks(brain, decision: dict, came_from: str) -> None:
     """If Ember and Vega are in the same place, Vega hears whatever Ember said and answers (or doesn't)."""
     friend, s = me(), world.state
     if not friend["arrived"]:
         return
+    said, arrived = decision["say"].strip(), s["location"] != came_from
+    heard = bool(said) and came_from == where()  # said in front of Vega, perhaps on the way out
+    if heard:
+        friend["chat"] = (friend["chat"] + [{**stamp(), "who": "ember", "text": said}])[-20:]
+        friend["last_talk"] = time.time()
     if s["location"] != where() and where() != home():  # Ember wandered off while Vega was visiting
         if s["location"] != home():
             go_home()
@@ -402,8 +407,7 @@ def after_ember_thinks(brain, decision: dict, arrived: bool) -> None:
         world.log_event(f"{NAME} trundled back to the {place_name(home())} alongside Ember.", "friend")
     if s["location"] != where():
         return
-    said = decision["say"].strip()
-    if said:
+    if said and not heard:  # said on arriving
         friend["chat"] = (friend["chat"] + [{**stamp(), "who": "ember", "text": said}])[-20:]
         friend["last_talk"] = time.time()
     if brain is None or friend["replies_today"] >= MAX_REPLIES_PER_DAY:
