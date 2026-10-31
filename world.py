@@ -56,7 +56,8 @@ BELIEF_WORDS = {  # (when it goes up, when it goes down)
 }
 SECTION_TITLES = {"what_im_like": "What I'm like", "what_i_care_about": "What I care about",
                   "what_scares_me": "What scares me", "my_habits": "My habits"}
-ACTION_WORDS = {"search": "search the internet", "rest": "recharge faster"}
+ACTION_WORDS = {"search": "search the internet", "rest": "recharge faster", "radio": "hear what's on the radio"}
+MAX_RADIO_PER_DAY = 30  # after that, only static (each broadcast is a small Haiku call)
 PRACTICE_XP = 10  # doubled if Ember looked something up about it first
 RESEARCH_XP = 5
 MAX_WISHES_PER_DAY = 2
@@ -113,7 +114,7 @@ def new_state() -> dict:
         "city": [], "city_planned": "",  # what's on in the city
         "routine": [], "in_rut": False,  # recent kind|place pairs, for spotting ruts
         "recent_kinds": [], "asleep": False, "sleep": None, "status": "", "tick_seconds": 600,
-        "day": "", "thinks_today": 0, "searches_today": 0, "wishes_today": 0, "form_changes_today": 0,
+        "day": "", "thinks_today": 0, "searches_today": 0, "wishes_today": 0, "form_changes_today": 0, "radio_today": 0,
         "costs": {"month": "", "usd": 0.0, "total_usd": 0.0},
         "tick_started_at": 0, "next_think_at": 0,
     }
@@ -814,6 +815,8 @@ def apply_decision(decision: dict, brain) -> None:
         state["activity"] = activity[:1].upper() + activity[1:]
         log_event(state["activity"] + ".", kind)
         live_through(kind)
+        if can(here, "radio"):
+            tune_in(brain)
         if hobby:
             add_xp(hobby, PRACTICE_XP * (2 if hobby["inspired"] else 1))
             hobby["inspired"] = False
@@ -852,6 +855,23 @@ def research(brain, query: str, hobby: dict | None) -> None:
         add_xp(hobby, RESEARCH_XP)
         hobby["inspired"] = True
         log_event(f"Feels inspired to practise {hobby['name']}.", "note")
+
+
+def tune_in(brain) -> None:
+    """The radio plays whatever's on in the city right now. Ember hears it on its next thought."""
+    if state["radio_today"] >= MAX_RADIO_PER_DAY:
+        log_event("The radio only hisses static tonight.", "radio")
+        return
+    state["radio_today"] += 1
+    weather = state["weather"]
+    heard_before = [e["text"] for e in state["events"] if e["kind"] == "radio"][-4:]
+    try:
+        broadcast = brain.radio(f"{now():%A %H:%M}", f"{weather['description']}, {weather['temp']}°C" if weather else "unknown",
+                                city_text(), heard_before)
+    except (BrainError, json.JSONDecodeError, anthropic.APIStatusError, anthropic.APIConnectionError):
+        log_event("The radio crackled and lost the signal.", "radio")
+        return
+    log_event(f"On the radio ({broadcast['station'].strip()}): {broadcast['heard'].strip()}", "radio")
 
 
 def make_creation(brain, kind: str, activity: str, hobby: dict | None) -> None:
@@ -953,7 +973,7 @@ def tick(brain, next_think_in_seconds: float, wake_now: bool = False, dream_now:
             if state["day"]:
                 write_diary(brain, state["day"])  # at midnight, Ember's mind sorts through the day that ended
                 write_chapter(brain)              # and once a week, looks back further
-            state.update(day=today, thinks_today=0, searches_today=0, wishes_today=0, form_changes_today=0)
+            state.update(day=today, thinks_today=0, searches_today=0, wishes_today=0, form_changes_today=0, radio_today=0)
         state["born"] = state["born"] or today
         if state["costs"]["month"] != t.strftime("%Y-%m"):
             state["costs"].update(month=t.strftime("%Y-%m"), usd=0.0)

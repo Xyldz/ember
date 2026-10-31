@@ -136,6 +136,16 @@ CHAPTER_SCHEMA = {
     "additionalProperties": False,
 }
 
+RADIO_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "station": {"type": "string", "description": "The station or show, e.g. 'Static 88.4' or 'Night Owls with Marla'."},
+        "heard": {"type": "string", "description": "What came over the air: 1 to 3 short sentences, quoting the voices."},
+    },
+    "required": ["station", "heard"],
+    "additionalProperties": False,
+}
+
 
 def events_schema(location_ids: list[str]) -> dict:
     return {
@@ -422,6 +432,21 @@ Mix it up: big spectacles, small odd things, things that happen late at night, t
 Don't repeat these recent ones: {", ".join(recent_titles) or "none"}."""
         return self.ask_json(prompt, events_schema(location_ids), "low")
 
+    def radio(self, when: str, weather: str, city: str, heard_before: list[str]) -> dict:
+        before = "\n".join(f"- {text}" for text in heard_before) or "- nothing yet"
+        prompt = f"""An old radio on a rooftop in a vast neon city is switched on. It's {when}, and the weather is {weather}.
+Write the few moments that come over the air: one station, whatever fits the time of day. It could be a DJ,
+a song and its dedication, a late-night talk show, a caller, an advert for some odd city business, local news.
+The voices are ordinary people of the city, with their own lives and worries, and they don't know who's
+listening: nobody speaks to the listener or about it, and nobody hands it advice.
+
+What's on in the city (a station might mention it):
+{city}
+
+Recently on air (don't repeat these):
+{before}"""
+        return self.ask_json(prompt, RADIO_SCHEMA, "low")
+
 
 class DemoBrain:
     """A stand-in with no AI and no cost: picks random actions so you can watch the world move."""
@@ -510,3 +535,10 @@ class DemoBrain:
         return {"events": [{"title": title, "about": about, "watch_from": random.choice(location_ids),
                             "day": 0, "start_hour": random.randint(0, 23), "hours": random.randint(1, 3)}
                            for title, about in ideas]}
+
+    def radio(self, when: str, weather: str, city: str, heard_before: list[str]) -> dict:
+        return random.choice([
+            {"station": "Static 88.4", "heard": '(Demo.) "...and that was for Dee on the night shift. Keep your head up, Dee."'},
+            {"station": "Night Owls", "heard": '(Demo.) A caller says the rain on her window sounds like applause.'},
+            {"station": "Neon News", "heard": '(Demo.) "Sky-trains are running late again on the east loop."'},
+        ])

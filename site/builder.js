@@ -11,9 +11,10 @@ import { TransformControls } from 'three/addons/controls/TransformControls.js';
 
 const API_HEADERS = { 'X-Ember-Builder': '1' };
 const NEEDS = ['charge', 'curiosity', 'joy', 'calm', 'connection'];
-const UNLOCKS = [['search', 'Internet access (Ember can search here)'], ['rest', 'Proper rest (sleeping here recharges faster)']];
+const UNLOCKS = [['search', 'Internet access (Ember can search here)'], ['rest', 'Proper rest (sleeping here recharges faster)'],
+  ['radio', "A radio (Ember hears what's on the city's stations)"]];
 const LOOK_NAMES = { terminal: 'Built-in: data terminal', pod: 'Built-in: charging pod', railing: 'Built-in: railing',
-  shapes: 'Simple shapes', model: 'My 3D model (.glb / .obj)', placeholder: 'Placeholder box' };
+  radio: 'Built-in: old radio', shapes: 'Simple shapes', model: 'My 3D model (.glb / .obj)', placeholder: 'Placeholder box' };
 const MODEL_FILE = /\.(glb|gltf|obj)$/i;
 const EDGE_NAMES = ['front edge', 'back edge', 'right edge', 'left edge'];
 

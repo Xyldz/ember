@@ -3,9 +3,9 @@
     "Add an entry to 'buildings'. Ember notices new buildings on its next thought.",
     "id: short unique name. pos: [x, z] where Ember stands (the roof spans about -11 to 11).",
     "about: what it is, written to Ember. Describe the place, not what Ember should do there.",
-    "actions: what it unlocks. 'search' = use the internet, 'rest' = recharge faster.",
+    "actions: what it unlocks. 'search' = use the internet, 'rest' = recharge faster, 'radio' = hear what's on the city's radio.",
     "boosts: optional. Needs it helps when Ember does something there, e.g. {\"calm\": 6}. Needs: charge, curiosity, joy, calm, connection.",
-    "model: a built-in look ('terminal', 'pod', 'railing'), OR a .glb file you put in site/models/ (e.g. 'models/library.glb'),",
+    "model: a built-in look ('terminal', 'pod', 'railing', 'radio'), OR a .glb file you put in site/models/ (e.g. 'models/library.glb'),",
     "       OR leave it out and add 'shapes' (boxes/cylinders/spheres, see the example in the README).",
     "grants_wish: optional. Words from one of Ember's wishes; that wish is marked as come true when the building appears.",
     "empty_lots: glowing squares where new buildings could go. Remove one when you build on it."
@@ -59,16 +59,29 @@
         "calm": 6,
         "curiosity": 3
       }
+    },
+    {
+      "id": "radio",
+      "name": "Old radio",
+      "pos": [
+        7,
+        2.5
+      ],
+      "model": "radio",
+      "about": "A battered old radio on a crate, its long antenna pulling in voices from all over the city: stations, late-night talk shows, callers, music.",
+      "actions": [
+        "radio"
+      ],
+      "boosts": {
+        "connection": 8,
+        "joy": 2
+      }
     }
   ],
   "empty_lots": [
     [
       -6.5,
       -6
-    ],
-    [
-      7,
-      2.5
     ],
     [
       -1,

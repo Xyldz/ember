@@ -125,7 +125,7 @@ Your browser opens Ember's rooftop with a builder panel. It only works on your o
   - **Neon signs**: add, retext, recolour, move, turn and resize them.
   - **Props**: decorations you can put anywhere, even floating, with the same looks as buildings (shapes or your models).
 - In the panel: its name, what Ember reads about it, what it unlocks, which needs it helps, and which wish it grants.
-- **Look**: a built-in piece, simple shapes (editable boxes, cylinders and spheres, neon or not), or **your own 3D model**:
+- **Look**: a built-in piece (data terminal, charging pod, railing, old radio), simple shapes (editable boxes, cylinders and spheres, neon or not), or **your own 3D model**:
   - From **Roblox Studio**: select your build, **File → Export Selection**, then in the builder pick the `.obj`
     **and** the `.mtl` (and any textures) together.
   - From **Blender**: **File → Export → glTF 2.0**, Format **glTF Binary (.glb)** (one file, textures packed in).
@@ -158,7 +158,8 @@ Everything builder mode does is stored in `buildings.json`, so you can also edit
 
 - `pos` is where Ember stands, from about -11 to 11 on each side. Put the building on one of the
   `empty_lots` and remove that lot from the list.
-- `actions` unlocks things: `"search"` (internet), `"rest"` (recharge faster).
+- `actions` unlocks things: `"search"` (internet), `"rest"` (recharge faster), `"radio"` (Ember hears what's on the
+  city's radio whenever it does something there; up to 30 broadcasts a day, each a tiny Haiku call).
 - `boosts` (optional) is which needs the place helps: `charge`, `curiosity`, `joy`, `calm`, `connection`.
   Ember isn't told this; it finds out by spending time there.
 - `about` is written to Ember. Describe the place, not what Ember should do there, so it decides for itself.
