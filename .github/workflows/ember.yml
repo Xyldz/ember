@@ -1,5 +1,7 @@
 # Keeps Ember alive on GitHub, for free:
-#  - every 10 minutes, runs one moment of Ember's life (tick_once.py)
+#  - every 10 minutes, runs one moment of Ember's life (tick_once.py). The 10-minute heartbeat comes from
+#    cron-job.org calling "Run workflow" through GitHub's API, because GitHub's own schedule is unreliable;
+#    the schedule below is just an hourly backup in case that ever stops.
 #  - saves Ember's memories to the "data" branch (kept as a single commit, so history stays small)
 #  - publishes the website to GitHub Pages
 # Pushing code to main also republishes the site, without making Ember think.
@@ -8,7 +10,7 @@ name: Ember lives
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "17 * * * *"
   workflow_dispatch:
     inputs:
       awake:
