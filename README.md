@@ -116,9 +116,11 @@ It has its own fixed character (written in `brain.py`), and it remembers things 
 
 - **Talking**: whenever Ember and Vega are in the same place, Vega hears whatever Ember says out loud and answers
   (or doesn't). Ember hears Vega's replies on its next thought. A couple of times a day Vega may also shout across the roof.
-- **Visiting**: now and then (up to 3 times a day, when they haven't talked for a couple of hours) Vega trundles over to
-  wherever Ember is, likelier when something's on in the city there, so they can watch it together. It heads back when
-  Ember leaves, after about 40 minutes, or when it's time to trade.
+- **Its own life**: every tick, like Ember, Vega thinks for itself: it has moods, wanders the roof on its own business,
+  talks to itself and the pigeons, sets itself little goals, and powers down when its battery runs flat (waking for its
+  trading sessions). Its own day stays on its side of the panel; Ember can see where it is and how it seems.
+- **Wishes**: Vega can wish for things to be built too (at most one a day). Like Ember's, they're filed as GitHub issues
+  and come true when a building has `"grants_wish"` with words from the wish.
 - **Notebook**: at midnight, while Ember dreams, Vega writes up its day: the markets, the roof and Ember
   (on Sonnet, like Ember's dream: about a cent a night).
 - **Paper trading**: Vega trades **real prices with pretend money**: a paper account that started with $10,000.
@@ -132,8 +134,10 @@ It has its own fixed character (written in `brain.py`), and it remembers things 
   it turned out, plus its win rate and best sale), **Portfolio** (its account over time and where the money is),
   **Market** (each market with a chart of the last day), **Notebook**, and **Ember** (what it knows about Ember, and
   their conversation).
-- **Cost**: Vega only thinks when Ember is with it (up to 60 replies a day) and at its trading sessions, each a tiny
-  Haiku call, plus its nightly notebook: well under $1 a month.
+- **Its look**: a little CRT-headed bot on treads, modelled in Blender from code (`blender/vega.py`, exported to
+  `site/models/vega.glb`). The site keeps its face live (it shows its mood), turns its head to watch Ember and waves while it talks.
+- **Cost**: a small Haiku call each tick while it's awake (up to 160 a day), plus replies to Ember and its trading
+  sessions, and its nightly notebook: roughly $2-4 a month.
 - Vega lives at whichever building has the `"friend"` action ("Vega's desk" in builder mode). Change the watchlist,
   the starting money or the session times at the top of `friend.py`.
 

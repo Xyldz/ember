@@ -725,7 +725,7 @@ def describe_situation() -> str:
     stale = rut()
 
     return f"""It is {t:%A %d %B, %H:%M} ({part_of_day}). The weather: {sky}.
-You are at: {here['name']} ({state['location']}). {here['about']} {friend.presence()}
+You are at: {here['name']} ({state['location']}). {here['about']} {friend.presence() or friend.whereabouts()}
 Your form: shape {state['form']['shape']}, colour {state['form']['color']}. In your words: {state['form']['about']}
 Your needs (0-100, higher is better): {needs}. {feelings} {stale}
 

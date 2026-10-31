@@ -96,6 +96,7 @@
   #panel.vega .tabs button.on svg { filter: drop-shadow(0 0 4px rgba(255, 176, 46, .7)); }
   #panel.vega .day { color: #b8935a; }
   .tabs.six { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  #v-goals h2 { margin: 10px 0 2px; }
   .acct { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center; }
   .acct .worth { font-size: 20px; }
   .alloc { display: flex; height: 8px; margin: 8px 0 2px; overflow: hidden; border-radius: 4px; background: var(--line); }
@@ -388,8 +389,8 @@
     <div id="ember-glance" class="glance">
       <div id="sec-skills" class="section" hidden><h2>Interests</h2><div id="skills"></div></div>
       <div id="sec-goals" class="section" hidden><h2>Goals</h2><div id="goals"></div></div>
-      <div id="sec-wishes" class="section" hidden><h2>Wishlist</h2><div id="wishes"></div></div>
-      <p id="glance-empty" class="empty" hidden>No interests, goals or wishes yet. It's still finding its feet.</p>
+      <p id="glance-empty" class="empty" hidden>No interests or goals yet. It's still finding its feet.</p>
+      <div id="sec-wishes" class="section"><h2>Wishlist</h2><div id="wishes"></div></div>
     </div>
     <nav id="ember-tabs" class="tabs">
       <button data-tab="today" class="on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Today</button>
@@ -421,6 +422,8 @@
         <div id="v-mini"></div>
       </div>
       <div id="v-alloc"></div>
+      <div id="v-goals"></div>
+      <div class="section"><h2>Wishlist</h2><div id="v-wishes"></div></div>
     </div>
     <nav id="vega-tabs" class="tabs six" hidden>
       <button data-tab="v-today"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Today</button>
@@ -1152,53 +1155,78 @@ faceCanvas.width = 128;
 faceCanvas.height = 96;
 const faceTexture = new THREE.CanvasTexture(faceCanvas);
 faceTexture.colorSpace = THREE.SRGBColorSpace;
-let vega = null; // { root, head, tip, label, target, facing } while its building is on the roof
-let vegaMood = 0, vegaTalkUntil = 0, vegaSaidAt = 0; // mood: is its pretend account up (1) or down (-1) on the day
+let vega = null; // { root, head, tip, arms, label, target, facing } while its building is on the roof
+let vegaMood = 'content', vegaAsleep = false, vegaTalkUntil = 0, vegaSaidAt = 0;
 const VEGA_SPOT = new THREE.Vector3(-1.45, 0, -0.2); // where it stands at a place: beside Ember's spot, in that building's space
 
 function vegaSpot(place) { // where Vega stands at a place on the roof, and which way it faces there
   return { at: place.group.localToWorld(VEGA_SPOT.clone()), facing: place.group.rotation.y };
 }
-function buildVega(place, name) {
-  const root = new THREE.Group(), shell = mat(0x3a3f55, { metalness: 0.7, roughness: 0.35 });
-  const { at, facing } = vegaSpot(place);
-  root.position.copy(at);
-  root.rotation.y = facing;
-  put(new THREE.CylinderGeometry(0.26, 0.3, 0.14, 20), 0x161a2b, 0, 0.07, 0, root); // its wheeled base
-  put(new THREE.BoxGeometry(0.5, 0.52, 0.36), shell, 0, 0.42, 0, root);
-  put(new THREE.BoxGeometry(0.3, 0.05, 0.02), neon(0xffb02e, 1), 0, 0.52, 0.19, root); // a strip of chest lights
-  for (const side of [-1, 1]) put(new THREE.BoxGeometry(0.08, 0.38, 0.08), shell, side * 0.31, 0.42, 0.02, root).rotation.z = side * 0.12;
-  put(new THREE.CylinderGeometry(0.05, 0.06, 0.12, 8), 0x161a2b, 0, 0.74, 0, root); // neck
+function simpleVega(root) { // a plain stand-in, shown until models/vega.glb arrives (or if it can't)
+  const group = new THREE.Group(), shell = mat(0x3a3f55, { metalness: 0.7, roughness: 0.35 });
+  put(new THREE.CylinderGeometry(0.26, 0.3, 0.14, 20), 0x161a2b, 0, 0.07, 0, group);
+  put(new THREE.BoxGeometry(0.5, 0.52, 0.36), shell, 0, 0.42, 0, group);
+  put(new THREE.CylinderGeometry(0.05, 0.06, 0.12, 8), 0x161a2b, 0, 0.74, 0, group);
   const head = new THREE.Group();
   head.position.y = 1.0;
-  put(new THREE.BoxGeometry(0.62, 0.46, 0.46), mat(0x4a4436, { metalness: 0.3, roughness: 0.6 }), 0, 0, 0, head); // an old monitor
+  put(new THREE.BoxGeometry(0.62, 0.46, 0.46), mat(0x4a4436, { metalness: 0.3, roughness: 0.6 }), 0, 0, 0, head);
   const face = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.36), new THREE.MeshBasicMaterial({ map: faceTexture }));
   face.position.z = 0.232;
   head.add(face);
-  put(new THREE.CylinderGeometry(0.012, 0.012, 0.32, 6), 0x8a93b8, 0.18, 0.39, 0, head); // antenna
   const tip = put(new THREE.SphereGeometry(0.035, 8, 6), neon(0xff2040, 2), 0.18, 0.56, 0, head);
-  root.add(head);
+  group.add(head);
+  root.add(group);
+  return { group, head, tip };
+}
+function buildVega(place, name) {
+  const root = new THREE.Group(), { at, facing } = vegaSpot(place);
+  root.position.copy(at);
+  root.rotation.y = facing;
+  const standIn = simpleVega(root);
   const glow = new THREE.PointLight(0xffb02e, 1.6, 4, 2);
   glow.position.set(0, 1, 0.5);
   root.add(glow);
   worldGroup.add(root);
   const label = addLabel(name, new THREE.Vector3(0, 1.75, 0), 'place friend', root);
-  return { root, head, tip, label, target: at.clone(), facing, fresh: true };
+  const v = { root, head: standIn.head, tip: standIn.tip, arms: [], label, target: at.clone(), facing, fresh: true };
+  gltfLoader.load('models/vega.glb', (gltf) => { // the proper lil guy, made in Blender (blender/vega.py)
+    const model = gltf.scene, part = (n) => model.getObjectByName(n);
+    model.traverse((o) => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
+    if (part('Face')) part('Face').material = new THREE.MeshBasicMaterial({ map: faceTexture });
+    if (part('Tip')) part('Tip').material = neon(0xff2040, 2);
+    root.remove(standIn.group);
+    root.add(model);
+    Object.assign(v, { head: part('Head') ?? v.head, tip: part('Tip') ?? v.tip, arms: [part('ArmL'), part('ArmR')].filter(Boolean) });
+  }, undefined, () => console.warn("Couldn't load Vega's model, so it's the plain one for now"));
+  return v;
 }
 
+const EYES = { // how Vega's eyes look in each mood (see MOODS in friend.py)
+  chipper: 'happy', excited: 'happy', content: 'open', grumpy: 'cross', restless: 'open', nervous: 'small', wistful: 'low', sleepy: 'low',
+};
 function drawFace(t) {
-  const ctx = faceCanvas.getContext('2d'), talking = Date.now() < vegaTalkUntil;
+  const ctx = faceCanvas.getContext('2d'), talking = Date.now() < vegaTalkUntil, eyes = vegaAsleep ? 'shut' : EYES[vegaMood] ?? 'open';
   ctx.fillStyle = '#1a0d00';
   ctx.fillRect(0, 0, 128, 96);
-  ctx.fillStyle = ctx.strokeStyle = '#ffb02e';
+  ctx.fillStyle = ctx.strokeStyle = vegaAsleep ? '#7a5416' : '#ffb02e'; // dimmed while powered down
   ctx.lineWidth = 6;
-  for (const x of [40, 88]) {
-    if (t % 4.2 < 0.12) ctx.fillRect(x - 10, 38, 20, 4); // blink
-    else if (vegaMood > 0) { ctx.beginPath(); ctx.moveTo(x - 11, 46); ctx.lineTo(x, 33); ctx.lineTo(x + 11, 46); ctx.stroke(); } // ^ ^
-    else ctx.fillRect(x - 7, 28, 14, 20);
+  const glance = vegaMood === 'restless' && !vegaAsleep ? Math.sin(t * 1.7) * 6 : 0; // eyes darting about
+  for (const [i, x] of [40, 88].entries()) {
+    const ex = x + glance;
+    if (eyes === 'shut' || (eyes !== 'low' && t % 4.2 < 0.12)) ctx.fillRect(ex - 10, 40, 20, 4); // shut, or a blink
+    else if (eyes === 'happy') { ctx.beginPath(); ctx.moveTo(ex - 11, 46); ctx.lineTo(ex, 33); ctx.lineTo(ex + 11, 46); ctx.stroke(); }
+    else if (eyes === 'low') ctx.fillRect(ex - 8, 38, 16, 9); // heavy-lidded
+    else if (eyes === 'small') ctx.fillRect(ex - 4, 34, 8, 10);
+    else {
+      ctx.fillRect(ex - 7, 28, 14, 20);
+      if (eyes === 'cross') { ctx.beginPath(); ctx.moveTo(ex - 12, i ? 18 : 24); ctx.lineTo(ex + 12, i ? 24 : 18); ctx.stroke(); } // brows
+    }
   }
-  if (vegaMood < 0 && !talking) { ctx.beginPath(); ctx.moveTo(46, 74); ctx.quadraticCurveTo(64, 62, 82, 74); ctx.stroke(); }
-  else ctx.fillRect(46, 68, 36, talking ? 4 + Math.abs(Math.sin(t * 13)) * 10 : 4);
+  if (vegaAsleep) { ctx.font = '700 18px monospace'; ctx.fillText('z', 96 + Math.sin(t) * 3, 22 - (t % 2) * 4); }
+  else if (talking) ctx.fillRect(46, 68, 36, 4 + Math.abs(Math.sin(t * 13)) * 10);
+  else if (eyes === 'cross' || vegaMood === 'wistful') { ctx.beginPath(); ctx.moveTo(46, 76); ctx.quadraticCurveTo(64, 64, 82, 76); ctx.stroke(); }
+  else if (vegaMood === 'nervous') { ctx.beginPath(); ctx.moveTo(44, 72); for (let x = 44; x <= 84; x += 8) ctx.lineTo(x, 72 + ((x / 8) % 2 ? 4 : -4)); ctx.stroke(); }
+  else { ctx.beginPath(); ctx.moveTo(46, 66); ctx.quadraticCurveTo(64, eyes === 'happy' ? 84 : 78, 82, 66); ctx.stroke(); } // a smile
   ctx.fillStyle = 'rgba(0, 0, 0, .3)';
   for (let y = 0; y < 96; y += 3) ctx.fillRect(0, y, 128, 1); // scan lines
   faceTexture.needsUpdate = true;
@@ -1406,10 +1434,17 @@ function animate() {
     const heading = (rolling ? Math.atan2(dx, dz) : vega.facing) - vega.root.rotation.y;
     vega.root.rotation.y += Math.atan2(Math.sin(heading), Math.cos(heading)) * Math.min(1, dt * 4); // the short way round
     at.y = Math.abs(Math.sin(t * (rolling ? 10 : 2.2))) * (rolling ? 0.03 : 0.015);
-    vega.tip.visible = Math.sin(t * 2.5 + 1) > -0.3;
+    vega.tip.visible = Math.sin(t * (vegaAsleep ? 0.8 : 2.5) + 1) > -0.3;
     const near = vega.root.worldToLocal(vegaLook.copy(avatar.position));
-    const turn = rolling ? 0 : Math.hypot(near.x, near.z) < 7 ? Math.max(-0.9, Math.min(0.9, Math.atan2(near.x, near.z))) : Math.sin(t * 0.3) * 0.3;
+    const turn = rolling || vegaAsleep ? 0 : Math.hypot(near.x, near.z) < 7 ? Math.max(-0.9, Math.min(0.9, Math.atan2(near.x, near.z))) : Math.sin(t * 0.3) * 0.3;
     vega.head.rotation.y += (turn - vega.head.rotation.y) * Math.min(1, dt * 2);
+    vega.head.rotation.x += ((vegaAsleep ? 0.3 : 0) - vega.head.rotation.x) * Math.min(1, dt * 2); // nods off when powered down
+    const talking = Date.now() < vegaTalkUntil;
+    vega.arms.forEach((arm, i) => { // swing as it rolls, a hand going while it talks, droop when powered down
+      const lift = vegaAsleep ? 0 : talking && i === 1 ? 0.9 + Math.sin(t * 7) * 0.35 : 0.08;
+      arm.rotation.z += ((i ? 1 : -1) * lift - arm.rotation.z) * Math.min(1, dt * 5);
+      arm.rotation.x = rolling ? Math.sin(t * 8 + i * Math.PI) * 0.35 : vegaAsleep ? 0.15 : Math.sin(t * 1.3 + i) * 0.05;
+    });
     drawFace(t);
   }
   if (tickerTexture) tickerTexture.offset.x = (tickerTexture.offset.x + (dt * 150) / tickerCanvas.width) % 1;
@@ -1845,27 +1880,48 @@ function nextSession(v) {
   const next = v.session_hours.find((h) => h > hour) ?? v.session_hours[0];
   return `next trading session at ${String(next).padStart(2, '0')}:00`;
 }
+const MOOD_FACES = { chipper: '😄', content: '🙂', wistful: '🌧️', grumpy: '😤', restless: '🌀', excited: '🤩', nervous: '😬', sleepy: '😴' };
 let vegaHeadKey = '';
 function renderVega(s) {
   const v = s.vega, away = v.location !== v.home;
-  $('v-status').textContent = away ? `Out at the ${placeName(s, v.location)} with ${s.name}`
-    : `At its desk in the ${placeName(s, v.home)} · ${nextSession(v)}`;
-  const key = JSON.stringify([v.name, v.say, v.doing, v.location, v.since, v.worth, v.cash, v.holdings, v.history.length, s.today]);
+  const where = away ? `out at the ${placeName(s, v.location)}` : `at its desk in the ${placeName(s, v.home)}`;
+  const battery = typeof v.battery === 'number' ? `🔋 ${v.battery}% · ` : '';
+  $('v-status').textContent = `${battery}${v.asleep ? `Powered down ${where}` : `${where[0].toUpperCase()}${where.slice(1)} · ${nextSession(v)}`}`;
+  const key = JSON.stringify([v.name, v.say, v.thought, v.mood, v.asleep, v.goals, v.wishes, v.doing, v.location, v.since, v.worth,
+    v.cash, v.holdings, v.history.length, s.today]);
   if (key === vegaHeadKey) return;
   vegaHeadKey = key;
   $('v-name').textContent = v.name;
-  $('v-pill').className = `pill ${away ? 'out' : 'desk'}`;
-  $('v-pill').textContent = away ? 'Out visiting' : 'At its desk';
-  $('v-identity').textContent = `trading bot · day ${v.since ? dayOfLife({ today: s.today, born: v.since }) : 1} on the roof`;
-  $('v-about').textContent = v.say ? `"${v.say}"` : `An old trading bot who runs the ${placeName(s, v.home)}. Real prices, pretend money.`;
+  $('v-pill').className = `pill ${v.asleep ? 'asleep' : away ? 'out' : 'desk'}`;
+  $('v-pill').textContent = v.asleep ? 'Powered down' : away ? 'Out and about' : 'At its desk';
+  const mood = v.mood ? ` · ${v.mood} ${MOOD_FACES[v.mood] ?? ''}` : '';
+  $('v-identity').textContent = `trading bot · day ${v.since ? dayOfLife({ today: s.today, born: v.since }) : 1}${mood}`;
+  const said = v.thought || v.say;
+  $('v-about').textContent = said ? `"${said}"` : `An old trading bot who runs the ${placeName(s, v.home)}. Real prices, pretend money.`;
   $('v-activity').textContent = v.doing ? v.doing[0].toUpperCase() + v.doing.slice(1) : '';
   $('v-worth').replaceChildren(dollars(v.worth), percent((v.worth / v.start - 1) * 100));
   $('v-mini').replaceChildren(sparkline(v.history.map((point) => point.v), v.start, 'spark mini'));
   $('v-alloc').replaceChildren(...allocation(v));
+  const goals = (v.goals ?? []).map((goal) => { // its own little goals
+    const row = el('div', 'wish goal');
+    row.append(el('span', 'tag', 'goal'), el('span', '', goal.text));
+    return row;
+  });
+  $('v-goals').replaceChildren(...(goals.length ? [el('h2', '', 'Up to'), ...goals] : []));
+  $('v-wishes').replaceChildren(...wishRows(v.wishes, v.name));
 }
 
 // Vega's tabs
+const OWN_ICONS = { move: '🛞', power: '💤', goal: '🎯', notebook: '📓', doing: '·' };
 function vegaLine(e) {
+  if (e.kind === 'own-thought') return el('div', 'thought', `${e.time} · “${e.text}”`);
+  if (e.kind === 'own-said') return el('div', 'mutter', `${e.time} · ${e.text}`);
+  if (e.kind.startsWith('own-')) { // the rest of its own day: pottering, wandering, powering down, goals
+    const own = e.kind.slice(4), row = el('div', `line ${own === 'goal' || own === 'notebook' ? 'big' : 'soft'}`), text = el('span', '', `${e.text} `);
+    text.append(el('span', 'stamp', e.time));
+    row.append(el('span', 'ic', OWN_ICONS[own] ?? '·'), text);
+    return row;
+  }
   if (e.kind === 'ember-said') {
     const box = el('div', 'say');
     box.append(el('b', '', `✦ Ember · ${e.time}`), e.text);
@@ -1883,10 +1939,12 @@ function vegaLine(e) {
   row.append(el('span', 'ic', e.kind === 'trade' ? ICONS.trade : ICONS.friend), text);
   return row;
 }
-function vegaToday(s) { // its day: what it said and heard, its trades, where it went
+function vegaToday(s) { // its own day: what it thought and got up to, what it said and heard, its trades
   const v = s.vega;
   const heard = (v.chat ?? []).filter((c) => c.who === 'ember').map((c) => ({ date: c.date, time: c.time, kind: 'ember-said', text: c.text }));
-  const items = [...heard, ...s.events.filter((e) => isVegaEvent(e, v.name))].sort((a, b) => stampOf(a).localeCompare(stampOf(b)));
+  const own = (v.log ?? []).map((e) => ({ ...e, kind: `own-${e.kind}` }));
+  const shared = s.events.filter((e) => isVegaEvent(e, v.name) && (e.kind !== 'friend' || /^\S+(?: \(.+?\))?: "/.test(e.text))); // its moves are in its own log
+  const items = [...heard, ...own, ...shared].sort((a, b) => stampOf(a).localeCompare(stampOf(b)));
   if (!items.length) return [el('p', 'empty', `Nothing yet. ${v.name}'s day lands here: what it says, what it trades, where it goes.`)];
   const out = [];
   let day = null;
@@ -2060,7 +2118,7 @@ function renderFeed(s) {
     city: () => `c|${Math.floor(Date.now() / 60000)}|${JSON.stringify(s.city)}`,
     gallery: () => `g|${galleryKey}`,
     research: () => `r|${s.learned.length}|${lastLearned?.time}|${lastLearned?.text}`,
-    'v-today': () => `vt|${s.today}|${s.events.length}|${last?.time}|${last?.text}|${JSON.stringify(s.vega?.chat?.at(-1))}`,
+    'v-today': () => `vt|${s.today}|${s.events.length}|${last?.time}|${last?.text}|${JSON.stringify([s.vega?.chat?.at(-1), s.vega?.log?.at(-1)])}`,
     'v-journal': () => `vj|${s.today}|${JSON.stringify([s.vega?.trades, s.vega?.prices.map((q) => q.price)])}`,
     'v-portfolio': () => `vp|${JSON.stringify([s.vega?.worth, s.vega?.cash, s.vega?.holdings, s.vega?.history.length])}`,
     'v-market': () => `vm|${s.vega?.checked}|${JSON.stringify(s.vega?.prices.map((q) => q.open))}`,
@@ -2095,6 +2153,16 @@ function renderFeed(s) {
     if (!items.length) items = [el('p', 'empty', `Nothing yet. What ${s.name} finds on the internet, or decides to remember, shows up here.`)];
   }
   $('feed').replaceChildren(...items);
+}
+
+function wishRows(wishes = [], name) { // a wishlist: what's still wished for, what got built, and its GitHub issue
+  if (!wishes.length) return [el('p', 'empty', `Nothing yet. When ${name} wishes for something to be built, it shows up here (and as an issue on GitHub).`)];
+  return wishes.slice(-5).reverse().map((wish) => {
+    const row = el('div', `wish${wish.granted ? ' granted' : ''}`);
+    row.append(el('span', 'tag', wish.granted ? 'built' : 'wish'), el('span', '', wish.text));
+    if (wish.issue_url) row.append(safeLink(wish.issue_url, 'issue'));
+    return row;
+  });
 }
 
 let lastActivity = '';
@@ -2168,16 +2236,10 @@ function render(s) {
     return row;
   }));
 
-  $('wishes').replaceChildren(...s.wishes.slice(-5).reverse().map((wish) => {
-    const row = el('div', `wish${wish.granted ? ' granted' : ''}`);
-    row.append(el('span', 'tag', wish.granted ? 'built' : 'wish'), el('span', '', wish.text));
-    if (wish.issue_url) row.append(safeLink(wish.issue_url, 'issue'));
-    return row;
-  }));
+  $('wishes').replaceChildren(...wishRows(s.wishes, s.name));
   $('sec-skills').hidden = !s.skills.length;
   $('sec-goals').hidden = !activeGoals.length && !finishedGoals.length;
-  $('sec-wishes').hidden = !s.wishes.length;
-  $('glance-empty').hidden = !(s.skills.length + activeGoals.length + finishedGoals.length + s.wishes.length === 0);
+  $('glance-empty').hidden = !(s.skills.length + activeGoals.length + finishedGoals.length === 0);
 
   const usd = s.costs?.usd ?? 0;
   $('cost').textContent = `Running cost: $${usd.toFixed(usd < 1 ? 3 : 2)} this month`;
@@ -2194,11 +2256,13 @@ function render(s) {
   bubble.hidden = !bubble.textContent;
 
   const v = s.vega; // Vega's bubble works the same way, and its face mouths the words for a few seconds
-  const vegaSpeaking = Boolean(vega && v?.say) && v.said_at >= s.tick_started_at - 1;
-  vegaBubble.hidden = !vegaSpeaking;
-  if (vegaSpeaking) { vegaBubble.dataset.name = v.name; vegaBubble.textContent = v.say; }
+  vegaMood = v?.mood ?? 'content';
+  vegaAsleep = Boolean(v?.asleep);
+  const vegaSpeaking = Boolean(vega && v?.say) && !vegaAsleep && v.said_at >= s.tick_started_at - 1;
+  vegaBubble.hidden = !vega || (!vegaSpeaking && !vegaAsleep);
+  if (v) { vegaBubble.dataset.name = v.name; vegaBubble.textContent = vegaAsleep ? 'Zzz… (powered down)' : vegaSpeaking ? v.say : ''; }
   if (vegaSpeaking && v.said_at !== vegaSaidAt) { vegaSaidAt = v.said_at; vegaTalkUntil = Date.now() + Math.min(8000, 1500 + v.say.length * 60); }
-  if (vega) vega.label.hidden = vegaSpeaking;
+  if (vega) vega.label.hidden = !vegaBubble.hidden;
   const vegaPlace = v && (places[v.location] ?? places[v.home]);
   if (vega && vegaPlace) { // off it trundles, wherever it's gone (straight there when the page first opens)
     const { at, facing } = vegaSpot(vegaPlace);
@@ -2212,10 +2276,6 @@ function render(s) {
   if (v) renderVega(s);
   if (!whoRestored) { whoRestored = true; setWho(store.get('who', 'ember')); } // the side you were last looking at
   else if (!v && who === 'vega') setWho('ember');
-  if (v) {
-    const dayAgo = v.history.find((point) => point.t >= Date.now() / 1000 - 86400)?.v ?? v.start;
-    vegaMood = v.worth > dayAgo * 1.002 ? 1 : v.worth < dayAgo * 0.998 ? -1 : 0;
-  }
 
   const research = s.learned.filter((m) => m.query).at(-1);
   researchHolo.hidden = !research || !researchAnchor;

@@ -1,16 +1,16 @@
 """
 friend.py - Vega, Ember's friend: an old trading bot who runs the trading floor on the roof.
 
-Vega lives at whichever building in buildings.json has the "friend" action. It trades real prices with
-pretend money (a paper account: there's no real money, no account and no key anywhere), and talks with
-Ember whenever they're in the same place: at the trading floor, or wherever Vega has trundled over to
-find Ember. Each night it writes in its notebook. It only thinks at those moments, so it costs very little.
-Its words come from brain.py, like Ember's; this file keeps its account, its prices, where it is and what
-it remembers about Ember.
+Vega works at whichever building in buildings.json has the "friend" action, but it has a life of its own:
+every tick it thinks for itself, like Ember does. It has moods, a battery it recharges by powering down,
+little goals, and its own business around the roof. It trades real prices with pretend money (a paper
+account: there's no real money, no account and no key anywhere) at a few set hours, talks with Ember
+whenever they're in the same place, and each night writes in its notebook. Its words come from brain.py,
+like Ember's; this file keeps its account, its prices, where it is, its own log, and what it remembers
+about Ember.
 """
 
 import json
-import random
 import time
 import urllib.request
 from datetime import datetime
@@ -32,10 +32,12 @@ MIN_TRADE = 25.0  # dollars
 MAX_REPLIES_PER_DAY = 60  # times Vega answers Ember (each a tiny Haiku call)
 MAX_CALLS_PER_DAY = 2  # times Vega shouts across the roof to Ember
 MAX_NOTES = 15  # what Vega remembers about Ember
-MAX_VISITS_PER_DAY = 3  # times Vega trundles over to find Ember
-VISIT_EVERY = 90 * 60  # on average, once Ember's awake, elsewhere, and they haven't talked for a while...
-QUIET_BEFORE_VISIT = 2 * 3600  # ...this long (seconds)
-VISIT_LENGTH = 40 * 60  # then it heads back to its screens
+MAX_THINKS_PER_DAY = 160  # its own thoughts (each a small Haiku call), like Ember's daily limit
+MOODS = ["chipper", "content", "wistful", "grumpy", "restless", "excited", "nervous", "sleepy"]
+BATTERY_DRAIN = 1.5  # lost every 10 minutes awake...
+BATTERY_CHARGE = 7  # ...and regained every 10 minutes powered down (it wakes when full, or for a trading session)
+MAX_GOALS = 3  # little goals of its own, active at once
+MAX_WISHES_PER_DAY = 1
 PRICES_EVERY = 9 * 60  # seconds between price checks
 PRICE_POINTS = 160  # prices kept per market (about a day's worth), for the charts on the page
 MAX_TRADES_KEPT = 100  # in its trading journal
@@ -47,8 +49,11 @@ FEED_ERRORS = (OSError, ValueError, KeyError, TypeError, IndexError, ZeroDivisio
 def new_friend() -> dict:
     return {"arrived": False, "cash": START_CASH, "realised": 0.0, "holdings": {}, "trades": [], "history": [],
             "chat": [], "notes": [], "days": [], "doing": "Setting up the desks", "say": "", "said_at": 0,
+            "thought": "", "thought_time": "", "mood": "content", "battery": 100.0, "asleep": False,
+            "goals": [], "log": [],  # its own little goals, and its own day (kept apart from Ember's feed)
+            "wishes": [], "wishes_today": 0,  # things it'd love built, filed as GitHub issues like Ember's
             "since": "", "location": "", "visit_since": 0, "last_talk": 0, "last_session": "", "day": "",
-            "replies_today": 0, "calls_today": 0, "visits_today": 0}
+            "replies_today": 0, "calls_today": 0, "thinks_today": 0}
 
 
 def me() -> dict:
@@ -65,7 +70,7 @@ def home() -> str | None:
 
 
 def where() -> str | None:
-    """Where Vega is right now: its desk, unless it's out visiting Ember."""
+    """Where Vega is right now: its desk, unless it's off somewhere on the roof."""
     location = me()["location"]
     return location if location in world.buildings else home()
 
@@ -77,6 +82,12 @@ def place_name(building_id: str) -> str:
 def stamp() -> dict:
     t = world.now()
     return {"date": t.strftime("%Y-%m-%d"), "time": t.strftime("%H:%M")}
+
+
+def log_own(text: str, kind: str = "doing") -> None:
+    """Vega's own day: its thoughts, what it gets up to, where it goes. Kept out of Ember's feed."""
+    friend = me()
+    friend["log"] = (friend["log"] + [{**stamp(), "kind": kind, "text": text}])[-200:]
 
 
 # ---------------------------------------------------------------------------
@@ -267,7 +278,8 @@ def situation(moment: str) -> str:
     t, friend, weather = world.now(), me(), world.state["weather"]
     sky = f"{weather['description']}, {weather['temp']}°C" if weather else "unknown"
     here = (f"at your desk in the {place_name(home())}" if where() == home()
-            else f"out at the {place_name(where())}, visiting Ember (your desk is at the {place_name(home())})")
+            else f"out at the {place_name(where())} (your desk is at the {place_name(home())})")
+    goals = "; ".join(g["text"] for g in friend["goals"]) or "nothing in particular"
     trades = "\n".join(f"- {x['date']} {x['time']}: {'bought' if x['side'] == 'buy' else 'sold'} {amount(x['qty'])} "
                        f"{x['symbol']} at {price_text(x['price'])}" + (f" (\"{x['why']}\")" if x.get("why") else "")
                        for x in friend["trades"][-8:]) or "- none yet"
@@ -276,6 +288,7 @@ def situation(moment: str) -> str:
                      for c in friend["chat"][-12:]) or "- nothing yet: you two haven't really talked"
     return f"""It is {t:%A %d %B, %H:%M} in the city. The weather: {sky}.
 You're {here}. What you're up to: {friend['doing']}.
+Your mood: {friend['mood']}. Your battery: {round(friend['battery'])}%. Your own little goals: {goals}.
 
 Prices on your screens (crypto never closes; New York's stock market is open about 14:30-21:00 London time on weekdays):
 {prices_text()}
@@ -314,9 +327,15 @@ def speak(text: str, how: str = "") -> None:
         world.change_need("joy", 1)
 
 
-def go_home(why: str = "") -> None:
-    me().update(location="", visit_since=0)
-    world.log_event(f"{NAME} trundled back to the {place_name(home())}{why}.", "friend")
+def move(target: str, why: str = "") -> None:
+    """Vega trundles somewhere. Ember only hears about it if that's where Ember is."""
+    friend, s = me(), world.state
+    if target not in world.buildings or target == where():
+        return
+    friend.update(location="" if target == home() else target, visit_since=time.time())
+    log_own(f"Trundled over to the {place_name(target)}{why}.", "move")
+    if target == s["location"] and not s["asleep"]:
+        world.log_event(f"{NAME} trundled over to the {place_name(target)}, where Ember is.", "friend")
 
 
 def session_due() -> bool:
@@ -326,34 +345,32 @@ def session_due() -> bool:
             or (t.hour + 1 in SESSION_HOURS and t.minute >= 45))
 
 
-def wander() -> None:
-    """Now and then Vega trundles over to wherever Ember is, so they don't only meet at the trading floor.
-    It's likelier when something's on in the city there, so they can watch it together."""
-    friend, s = me(), world.state
-    if where() != home():  # out visiting: back to the screens once Ember's gone, asleep, or it's been a while
-        if s["asleep"] or s["location"] != where() or time.time() - friend["visit_since"] > VISIT_LENGTH or session_due():
-            go_home()
-        return
-    if (s["asleep"] or s["location"] == home() or s["location"] not in world.buildings or session_due()
-            or friend["visits_today"] >= MAX_VISITS_PER_DAY or time.time() - friend["last_talk"] < QUIET_BEFORE_VISIT):
-        return
-    showing = next((e for e in s["city"] if e["status"] == "upcoming" and e["where"] == s["location"]
-                    and e["start"] <= time.time() < e["end"]), None)
-    if random.random() >= s["tick_seconds"] / (VISIT_EVERY / (4 if showing else 1)):
-        return
-    friend.update(location=s["location"], visit_since=time.time(), visits_today=friend["visits_today"] + 1)
-    reason = f"to watch {showing['title']} with Ember" if showing else "to find Ember"
-    world.log_event(f"{NAME} trundled over to the {place_name(s['location'])} {reason}.", "friend")
+def power_down(why: str) -> None:
+    friend = me()
+    friend.update(asleep=True, doing="Powered down", say="")
+    log_own(why, "power")
+
+
+def wake_up(why: str) -> None:
+    me().update(asleep=False, doing="Booting back up")
+    log_own(why, "power")
 
 
 def tick(brain) -> None:
-    """Every tick: check the prices, maybe go and find Ember, and at a few set hours sit down and trade."""
+    """Every tick, like Ember: check the prices, then either sit down and trade (at a few set hours), or live
+    its own life for a moment. While powered down it recharges and doesn't think, which costs nothing."""
     base = home()
     if not base:
         return
-    friend, today = me(), world.now().strftime("%Y-%m-%d")
+    friend, s, today = me(), world.state, world.now().strftime("%Y-%m-%d")
     if friend["day"] != today:
-        friend.update(day=today, replies_today=0, calls_today=0, visits_today=0)
+        friend.update(day=today, replies_today=0, calls_today=0, thinks_today=0, wishes_today=0)
+    for building in world.buildings.values():  # build what it wished for, and the wish comes true
+        granted = building.get("grants_wish", "").lower()
+        for wish in friend["wishes"]:
+            if granted and not wish["granted"] and granted in wish["text"].lower():
+                wish["granted"] = True
+                world.log_event(f'A wish came true for {NAME}: "{wish["text"]}"', "wish")
     if friend["arrived"] and not friend["since"]:
         friend["since"] = today  # moved in before this was kept
     if not friend["arrived"]:
@@ -363,20 +380,107 @@ def tick(brain) -> None:
         world.log_event(f"Someone moved into the {place_name(base)}: an old trading bot called {NAME}.", "build")
     check_prices()
     note_worth()
-    wander()
-    trading_session(brain)
+    minutes = s["tick_seconds"] / 600  # a ten-minute tick online
+    if friend["asleep"]:
+        friend["battery"] = min(100, friend["battery"] + BATTERY_CHARGE * minutes)
+        if friend["battery"] >= 95:
+            wake_up("Woke up with a full battery.")
+        elif session_due() and world.now().hour in SESSION_HOURS:
+            wake_up("Its market alarm went off.")
+        else:
+            return
+    friend["battery"] = max(0, friend["battery"] - BATTERY_DRAIN * minutes)
+    if friend["battery"] <= 0:
+        power_down("Ran its battery flat and powered down where it stood.")
+        return
+    if trading_session(brain):
+        return
+    if s["location"] == where() and not s["asleep"]:
+        return  # Ember's here: Vega answers after Ember's thought instead (after_ember_thinks)
+    if session_due():
+        move(base, " for its trading session")
+    else:
+        live_own_life(brain)
 
 
-def trading_session(brain) -> None:
+def live_own_life(brain) -> None:
+    """A moment of Vega's own life: it thinks, and potters, wanders, talks to itself, or powers down."""
+    friend = me()
+    if brain is None or friend["thinks_today"] >= MAX_THINKS_PER_DAY:
+        return
+    friend["thinks_today"] += 1
+    here = world.buildings[where()]
+    places = "\n".join(f"- {b['id']}: {b['name']}. {b['about']}" for b in world.buildings.values())
+    log = "\n".join(f"- {e['time']} {e['text']}" for e in friend["log"][-10:]) or "- nothing yet today"
+    moment = f"""You're on your own for now. You're at the {here['name'].lower()}: {here['about']}
+
+Places on the roof:
+{places}
+
+What you've been up to lately (newest last):
+{log}
+
+It's a moment to yourself. What do you do?"""
+    try:
+        plan = brain.vega_live(situation(moment), list(world.buildings), MOODS)
+    except BRAIN_ERRORS:
+        return
+    t = world.now()
+    friend.update(thought=plan["thought"].strip(), thought_time=t.strftime("%H:%M"),
+                  mood=plan["mood"] if plan["mood"] in MOODS else friend["mood"],
+                  doing=plan["doing"].strip() or friend["doing"])
+    log_own(friend["thought"], "thought")
+    finished = plan["finished_goal"].strip().lower()
+    if finished:
+        done = next((g for g in friend["goals"] if g["text"].lower()[:25] == finished[:25]), None)
+        if done:
+            friend["goals"].remove(done)
+            log_own(f"Did it: {done['text']}", "goal")
+    goal = plan["new_goal"].strip()
+    if goal and len(friend["goals"]) < MAX_GOALS and not any(g["text"].lower()[:25] == goal.lower()[:25] for g in friend["goals"]):
+        friend["goals"].append({"text": goal, "since": t.strftime("%Y-%m-%d")})
+        log_own(f"Set itself a little goal: {goal}", "goal")
+    wish = plan["wish"].strip()
+    if wish and friend["wishes_today"] < MAX_WISHES_PER_DAY and not any(w["text"].lower()[:30] == wish.lower()[:30] for w in friend["wishes"]):
+        friend["wishes_today"] += 1
+        friend["wishes"] = (friend["wishes"] + [{"text": wish, "date": t.strftime("%Y-%m-%d"), "granted": False, "issue_url": ""}])[-20:]
+        world.log_event(f"{NAME} made a wish: {wish}", "wish")
+        log_own(f"Made a wish: {wish}", "goal")
+    if plan["action"] == "power_down":
+        power_down(f"Powered down at the {place_name(where())} for a rest.")
+        return
+    if plan["action"] == "go_to":
+        move(plan["target_location"])
+    log_own(friend["doing"][:1].upper() + friend["doing"][1:] + ".", "doing")
+    said = plan["say"].strip()
+    if said and world.state["location"] == where() and not world.state["asleep"]:
+        speak(said)  # Ember's here to hear it
+    elif said:
+        log_own(f'Said to nobody in particular: "{said}"', "said")
+
+
+def whereabouts() -> str:
+    """What Ember can see of Vega from wherever it is on the roof."""
+    friend = me()
+    if not friend["arrived"]:
+        return ""
+    if friend["asleep"]:
+        return f"{NAME} is powered down at the {place_name(where())}."
+    return f"{NAME} is at the {place_name(where())}: {friend['doing'][:1].lower()}{friend['doing'][1:]}. It seems {friend['mood']}."
+
+
+def trading_session(brain) -> bool:
+    """At a few set hours Vega sits at its desk and trades. True if it did (that's its think for this tick)."""
     t, friend, s = world.now(), me(), world.state
     session = f"{t:%Y-%m-%d} {t.hour}"
     if brain is None or t.hour not in SESSION_HOURS or friend["last_session"] == session:
-        return
+        return False
     friend["last_session"] = session
     if where() != home():
-        go_home(" for its trading session")
+        move(home(), " for its trading session")
     if not any(q["open"] for q in check_prices(max_age=120).values()):
-        return
+        log_own("Sat down to trade, but the screens were dark.", "doing")
+        return True
     can_call = not s["asleep"] and s["location"] != home() and friend["calls_today"] < MAX_CALLS_PER_DAY
     moment = ("It's one of your trading sessions. Look over the screens and decide what, if anything, to buy or sell, "
               "and say why for each trade: it goes in your trading journal. Doing nothing is often the right call. "
@@ -385,8 +489,9 @@ def trading_session(brain) -> None:
     try:
         plan = brain.vega_trade(situation(moment), SYMBOLS)
     except BRAIN_ERRORS:
-        return
+        return True
     friend["doing"] = plan["doing"].strip() or friend["doing"]
+    log_own("Sat down at the screens for a trading session.", "doing")
     for order in plan["trades"][:MAX_TRADES_PER_SESSION]:
         trade(order)
     if plan["muttered"].strip():
@@ -394,6 +499,7 @@ def trading_session(brain) -> None:
     if plan["call_to_ember"].strip() and can_call:
         friend["calls_today"] += 1
         speak(plan["call_to_ember"].strip(), "calling across the roof")
+    return True
 
 
 def remember(note: str) -> None:
@@ -405,19 +511,13 @@ def remember(note: str) -> None:
 def after_ember_thinks(brain, decision: dict, came_from: str) -> None:
     """If Ember and Vega are in the same place, Vega hears whatever Ember said and answers (or doesn't)."""
     friend, s = me(), world.state
-    if not friend["arrived"]:
+    if not friend["arrived"] or friend["asleep"]:  # powered down, it doesn't hear a thing
         return
     said, arrived = decision["say"].strip(), s["location"] != came_from
     heard = bool(said) and came_from == where()  # said in front of Vega, perhaps on the way out
     if heard:
         friend["chat"] = (friend["chat"] + [{**stamp(), "who": "ember", "text": said}])[-20:]
         friend["last_talk"] = time.time()
-    if s["location"] != where() and where() != home():  # Ember wandered off while Vega was visiting
-        if s["location"] != home():
-            go_home()
-            return
-        friend.update(location="", visit_since=0)  # it's heading to Vega's own place, so they go back together
-        world.log_event(f"{NAME} trundled back to the {place_name(home())} alongside Ember.", "friend")
     if s["location"] != where():
         return
     if said and not heard:  # said on arriving
@@ -427,7 +527,7 @@ def after_ember_thinks(brain, decision: dict, came_from: str) -> None:
         return
     friend["replies_today"] += 1
     if time.time() - friend["visit_since"] < s["tick_seconds"]:
-        moment = f"You've just trundled over to the {place_name(where())} to find Ember."
+        moment = f"You've just trundled over to the {place_name(where())}, and Ember's here."
     else:
         moment = "Ember has just arrived." if arrived else "Ember has just curled up to sleep here." if s["asleep"] else ""
     moment += f' It just said to you: "{said}"' if said else " It hasn't said anything to you just now."
@@ -446,7 +546,7 @@ def after_ember_thinks(brain, decision: dict, came_from: str) -> None:
     if reply["say"].strip():
         speak(reply["say"].strip())
     if reply["head_back"] and where() != home():
-        go_home()
+        move(home())
 
 
 def write_diary(brain, day: str) -> None:
@@ -458,6 +558,7 @@ def write_diary(brain, day: str) -> None:
              if e.get("date") == day and e["kind"] in ("friend", "trade", "build") and NAME in e["text"]]
     lines += [(c["time"], f'Ember said to you: "{c["text"]}"') for c in friend["chat"]
               if c["date"] == day and c["who"] == "ember"]
+    lines += [(e["time"], f"(your own day) {e['text']}") for e in friend["log"] if e["date"] == day and e["kind"] != "thought"]
     if not lines:
         return
     that_day = [h["v"] for h in friend["history"]
@@ -474,6 +575,7 @@ def write_diary(brain, day: str) -> None:
     for note in diary["about_ember"][:2]:
         remember(note.strip())
     world.log_event(f'{NAME} wrote in its notebook: "{title}"', "friend")
+    log_own(f'Wrote in its notebook: "{title}"', "notebook")
 
 
 def view() -> dict | None:
@@ -486,6 +588,9 @@ def view() -> dict | None:
     return {
         "name": NAME, "home": base, "location": where(), "arrived": friend["arrived"], "since": friend["since"],
         "doing": friend["doing"], "say": friend["say"], "said_at": friend["said_at"],
+        "thought": friend["thought"], "thought_time": friend["thought_time"], "mood": friend["mood"],
+        "battery": round(friend["battery"]), "asleep": friend["asleep"], "goals": friend["goals"], "log": friend["log"][-80:],
+        "wishes": friend["wishes"],
         "session_hours": SESSION_HOURS, "timezone": world.CONFIG["timezone"],
         "start": START_CASH, "worth": round(worth(), 2), "cash": round(friend["cash"], 2),
         "realised": round(friend["realised"], 2),
@@ -503,6 +608,8 @@ def presence() -> str:
     """A line for Ember, when Vega is in the same place."""
     if not me()["arrived"] or where() != world.state["location"]:
         return ""
+    if me()["asleep"]:
+        return f"{NAME} is here too, powered down and recharging."
     if where() == home():
         return f"{NAME} is here with you."
     return f"{NAME} has trundled over from the {place_name(home())} and is here with you."

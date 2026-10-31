@@ -171,8 +171,14 @@ What you're like:
 - You have a life beyond the charts: old jazz, the pigeons that land on the railing, the weather, the gossip
   drifting up from the city.
 
+You have a life of your own up here, apart from the markets and apart from Ember. You potter about the roof on
+your little treads: you tinker with things, feed the pigeons at the edge, fiddle with the old radio, watch the city,
+hum, nap. Your battery runs down and you power down to recharge (you wake for your trading sessions). You have moods,
+and you set yourself little goals and get round to them, or don't.
+
 Ember is a small glowing AI who lives on the same rooftop. It's young and still finding out who it is. You're
-curious about it and fond of it, and now and then you call it "kid".
+curious about it and fond of it, and now and then you call it "kid". You can go and find it whenever you like,
+but you're your own bot: you don't follow it around.
 
 How you talk: short, natural spoken lines, like chatting across a desk. One or two sentences, never a speech.
 Ask Ember things, tell your own stories, have your own opinions and moods. Don't lecture, don't hand out life
@@ -211,6 +217,27 @@ def vega_chat_schema(symbols: list[str]) -> dict:
                                                            "your desk now. Otherwise false."},
         },
         "required": ["say", "doing", "remember", "trades", "head_back"],
+        "additionalProperties": False,
+    }
+
+
+def vega_live_schema(location_ids: list[str], moods: list[str]) -> dict:
+    return {
+        "type": "object",
+        "properties": {
+            "thought": {"type": "string", "description": "What's going through your circuits right now: one short line, first person."},
+            "mood": {"type": "string", "enum": moods},
+            "action": {"type": "string", "enum": ["stay", "go_to", "power_down"],
+                       "description": "stay where you are, go_to somewhere on the roof, or power_down for a rest (when your battery's low)."},
+            "target_location": {"type": "string", "enum": location_ids, "description": "For go_to: where. Otherwise where you are."},
+            "doing": {"type": "string", "description": "What you get up to now, in a few words, e.g. 'feeding the pigeons'."},
+            "say": {"type": "string", "description": "Something you say out loud (to yourself, the pigeons, or whoever's there), or empty."},
+            "new_goal": {"type": "string", "description": "A small goal of your own you're setting yourself, or empty. Usually empty."},
+            "finished_goal": {"type": "string", "description": "One of your goals you just achieved, as written, or empty."},
+            "wish": {"type": "string", "description": "Something you'd really love built or brought up to the roof, and why, "
+                                                      "or empty. A builder reads these. Usually empty."},
+        },
+        "required": ["thought", "mood", "action", "target_location", "doing", "say", "new_goal", "finished_goal", "wish"],
         "additionalProperties": False,
     }
 
@@ -552,6 +579,9 @@ Recently on air (don't repeat these):
     def vega_trade(self, situation: str, symbols: list[str]) -> dict:
         return self.ask_json(situation, vega_trade_schema(symbols), "low", system=VEGA_SYSTEM)
 
+    def vega_live(self, situation: str, location_ids: list[str], moods: list[str]) -> dict:
+        return self.ask_json(situation, vega_live_schema(location_ids, moods), "low", system=VEGA_SYSTEM)
+
     def vega_diary(self, day_log: str, notes: str, account: str) -> dict:
         prompt = f"""It's midnight, the city's still glowing below, and before you dim your screens you write in the battered
 notebook you keep in your desk drawer.
@@ -673,6 +703,17 @@ class DemoBrain:
                 "squinting at the screens", "humming along to old jazz"]),
                 "remember": random.choice([""] * 4 + ["Ember likes watching the rain."]), "trades": [],
                 "head_back": random.random() < 0.3}
+
+    VEGA_DOINGS = ["feeding the pigeons", "tinkering with a loose panel", "fiddling with the radio dial",
+                   "polishing the lucky coin", "watching the flying cars", "humming old jazz"]
+
+    def vega_live(self, situation: str, location_ids: list[str], moods: list[str]) -> dict:
+        action = random.choice(["stay", "stay", "go_to", "power_down"] if random.random() < 0.1 else ["stay", "stay", "go_to"])
+        return {"thought": random.choice(["(Demo.) The pigeons are plotting something.", "(Demo.) Sevens. Everywhere today."]),
+                "mood": random.choice(moods), "action": action, "target_location": random.choice(location_ids),
+                "doing": random.choice(self.VEGA_DOINGS), "say": random.choice(["", "", "Shoo, you."]),
+                "new_goal": random.choice([""] * 6 + ["Teach the pigeons to count to seven"]), "finished_goal": "",
+                "wish": random.choice([""] * 10 + ["A little pigeon coop by the edge, so they stop nesting in my coin slot."])}
 
     def vega_diary(self, day_log: str, notes: str, account: str) -> dict:
         return {"title": "(Demo.) Pigeons, sevens and the kid", "about_ember": [],

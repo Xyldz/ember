@@ -5,7 +5,7 @@ GitHub Actions runs this every 10 minutes (see .github/workflows/ember.yml).
   python tick_once.py --wake       wake Ember up if it's asleep (the "wake Ember up" checkbox on GitHub)
   python tick_once.py --dream      dream over today now: diary, memories, self (tonight's dream redoes it)
   python tick_once.py --reset      start Ember's life over from scratch first (the "start over" checkbox)
-New wishes are also filed as GitHub issues, so you get a notification when Ember wants something built.
+New wishes (Ember's and Vega's) are also filed as GitHub issues, so you get a notification when either wants something built.
 """
 
 import json
@@ -13,6 +13,7 @@ import os
 import sys
 import urllib.request
 
+import friend
 import world
 from brain import Brain
 
@@ -23,14 +24,15 @@ def file_wish_issues() -> None:
     token, repo = os.environ.get("GITHUB_TOKEN"), os.environ.get("GITHUB_REPOSITORY")
     if not (token and repo):
         return
-    for wish in world.state["wishes"]:
+    wishers = [(world.CONFIG["name"], world.state["wishes"]), (friend.NAME, world.state["friend"].get("wishes", []))]
+    for who, wish in ((who, wish) for who, wishes in wishers for wish in wishes):
         if wish["issue_url"] or wish["granted"]:
             continue
         issue = {
-            "title": f"{world.CONFIG['name']} wishes for: {wish['text'][:80]}",
+            "title": f"{who} wishes for: {wish['text'][:80]}",
             "body": f"> {wish['text']}\n\nTo grant it, add a building to `buildings.json` with "
                     '`"grants_wish": "<a few words from this wish>"`. '
-                    f"{world.CONFIG['name']} will notice it on its next thought.",
+                    f"{who} will notice it on its next thought.",
         }
         request = urllib.request.Request(
             f"https://api.github.com/repos/{repo}/issues", data=json.dumps(issue).encode("utf-8"), method="POST",
