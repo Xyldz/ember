@@ -1,0 +1,5 @@
+# Ember's memories live on the "data" branch on GitHub, not in the code
+site/data/
+site/demo-data/
+__pycache__/
+*.tmp

@@ -1,0 +1,11 @@
+{
+  "name": "Ember",
+  "timezone": "Europe/London",
+  "bedtime": 23,
+  "wake_time": 7,
+  "think_every_minutes_local": 2,
+  "max_thinks_per_day": 200,
+  "max_searches_per_day": 30,
+  "support_url": "",
+  "support_text": "Help keep Ember online"
+}

@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ember</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #05060d; --panel: #0a0c17; --card: #0f1222; --ink: #d8e4ff; --muted: #7683ad; --line: #1b2042;
+    --cyan: #3ff0ff; --magenta: #ff3fb4; --amber: #ffcc4d;
+    --mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font: 13px/1.5 var(--mono); }
+  #app { display: flex; height: 100%; }
+  #world { position: relative; flex: 1; min-width: 0; min-height: 0; background: var(--bg); }
+  #world canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #overlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .place { position: absolute; transform: translate(-50%, -100%); padding: 2px 9px; border: 1px solid rgba(63, 240, 255, .55);
+    border-radius: 3px; background: rgba(5, 6, 13, .72); color: var(--cyan); font-size: 11px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; text-shadow: 0 0 6px rgba(63, 240, 255, .6); }
+  .place.lot { border-style: dashed; border-color: rgba(118, 131, 173, .5); color: var(--muted); text-shadow: none; font-weight: 600; }
+  .bubble { position: absolute; transform: translate(-50%, calc(-100% - 10px)); width: max-content; max-width: min(260px, 70vw);
+    padding: 8px 12px; border: 1px solid rgba(63, 240, 255, .6); border-radius: 4px; background: rgba(8, 10, 22, .9);
+    color: #aebbe0; font-size: 12px; font-style: italic; box-shadow: 0 0 18px rgba(63, 240, 255, .25); }
+  .bubble.speech { border-color: var(--magenta); color: #fff; font-style: normal; font-weight: 700; box-shadow: 0 0 18px rgba(255, 63, 180, .4); }
+  .holo { position: absolute; transform: translate(-50%, -100%); width: 230px; padding: 8px 10px;
+    border: 1px solid rgba(63, 240, 255, .45); background: linear-gradient(rgba(63, 240, 255, .12), rgba(63, 240, 255, .03));
+    color: #c4f9ff; font-size: 11px; line-height: 1.45; box-shadow: 0 0 24px rgba(63, 240, 255, .15); }
+  .holo b { display: block; margin-bottom: 3px; color: var(--cyan); font-size: 10px; letter-spacing: .14em; }
+  .bubble[hidden], .holo[hidden] { display: none; }
+
+  #panel { width: 380px; flex: none; display: flex; flex-direction: column; min-height: 0; background: var(--panel); border-left: 1px solid var(--line); }
+  #panel header { padding: 18px 18px 8px; }
+  h1 { margin: 0; font: 900 26px/1.1 Orbitron, var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--cyan);
+    text-shadow: 0 0 14px rgba(63, 240, 255, .75); }
+  h2 { margin: 0 0 6px; font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+  #identity { margin-top: 4px; color: var(--muted); font-size: 12px; font-style: italic; }
+  #activity { margin-top: 6px; font-weight: 700; }
+  #status { margin-top: 3px; min-height: 1.3em; color: var(--muted); font-size: 12px; }
+  .section { padding: 8px 18px; }
+  .vital { display: grid; grid-template-columns: 64px 1fr 28px; align-items: center; gap: 8px; margin: 3px 0; font-size: 12px; }
+  .vital b { font-weight: 400; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .bar { height: 6px; border-radius: 2px; background: var(--line); overflow: hidden; }
+  .bar i { display: block; height: 100%; transition: width .6s; }
+  .skill { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 3px 8px; margin: 6px 0; font-size: 12px; }
+  .skill .bar { grid-column: 1 / -1; height: 4px; }
+  .skill .lv { color: var(--magenta); font-size: 11px; font-weight: 700; }
+  .wish { display: flex; gap: 8px; align-items: baseline; margin: 5px 0; font-size: 12px; }
+  .wish .tag { flex: none; padding: 0 6px; border: 1px solid var(--line); color: var(--amber); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+  .wish.granted .tag { color: var(--cyan); border-color: rgba(63, 240, 255, .5); }
+  .wish a { flex: none; color: var(--muted); font-size: 11px; }
+  .empty { color: var(--muted); font-style: italic; font-size: 12px; margin: 4px 0; }
+  .tabs { display: flex; gap: 2px; padding: 8px 18px 0; border-bottom: 1px solid var(--line); }
+  .tabs button { padding: 8px 10px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted);
+    font: inherit; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; }
+  .tabs button.on { color: var(--cyan); border-bottom-color: var(--cyan); }
+  #feed { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 18px 16px; }
+  .entry { display: grid; grid-template-columns: 78px 20px 1fr; gap: 4px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+  .entry time { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .entry.thought .text { color: var(--muted); font-style: italic; }
+  .card { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--card); font-size: 12px; }
+  .card .q { margin-bottom: 4px; color: var(--cyan); font-weight: 700; }
+  .card a { display: block; margin-top: 4px; overflow: hidden; color: var(--magenta); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+  .card time { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; }
+  .work img { display: block; width: 100%; aspect-ratio: 1; margin: 6px 0 2px; border-radius: 2px; background: #0b0d1a; }
+  .poem { margin: 6px 0 2px; color: #ecdcff; font-style: italic; white-space: pre-wrap; }
+  .play { margin: 6px 0 2px; padding: 6px 12px; border: 1px solid var(--magenta); border-radius: 3px; background: transparent;
+    color: var(--magenta); font: inherit; font-weight: 700; cursor: pointer; }
+  footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 18px;
+    border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+  #support { padding: 6px 12px; border-radius: 3px; background: var(--magenta); color: #05060d; font-weight: 700;
+    text-decoration: none; box-shadow: 0 0 14px rgba(255, 63, 180, .5); white-space: nowrap; }
+  #support[hidden] { display: none; }
+  @media (max-width: 760px) {
+    #app { flex-direction: column; }
+    #world { flex: 1 1 55%; }
+    #panel { flex: 1 1 45%; width: 100%; overflow-y: auto; border-left: 0; border-top: 1px solid var(--line); }
+    #panel header { padding: 12px 16px 4px; }
+    .section, .tabs, #feed, footer { padding-left: 16px; padding-right: 16px; }
+    #feed { flex: none; overflow: visible; }
+    .holo { width: 180px; font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <main id="world">
+    <div id="overlay">
+      <div id="research" class="holo" hidden></div>
+      <div id="bubble" class="bubble" hidden></div>
+    </div>
+  </main>
+  <aside id="panel">
+    <header>
+      <h1 id="name">Ember</h1>
+      <div id="identity"></div>
+      <div id="activity">Connecting…</div>
+      <div id="status"></div>
+    </header>
+    <div class="section" id="vitals"></div>
+    <div class="section"><h2>Skills</h2><div id="skills"></div></div>
+    <div class="section"><h2>Wishlist</h2><div id="wishes"></div></div>
+    <nav class="tabs">
+      <button data-tab="diary" class="on">Diary</button>
+      <button data-tab="gallery">Gallery</button>
+      <button data-tab="research">Research</button>
+    </nav>
+    <div id="feed"></div>
+    <footer><span id="cost"></span><a id="support" target="_blank" rel="noopener noreferrer" hidden></a></footer>
+  </aside>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const $ = (id) => document.getElementById(id);
+const IS_LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
+const POLL_MS = IS_LOCAL ? 4000 : 60000; // online, Ember only thinks every 15 minutes
+
+// ---------------------------------------------------------------------------
+// Renderer, camera, glow
+// ---------------------------------------------------------------------------
+const worldEl = $('world');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.85;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+worldEl.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x06050f);
+scene.fog = new THREE.FogExp2(0x0b0820, 0.011);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
+camera.position.set(10, 8.5, 13);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(-0.5, 0.8, -1.5);
+controls.enableDamping = true;
+controls.enablePan = false;
+controls.maxPolarAngle = 1.45;
+controls.minDistance = 6;
+controls.maxDistance = 40;
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.4, 0.35, 0.55); // strength, radius, threshold
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+scene.add(new THREE.HemisphereLight(0x6a78c8, 0x15121f, 1.3));
+const moon = new THREE.DirectionalLight(0x9d8cff, 0.8);
+moon.position.set(-10, 22, 8);
+moon.castShadow = true;
+moon.shadow.mapSize.set(2048, 2048);
+Object.assign(moon.shadow.camera, { left: -14, right: 14, top: 14, bottom: -14, near: 1, far: 60 });
+moon.shadow.camera.updateProjectionMatrix();
+scene.add(moon);
+
+const materials = {};
+function mat(color, extra = {}) {
+  const key = color + JSON.stringify(extra);
+  return materials[key] ??= new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.35, ...extra });
+}
+const neon = (color, strength = 1.2) => mat(0x000000, { emissive: color, emissiveIntensity: strength });
+function put(geometry, material, x, y, z, parent = scene) {
+  const mesh = new THREE.Mesh(geometry, typeof material === 'number' ? mat(material) : material);
+  mesh.position.set(x, y, z);
+  mesh.castShadow = mesh.receiveShadow = true;
+  parent.add(mesh);
+  return mesh;
+}
+function addLight(x, y, z, color, parent, intensity = 6) {
+  const light = new THREE.PointLight(color, intensity, 9, 2);
+  light.position.set(x, y, z);
+  parent.add(light);
+}
+function seeded(seed) { // the same "random" city every visit
+  return () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// ---------------------------------------------------------------------------
+// The rooftop and the city around it
+// ---------------------------------------------------------------------------
+const ROOF = 12; // the roof spans -12..12
+put(new THREE.BoxGeometry(ROOF * 2, 1, ROOF * 2), mat(0x1a1d2e, { roughness: 0.7, metalness: 0.25 }), 0, -0.5, 0);
+const grid = new THREE.GridHelper(ROOF * 2, 24, 0x3ff0ff, 0x1b2042);
+grid.position.y = 0.01;
+grid.material.transparent = true;
+grid.material.opacity = 0.18;
+scene.add(grid);
+for (const [x, z, w, d, color] of [[0, ROOF, ROOF * 2, 0.12, 0xff3fb4], [0, -ROOF, ROOF * 2, 0.12, 0x3ff0ff],
+  [ROOF, 0, 0.12, ROOF * 2, 0x3ff0ff], [-ROOF, 0, 0.12, ROOF * 2, 0xff3fb4]]) {
+  put(new THREE.BoxGeometry(w, 0.12, d), neon(color, 0.9), x, 0.06, z).castShadow = false;
+}
+
+function makeWindowsTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64; canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, 64, 128);
+  for (let y = 4; y < 128; y += 8) for (let x = 4; x < 64; x += 10) {
+    if (Math.random() < 0.38) {
+      const v = 110 + Math.random() * 145;
+      ctx.fillStyle = `rgb(${v},${v},${v})`;
+      ctx.fillRect(x, y, 6, 4);
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+const windowsTexture = makeWindowsTexture();
+function towerMaterial(tint, repeatX, repeatY) {
+  const map = windowsTexture.clone();
+  map.needsUpdate = true;
+  map.repeat.set(repeatX, repeatY);
+  return new THREE.MeshStandardMaterial({ color: 0x07080f, roughness: 0.8, emissive: tint, emissiveMap: map, emissiveIntensity: 0.5 });
+}
+// The skyscraper Ember lives on top of
+put(new THREE.BoxGeometry(ROOF * 2, 120, ROOF * 2), towerMaterial(0x8b5bff, 6, 30), 0, -60.5, 0).receiveShadow = false;
+
+const PALETTE = [0x3ff0ff, 0xff3fb4, 0xffcc4d, 0x8b5bff, 0x9fb4ff];
+const rand = seeded(42);
+const blinkers = [];
+for (let i = 0; i < 120; i++) {
+  const angle = rand() * Math.PI * 2, dist = 36 + rand() * 85;
+  const w = 5 + rand() * 9, d = 5 + rand() * 9, h = 40 + rand() * 100;
+  const x = Math.cos(angle) * dist, z = Math.sin(angle) * dist, top = -70 + h;
+  const tower = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), towerMaterial(PALETTE[Math.floor(rand() * PALETTE.length)], Math.round(w / 2), Math.round(h / 6)));
+  tower.position.set(x, -70 + h / 2, z);
+  scene.add(tower);
+  if (rand() < 0.3) {
+    put(new THREE.CylinderGeometry(0.15, 0.15, 6, 5), 0x111111, x, top + 3, z).castShadow = false;
+    blinkers.push(put(new THREE.SphereGeometry(0.4, 8, 6), new THREE.MeshStandardMaterial({ color: 0, emissive: 0xff2040, emissiveIntensity: 1.5 }), x, top + 6.2, z));
+  }
+}
+
+// Neon signs on the skyline (drawn once the fonts have loaded)
+document.fonts.ready.then(() => {
+  for (const [text, color, angle, dist, y, size] of [['EMBER.NET', '#3ff0ff', 3.6, 34, 14, 12], ['24/7', '#ff3fb4', 5.3, 40, 22, 8],
+    ['DATA', '#ffcc4d', 4.5, 46, 8, 9], ['狐', '#ff3fb4', 2.6, 38, 18, 6], ['OPEN', '#8b5bff', 0.9, 44, 12, 8]]) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 160;
+    const ctx = canvas.getContext('2d');
+    ctx.font = '900 112px Orbitron, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = color;
+    ctx.fillText(text, 256, 84);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(size, size * 160 / 512),
+      new THREE.MeshBasicMaterial({ map: texture, color: 0x8c8c8c, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+    sign.position.set(Math.cos(angle) * dist, y, Math.sin(angle) * dist);
+    sign.lookAt(0, y, 0);
+    scene.add(sign);
+  }
+});
+
+// Flying cars on circular lanes
+const cars = [];
+for (let i = 0; i < 14; i++) {
+  const car = new THREE.Group();
+  put(new THREE.BoxGeometry(1.6, 0.45, 0.8), 0x15182a, 0, 0, 0, car).castShadow = false;
+  put(new THREE.BoxGeometry(0.08, 0.18, 0.6), neon(i % 2 ? 0x3ff0ff : 0xffffff, 1.5), 0.82, 0, 0, car);
+  put(new THREE.BoxGeometry(0.08, 0.14, 0.6), neon(0xff2040, 1.2), -0.82, 0, 0, car);
+  car.userData = { radius: 22 + rand() * 40, height: -6 + rand() * 30, speed: (0.04 + rand() * 0.06) * (rand() < 0.5 ? 1 : -1), angle: rand() * Math.PI * 2 };
+  scene.add(car);
+  cars.push(car);
+}
+
+// Rain
+const DROPS = 1800;
+const rainPositions = new Float32Array(DROPS * 6);
+function resetDrop(i, anywhere) {
+  const x = (Math.random() - 0.5) * 70, z = (Math.random() - 0.5) * 70, y = anywhere ? Math.random() * 40 - 5 : 35;
+  rainPositions.set([x, y, z, x - 0.05, y - 0.7, z], i * 6);
+}
+for (let i = 0; i < DROPS; i++) resetDrop(i, true);
+const rainGeometry = new THREE.BufferGeometry();
+rainGeometry.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3));
+scene.add(new THREE.LineSegments(rainGeometry, new THREE.LineBasicMaterial({ color: 0x7f95d8, transparent: true, opacity: 0.35 })));
+
+// ---------------------------------------------------------------------------
+// Buildings. Each builder gets the spot where Ember stands and returns where its
+// name label floats. Add your own here, or use shapes / .glb files in buildings.json.
+// ---------------------------------------------------------------------------
+const codeCanvas = document.createElement('canvas');
+codeCanvas.width = 256; codeCanvas.height = 160;
+const codeTexture = new THREE.CanvasTexture(codeCanvas);
+codeTexture.colorSpace = THREE.SRGBColorSpace;
+const codeLines = [];
+function drawCode(line) {
+  codeLines.push(line ?? Array.from({ length: 6 + Math.floor(Math.random() * 18) },
+    () => '01<>{}#$%&*abcdefxyz'[Math.floor(Math.random() * 21)]).join(''));
+  if (codeLines.length > 11) codeLines.shift();
+  const ctx = codeCanvas.getContext('2d');
+  ctx.fillStyle = '#021014';
+  ctx.fillRect(0, 0, 256, 160);
+  ctx.font = '12px monospace';
+  codeLines.forEach((text, i) => {
+    ctx.fillStyle = text.startsWith('>') ? '#ff3fb4' : '#3ff0ff';
+    ctx.fillText(text.slice(0, 34), 10, 18 + i * 13);
+  });
+  codeTexture.needsUpdate = true;
+}
+setInterval(drawCode, 300);
+
+const builders = {
+  terminal(x, z, group) {
+    put(new THREE.BoxGeometry(2.2, 0.9, 1), 0x161a2b, x, 0.45, z - 1.3, group);
+    put(new THREE.BoxGeometry(2, 0.05, 0.45), neon(0x3ff0ff, 0.6), x, 0.93, z - 1.05, group);
+    const screen = put(new THREE.BoxGeometry(2.4, 1.5, 0.1), 0x161a2b, x, 2.0, z - 1.75, group);
+    screen.rotation.x = -0.12;
+    const display = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.3), new THREE.MeshBasicMaterial({ map: codeTexture, color: 0x9a9a9a }));
+    display.position.z = 0.051;
+    screen.add(display);
+    for (const [dx, color] of [[-0.6, 0xff3fb4], [0.5, 0x3ff0ff]]) { // cables running off to the edge
+      put(new THREE.BoxGeometry(0.06, 0.04, 9), neon(color, 0.5), x + dx, 0.02, z - 6.3, group).castShadow = false;
+    }
+    addLight(x, 2.2, z - 0.6, 0x3ff0ff, group);
+    return { anchor: new THREE.Vector3(x, 3.2, z - 1.75) };
+  },
+  pod(x, z, group) {
+    const cx = x, cz = z - 1.5;
+    put(new THREE.CylinderGeometry(1.3, 1.4, 0.35, 24), 0x161a2b, cx, 0.17, cz, group);
+    put(new THREE.TorusGeometry(1.3, 0.05, 8, 40), neon(0xff3fb4, 1), cx, 0.36, cz, group).rotation.x = Math.PI / 2;
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(1.25, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshStandardMaterial({ color: 0x9ff6ff, transparent: true, opacity: 0.16, roughness: 0.05, metalness: 0.2, depthWrite: false }));
+    dome.position.set(cx, 0.35, cz);
+    group.add(dome);
+    addLight(cx, 1.2, cz, 0xff3fb4, group, 4);
+    return { anchor: new THREE.Vector3(cx, 2.3, cz), sleep: { x: cx, z: cz, y: 0.35 } };
+  },
+  railing(x, z, group) {
+    for (let i = -3; i <= 3; i++) put(new THREE.BoxGeometry(0.08, 1.1, 0.08), 0x2a2f45, x + i, 0.55, z - 1.6, group);
+    put(new THREE.BoxGeometry(6.2, 0.08, 0.08), neon(0x3ff0ff, 1), x, 1.1, z - 1.6, group);
+    put(new THREE.BoxGeometry(6.2, 0.05, 0.05), 0x2a2f45, x, 0.6, z - 1.6, group);
+    return { anchor: new THREE.Vector3(x, 1.9, z - 1.6), faceAway: true };
+  },
+};
+
+function shapesBuilder(shapes) { // simple buildings described in buildings.json
+  return (x, z, group) => {
+    let top = 1;
+    for (const shape of shapes) {
+      const [a = 1, b = 1, c = 1] = shape.size ?? [];
+      const [px = 0, py = 0, pz = 0] = shape.pos ?? [];
+      const geometry = shape.type === 'cylinder' ? new THREE.CylinderGeometry(a, a, b, 24)
+        : shape.type === 'sphere' ? new THREE.SphereGeometry(a, 20, 14) : new THREE.BoxGeometry(a, b, c);
+      const color = new THREE.Color(shape.color ?? '#2a2f45').getHex();
+      put(geometry, shape.glow ? neon(color) : mat(color), x + px, py, z + pz, group);
+      top = Math.max(top, py + (shape.type === 'sphere' ? a : b / 2));
+    }
+    return { anchor: new THREE.Vector3(x, top + 0.8, z - 1.5) };
+  };
+}
+const gltfLoader = new GLTFLoader();
+function glbBuilder(url, scale = 1) { // 3D models you make yourself (e.g. in Blender), dropped in site/models/
+  return (x, z, group) => {
+    gltfLoader.load(url, (gltf) => {
+      gltf.scene.position.set(x, 0, z - 1.5);
+      gltf.scene.scale.setScalar(scale);
+      gltf.scene.traverse((o) => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
+      group.add(gltf.scene);
+    }, undefined, () => console.warn(`Couldn't load the model ${url}`));
+    return { anchor: new THREE.Vector3(x, 3, z - 1.5) };
+  };
+}
+function placeholder(x, z, group) {
+  const box = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshBasicMaterial({ color: 0x3ff0ff, wireframe: true, transparent: true, opacity: 0.5 }));
+  box.position.set(x, 1, z - 1.6);
+  group.add(box);
+  return { anchor: new THREE.Vector3(x, 2.6, z - 1.6) };
+}
+function emptyLot([x, z], group) {
+  const corners = [[-2, -2], [2, -2], [2, 2], [-2, 2], [-2, -2]].map(([a, b]) => new THREE.Vector3(x + a, 0.03, z + b));
+  const outline = new THREE.Line(new THREE.BufferGeometry().setFromPoints(corners),
+    new THREE.LineDashedMaterial({ color: 0x7683ad, dashSize: 0.4, gapSize: 0.25 }));
+  outline.computeLineDistances();
+  group.add(outline);
+  addLabel('Empty lot', new THREE.Vector3(x, 0.3, z), 'place lot');
+}
+
+const overlay = $('overlay');
+const labels = [];
+function addLabel(text, anchor, className) {
+  const el = document.createElement('div');
+  el.className = className;
+  el.textContent = text;
+  overlay.prepend(el);
+  labels.push({ el, anchor });
+}
+
+// Floating hologram of Ember's latest drawing, next to wherever it makes things
+const artCanvas = document.createElement('canvas');
+artCanvas.width = artCanvas.height = 256;
+const artTexture = new THREE.CanvasTexture(artCanvas);
+artTexture.colorSpace = THREE.SRGBColorSpace;
+const svgUri = (svg) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+function paintArt(svg) {
+  artHolo.visible = Boolean(svg) && Boolean(artHolo.userData.placed);
+  if (!svg) return;
+  const image = new Image();
+  image.onload = () => {
+    const ctx = artCanvas.getContext('2d');
+    ctx.clearRect(0, 0, 256, 256);
+    ctx.drawImage(image, 0, 0, 256, 256);
+    artTexture.needsUpdate = true;
+  };
+  image.src = svgUri(svg);
+}
+const artHolo = new THREE.Group();
+artHolo.add(new THREE.Mesh(new THREE.PlaneGeometry(1.75, 1.75), new THREE.MeshBasicMaterial({ color: 0x3ff0ff, transparent: true, opacity: 0.22, side: THREE.DoubleSide })));
+const artPicture = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6), new THREE.MeshBasicMaterial({ map: artTexture, color: 0x8a8a8a, transparent: true, side: THREE.DoubleSide }));
+artPicture.position.z = 0.01;
+artHolo.add(artPicture);
+artHolo.visible = false;
+scene.add(artHolo);
+
+let worldGroup = null, worldKey = '', places = {}, researchAnchor = null;
+function buildWorld(s) {
+  const key = JSON.stringify([s.buildings, s.empty_lots]);
+  if (key === worldKey) return; // nothing changed in buildings.json
+  worldKey = key;
+  if (worldGroup) scene.remove(worldGroup);
+  for (const { el } of labels) el.remove();
+  labels.length = 0;
+  worldGroup = new THREE.Group();
+  scene.add(worldGroup);
+  places = {};
+  for (const building of s.buildings) {
+    const [x, z] = building.pos;
+    const build = /\.(glb|gltf)$/i.test(building.model ?? '') ? glbBuilder(building.model, building.scale)
+      : builders[building.model] ?? (building.shapes ? shapesBuilder(building.shapes) : placeholder);
+    places[building.id] = { ...build(x, z, worldGroup), x, z, building };
+    addLabel(building.name, places[building.id].anchor, 'place');
+  }
+  for (const lot of s.empty_lots ?? []) emptyLot(lot, worldGroup);
+
+  const studio = Object.values(places).find((p) => p.building.actions?.includes('create'));
+  artHolo.userData.placed = Boolean(studio);
+  if (studio) artHolo.position.set(studio.x + 2.7, 2.6, studio.z - 1.2);
+  const lab = Object.values(places).find((p) => p.building.actions?.includes('search'));
+  researchAnchor = lab ? new THREE.Vector3(lab.x - 3, 3.4, lab.z - 1.2) : null;
+}
+
+// ---------------------------------------------------------------------------
+// Ember: starts as a glowing orb, and picks its own shape and colour as it grows
+// ---------------------------------------------------------------------------
+const SHAPES = {
+  orb: () => new THREE.SphereGeometry(0.45, 32, 20),
+  cube: () => new THREE.BoxGeometry(0.65, 0.65, 0.65),
+  pyramid: () => new THREE.ConeGeometry(0.5, 0.8, 4),
+  ring: () => new THREE.TorusGeometry(0.38, 0.11, 16, 48),
+  crystal: () => new THREE.OctahedronGeometry(0.5),
+  knot: () => new THREE.TorusKnotGeometry(0.3, 0.09, 96, 12),
+  cluster: null, // built from several small spheres below
+};
+const avatar = new THREE.Group();
+avatar.scale.setScalar(1.5);
+scene.add(avatar);
+const avatarLight = new THREE.PointLight(0x3ff0ff, 2, 6, 2);
+avatar.add(avatarLight);
+const motes = new THREE.Group(); // little specks of light circling Ember
+avatar.add(motes);
+let avatarBody = null, shellMaterial = null, formKey = '';
+
+function setForm(form) {
+  const color = /^#[0-9a-f]{6}$/i.test(form?.color ?? '') ? form.color : '#3ff0ff';
+  const shape = form?.shape in SHAPES ? form.shape : 'orb';
+  if (`${shape}|${color}` === formKey) return;
+  formKey = `${shape}|${color}`;
+  if (avatarBody) avatar.remove(avatarBody);
+  const tint = new THREE.Color(color);
+  shellMaterial = new THREE.MeshStandardMaterial({ color: tint.clone().multiplyScalar(0.3), emissive: tint, emissiveIntensity: 0.7,
+    roughness: 0.3, metalness: 0.1, transparent: true, opacity: 0.8 });
+  avatarBody = new THREE.Group();
+  if (shape === 'cluster') {
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2;
+      put(new THREE.SphereGeometry(0.16, 16, 12), shellMaterial, Math.cos(a) * 0.32, Math.sin(i * 1.7) * 0.18, Math.sin(a) * 0.32, avatarBody);
+    }
+  } else {
+    put(SHAPES[shape](), shellMaterial, 0, 0, 0, avatarBody);
+  }
+  const heart = new THREE.MeshBasicMaterial({ color: tint.clone().lerp(new THREE.Color(0xffffff), 0.6) });
+  put(new THREE.SphereGeometry(0.11, 16, 12), heart, 0, 0, 0, avatarBody); // the bright heart in the middle
+  avatar.add(avatarBody);
+  avatarLight.color.copy(tint);
+  motes.clear();
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    put(new THREE.SphereGeometry(0.04, 8, 6), new THREE.MeshBasicMaterial({ color: tint }), Math.cos(a) * 0.75, (i - 1) * 0.12, Math.sin(a) * 0.75, motes);
+  }
+  $('name').style.color = color;
+  $('name').style.textShadow = `0 0 14px ${color}99`;
+}
+setForm(null);
+
+const goal = new THREE.Vector3(), homeSpot = new THREE.Vector3();
+let placed = false, asleep = false, floorY = 0, idleSince = 0, charge = 80;
+
+function moveTo(place) {
+  const spot = asleep && place.sleep ? place.sleep : { x: place.x, z: place.z, y: 0 };
+  floorY = spot.y;
+  if (!placed) {
+    avatar.position.set(spot.x, 1.15, spot.z);
+    goal.set(spot.x, 0, spot.z);
+    placed = true;
+  } else if (homeSpot.x !== spot.x || homeSpot.z !== spot.z) {
+    goal.set(spot.x, 0, spot.z);
+  }
+  homeSpot.set(spot.x, 0, spot.z);
+}
+
+// ---------------------------------------------------------------------------
+// Animation loop
+// ---------------------------------------------------------------------------
+const bubble = $('bubble'), researchHolo = $('research');
+const projected = new THREE.Vector3(), bubbleAnchor = new THREE.Vector3();
+function pinToScreen(el, worldPosition) {
+  projected.copy(worldPosition).project(camera);
+  const onScreen = projected.z < 1 && Math.abs(projected.x) < 1.1 && Math.abs(projected.y) < 1.1;
+  el.style.visibility = onScreen ? 'visible' : 'hidden';
+  el.style.left = `${(projected.x * 0.5 + 0.5) * worldEl.clientWidth}px`;
+  el.style.top = `${(-projected.y * 0.5 + 0.5) * worldEl.clientHeight}px`;
+}
+
+function resize() {
+  const w = worldEl.clientWidth, h = worldEl.clientHeight;
+  renderer.setSize(w, h, false);
+  composer.setSize(w, h);
+  bloom.resolution.set(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(worldEl);
+resize();
+
+const timer = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(timer.getDelta(), 0.1), t = timer.elapsedTime;
+
+  const dx = goal.x - avatar.position.x, dz = goal.z - avatar.position.z, dist = Math.hypot(dx, dz);
+  const moving = placed && dist > 0.05;
+  const resting = asleep && !moving;
+  if (moving) {
+    const step = Math.min(dist, (dist > 1 ? 2.4 : 1.0) * dt);
+    avatar.position.x += (dx / dist) * step;
+    avatar.position.z += (dz / dist) * step;
+    idleSince = t;
+  } else if (!asleep && t - idleSince > 9) { // drift about a little near the current spot
+    goal.set(homeSpot.x + (Math.random() - 0.5) * 1.4, 0, homeSpot.z + (Math.random() - 0.5) * 1.2);
+    idleSince = t;
+  }
+  const hover = (resting ? floorY + 0.55 : 1.15) + Math.sin(t * 1.6) * (resting ? 0.03 : 0.12);
+  avatar.position.y += (hover - avatar.position.y) * Math.min(1, dt * 3);
+  avatarBody.rotation.y += dt * (moving ? 1.8 : resting ? 0.15 : 0.5);
+  avatarBody.rotation.x = Math.sin(t * 0.7) * 0.2;
+  avatarBody.scale.setScalar((resting ? 0.8 : 1) * (1 + Math.sin(t * (resting ? 1 : 2.4)) * 0.04));
+  shellMaterial.emissiveIntensity = resting ? 0.25 : 0.35 + (charge / 100) * 0.5; // dimmer when its charge is low
+  motes.rotation.y += dt * (resting ? 0.3 : 1.4);
+  avatarLight.intensity = resting ? 0.6 : 2;
+
+  for (const car of cars) {
+    const c = car.userData;
+    c.angle += c.speed * dt;
+    car.position.set(Math.cos(c.angle) * c.radius, c.height, Math.sin(c.angle) * c.radius);
+    car.rotation.y = c.speed > 0 ? -c.angle - Math.PI / 2 : -c.angle + Math.PI / 2;
+  }
+  for (const [i, blinker] of blinkers.entries()) blinker.visible = Math.sin(t * 2 + i) > -0.3;
+  for (let i = 0; i < DROPS; i++) {
+    const o = i * 6, fall = 28 * dt;
+    rainPositions[o + 1] -= fall;
+    rainPositions[o + 4] -= fall;
+    const overRoof = Math.abs(rainPositions[o]) < ROOF && Math.abs(rainPositions[o + 2]) < ROOF;
+    if (rainPositions[o + 4] < (overRoof ? 0 : -40)) resetDrop(i, false);
+  }
+  rainGeometry.attributes.position.needsUpdate = true;
+  artHolo.position.y = 2.6 + Math.sin(t * 1.3) * 0.08;
+  artHolo.rotation.y = Math.sin(t * 0.4) * 0.25;
+
+  controls.update();
+  composer.render();
+  for (const { el, anchor } of labels) pinToScreen(el, anchor);
+  bubbleAnchor.set(avatar.position.x, avatar.position.y + 1.3, avatar.position.z);
+  pinToScreen(bubble, bubbleAnchor);
+  if (researchAnchor) pinToScreen(researchHolo, researchAnchor);
+}
+animate();
+
+// ---------------------------------------------------------------------------
+// Synth: tunes are played with the Web Audio API, one oscillator per note
+// ---------------------------------------------------------------------------
+let audio = null;
+const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
+function noteFrequency(pitch) {
+  const match = /^([A-G])(#?)([2-6])$/.exec(pitch);
+  if (!match) return null; // "rest"
+  const semitone = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[match[1]] + (match[2] ? 1 : 0);
+  return { frequency: 440 * 2 ** (((Number(match[3]) + 1) * 12 + semitone - 69) / 12), octave: Number(match[3]) };
+}
+let noiseBuffer = null;
+function noise(start, length, highpass) {
+  noiseBuffer ??= (() => {
+    const buffer = audio.createBuffer(1, audio.sampleRate * 0.5, audio.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    return buffer;
+  })();
+  const source = audio.createBufferSource(), filter = audio.createBiquadFilter(), gain = audio.createGain();
+  source.buffer = noiseBuffer;
+  filter.type = 'highpass';
+  filter.frequency.value = highpass;
+  gain.gain.setValueAtTime(0.35, start);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + length);
+  source.connect(filter).connect(gain).connect(audio.destination);
+  source.start(start);
+  source.stop(start + length + 0.02);
+}
+function playNote({ frequency, octave }, start, length, instrument) {
+  if (instrument === 'drum machine') { // low notes = kick, middle = snare, high = hi-hat
+    if (octave >= 5) return noise(start, 0.05, 7000);
+    if (octave === 4) return noise(start, 0.15, 1500);
+  }
+  const osc = audio.createOscillator(), filter = audio.createBiquadFilter(), gain = audio.createGain();
+  const kick = instrument === 'drum machine', bass = instrument === 'bass synth';
+  osc.type = kick ? 'sine' : bass ? 'square' : 'sawtooth';
+  osc.frequency.setValueAtTime(kick ? 150 : frequency, start);
+  if (kick) osc.frequency.exponentialRampToValueAtTime(45, start + 0.15);
+  filter.type = 'lowpass';
+  filter.frequency.value = bass ? 900 : 2600;
+  const ring = kick ? 0.25 : Math.max(0.08, length * 0.9);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(kick ? 0.7 : 0.16, start + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + ring);
+  osc.connect(filter).connect(gain).connect(audio.destination);
+  osc.start(start);
+  osc.stop(start + ring + 0.05);
+}
+function playTune(work, button) {
+  audio ??= new AudioContext();
+  audio.resume();
+  const beat = 60 / clamp(Number(work.tempo) || 110, 60, 180);
+  let t = audio.currentTime + 0.05;
+  for (const note of work.notes.slice(0, 64)) {
+    const length = clamp(Number(note.beats) || 1, 0.25, 4) * beat;
+    const pitch = noteFrequency(note.pitch);
+    if (pitch) playNote(pitch, t, length, work.instrument);
+    t += length;
+  }
+  const label = button.textContent;
+  button.disabled = true;
+  button.textContent = '♪ Playing…';
+  setTimeout(() => { button.disabled = false; button.textContent = label; }, (t - audio.currentTime) * 1000);
+}
+
+// ---------------------------------------------------------------------------
+// Side panel
+// ---------------------------------------------------------------------------
+function el(tag, className = '', text) {
+  const e = document.createElement(tag);
+  if (className) e.className = className;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function safeLink(url, text, className = '') {
+  const link = el('a', className, text);
+  if (/^https:\/\//.test(url)) link.href = url;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  return link;
+}
+
+const VITALS = [['Charge', 'energy', 'linear-gradient(90deg, #1fa3b0, #3ff0ff)'], ['Mood', 'mood', 'linear-gradient(90deg, #a3237a, #ff3fb4)']];
+const vitalBars = VITALS.map(([label, , colour]) => {
+  const row = el('div', 'vital'), bar = el('div', 'bar'), fill = el('i'), value = el('b');
+  fill.style.background = colour;
+  bar.append(fill);
+  row.append(el('span', '', label), bar, value);
+  $('vitals').append(row);
+  return { fill, value };
+});
+
+const ICONS = {
+  thought: '💭', say: '💬', search: '🔎', learned: '💡', hobby: '⭐', note: '📝', rest: '🔋', play: '🎮',
+  create: '🎨', learn: '📖', explore: '🧭', socialise: '📡', event: '▸', levelup: '🏅', creation: '🖼️', wish: '🌠', build: '🏗️',
+  form: '✨',
+};
+function when(entry, today) {
+  if (!entry.date || entry.date === today) return entry.time;
+  const day = new Date(`${entry.date}T00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  return `${day} ${entry.time}`;
+}
+
+let galleryItems = [], galleryKey = null;
+const WORK_TYPES = { drawing: 'Drawing', poem: 'Poem', tune: 'Tune' };
+function galleryCards(s) {
+  if (!galleryItems.length) return [el('p', 'empty', `Nothing yet. When ${s.name} draws, writes or makes a track, it lands here.`)];
+  return galleryItems.slice().reverse().map((work) => {
+    const card = el('div', 'card work');
+    card.append(el('div', 'q', work.title));
+    if (work.type === 'drawing') {
+      const image = el('img'); // shown as an <img>, so nothing inside the SVG can run
+      image.alt = work.title;
+      image.src = svgUri(work.svg);
+      card.append(image);
+    } else if (work.type === 'poem') {
+      card.append(el('p', 'poem', work.text));
+    } else if (work.type === 'tune') {
+      const button = el('button', 'play', `▶ Play (${work.instrument})`);
+      button.addEventListener('click', () => playTune(work, button));
+      card.append(button);
+    }
+    const skill = work.hobby ? `${work.hobby} lv ${work.level}` : 'beginner';
+    card.append(el('time', '', `${WORK_TYPES[work.type] ?? work.type} · ${skill} · ${when(work, s.today)}`));
+    return card;
+  });
+}
+
+let tab = 'diary', feedKey = '';
+function renderFeed(s) {
+  const last = s.events.at(-1), lastLearned = s.learned.at(-1);
+  const key = tab === 'diary' ? `d|${s.events.length}|${last?.date}|${last?.time}|${last?.text}`
+    : tab === 'gallery' ? `g|${galleryKey}` : `r|${s.learned.length}|${lastLearned?.time}|${lastLearned?.text}`;
+  if (key === feedKey) return;
+  feedKey = key;
+  let items;
+  if (tab === 'diary') {
+    items = s.events.slice(-80).reverse().map((e) => {
+      const row = el('div', `entry ${e.kind}`);
+      row.append(el('time', '', when(e, s.today)), el('span', '', ICONS[e.kind] ?? '▸'), el('span', 'text', e.text));
+      return row;
+    });
+    if (!items.length) items = [el('p', 'empty', 'Nothing has happened yet.')];
+  } else if (tab === 'gallery') {
+    items = galleryCards(s);
+  } else {
+    items = s.learned.slice().reverse().map((m) => {
+      const card = el('div', 'card');
+      if (m.query) card.append(el('div', 'q', `> ${m.query}`));
+      card.append(el('div', '', m.text));
+      for (const source of m.sources ?? []) card.append(safeLink(source.url, source.title || source.url));
+      card.append(el('time', '', m.time));
+      return card;
+    });
+    if (!items.length) items = [el('p', 'empty', `Nothing yet. What ${s.name} finds on the internet, or decides to remember, shows up here.`)];
+  }
+  $('feed').replaceChildren(...items);
+}
+
+let lastActivity = '';
+function render(s) {
+  document.title = `${s.name} · live`;
+  $('name').textContent = s.name;
+  $('activity').textContent = s.activity;
+  if (s.activity !== lastActivity) { drawCode(`> ${s.activity.toLowerCase()}`); lastActivity = s.activity; }
+
+  const status = [];
+  if (s.status) status.push(s.status);
+  else if (!s.asleep && s.next_think_at) {
+    const left = Math.round(s.next_think_at - Date.now() / 1000);
+    status.push(left <= 0 ? 'Next thought: any moment now'
+      : left < 120 ? `Next thought in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`
+      : `Next thought in ~${Math.round(left / 60)} min`);
+  }
+  $('status').textContent = status.join(' · ');
+
+  VITALS.forEach(([, key], i) => {
+    vitalBars[i].fill.style.width = `${s[key]}%`;
+    vitalBars[i].value.textContent = s[key];
+  });
+
+  $('skills').replaceChildren(...(s.skills.length ? s.skills.map((skill) => {
+    const row = el('div', 'skill'), name = el('span', '', skill.name);
+    if (skill.inspired) {
+      const spark = el('span', '', ' ✨');
+      spark.title = 'Inspired by its research: the next practice counts double';
+      name.append(spark);
+    }
+    const bar = el('div', 'bar'), fill = el('i');
+    fill.style.width = `${Math.round(skill.progress * 100)}%`;
+    fill.style.background = 'var(--magenta)';
+    bar.append(fill);
+    row.append(name, el('span', 'lv', `LV ${skill.level}`), bar);
+    return row;
+  }) : [el('span', 'empty', 'None yet. Give it time.')]));
+
+  $('wishes').replaceChildren(...(s.wishes.length ? s.wishes.slice(-5).reverse().map((wish) => {
+    const row = el('div', `wish${wish.granted ? ' granted' : ''}`);
+    row.append(el('span', 'tag', wish.granted ? 'built' : 'wish'), el('span', '', wish.text));
+    if (wish.issue_url) row.append(safeLink(wish.issue_url, 'issue'));
+    return row;
+  }) : [el('span', 'empty', 'No wishes yet.')]));
+
+  const usd = s.costs?.usd ?? 0;
+  $('cost').textContent = `Running cost: $${usd.toFixed(usd < 1 ? 3 : 2)} this month`;
+  const support = $('support');
+  support.hidden = !/^https:\/\//.test(s.support_url ?? '');
+  if (!support.hidden) { support.href = s.support_url; support.textContent = s.support_text || 'Support'; }
+
+  renderFeed(s);
+
+  // Bubble: something said out loud during the latest thought, otherwise the latest thought
+  let text = '', speaking = false;
+  if (s.asleep) text = 'Zzz…';
+  else if (s.say && s.said_at >= s.tick_started_at - 1) { text = s.say; speaking = true; }
+  else if (s.thought) text = s.thought.length > 120 ? `${s.thought.slice(0, 117)}…` : s.thought;
+  bubble.className = speaking ? 'bubble speech' : 'bubble';
+  bubble.textContent = text;
+  bubble.hidden = !text;
+
+  const research = s.learned.filter((m) => m.query).at(-1);
+  researchHolo.hidden = !research || !researchAnchor;
+  if (research) {
+    const summary = research.text.length > 150 ? `${research.text.slice(0, 147)}…` : research.text;
+    researchHolo.replaceChildren(el('b', '', `LAST SEARCH: ${research.query.toUpperCase()}`), el('span', '', summary));
+  }
+
+  asleep = s.asleep;
+  charge = s.energy;
+  setForm(s.form);
+  $('identity').textContent = s.form ? `A ${s.form.shape}. "${s.form.about}"` : '';
+  if (places[s.location]) moveTo(places[s.location]);
+}
+
+// ---------------------------------------------------------------------------
+// Reading Ember's state (written by run_local.py, or by GitHub Actions online)
+// ---------------------------------------------------------------------------
+let latest = null;
+async function refresh() {
+  try {
+    const response = await fetch(`data/state.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error('no state yet');
+    const s = await response.json();
+    buildWorld(s);
+    if (s.gallery_key !== galleryKey) { // something new was made: fetch the gallery
+      const galleryResponse = await fetch(`data/gallery.json?t=${Date.now()}`, { cache: 'no-store' });
+      galleryItems = galleryResponse.ok ? await galleryResponse.json() : [];
+      galleryKey = s.gallery_key;
+      paintArt(galleryItems.findLast((work) => work.type === 'drawing')?.svg);
+    }
+    latest = s;
+    render(s);
+  } catch {
+    $('status').textContent = IS_LOCAL ? "Can't reach Ember. Is run_local.py still running?" : 'Waiting for the first thought…';
+  }
+}
+async function pollForever() {
+  await refresh();
+  setTimeout(pollForever, POLL_MS);
+}
+pollForever();
+setInterval(() => { if (latest) render(latest); }, 1000); // keeps the countdown ticking between polls
+
+document.querySelectorAll('.tabs button').forEach((button) => button.addEventListener('click', () => {
+  tab = button.dataset.tab;
+  document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b === button));
+  feedKey = '';
+  if (latest) renderFeed(latest);
+}));
+</script>
+</body>
+</html>

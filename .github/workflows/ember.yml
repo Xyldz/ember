@@ -1,0 +1,77 @@
+# Keeps Ember alive on GitHub, for free:
+#  - every 15 minutes, runs one moment of Ember's life (tick_once.py)
+#  - saves Ember's memories to the "data" branch (kept as a single commit, so history stays small)
+#  - publishes the website to GitHub Pages
+# Pushing code to main also republishes the site, without making Ember think.
+
+name: Ember lives
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write  # save memories to the data branch
+  issues: write    # file Ember's wishes as issues
+  pages: write
+  id-token: write
+
+concurrency:
+  group: ember
+  cancel-in-progress: false
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Load Ember's memories from the data branch
+        run: |
+          mkdir -p site/data
+          if git ls-remote --exit-code --heads origin data; then
+            git fetch --depth=1 origin data
+            git archive FETCH_HEAD | tar -x -C site/data
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -r requirements.txt
+
+      - name: Live one moment
+        if: github.event_name != 'push'
+        run: python tick_once.py
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Save Ember's memories to the data branch
+        if: github.event_name != 'push'
+        working-directory: site/data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git init -q -b data
+          git config user.name "ember-bot"
+          git config user.email "ember-bot@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Ember's memories"
+          git push -q -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" data
+
+      - name: Tidy up before publishing
+        run: rm -rf site/data/.git
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

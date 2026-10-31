@@ -1,0 +1,54 @@
+"""
+tick_once.py - live one moment of Ember's life, then exit.
+
+GitHub Actions runs this every 15 minutes (see .github/workflows/ember.yml).
+New wishes are also filed as GitHub issues, so you get a notification when Ember wants something built.
+"""
+
+import json
+import os
+import sys
+import urllib.request
+
+import world
+from brain import Brain
+
+TICK_MINUTES = 15
+
+
+def file_wish_issues() -> None:
+    token, repo = os.environ.get("GITHUB_TOKEN"), os.environ.get("GITHUB_REPOSITORY")
+    if not (token and repo):
+        return
+    for wish in world.state["wishes"]:
+        if wish["issue_url"] or wish["granted"]:
+            continue
+        issue = {
+            "title": f"{world.CONFIG['name']} wishes for: {wish['text'][:80]}",
+            "body": f"> {wish['text']}\n\nTo grant it, add a building to `buildings.json` with "
+                    '`"grants_wish": "<a few words from this wish>"`. '
+                    f"{world.CONFIG['name']} will notice it on its next thought.",
+        }
+        request = urllib.request.Request(
+            f"https://api.github.com/repos/{repo}/issues", data=json.dumps(issue).encode("utf-8"), method="POST",
+            headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=20) as response:
+                wish["issue_url"] = json.load(response)["html_url"]
+        except OSError as error:
+            print(f"Couldn't file the wish as an issue: {error}")
+            return
+
+
+def main() -> None:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    world.load()
+    brain = Brain(world.CONFIG["name"]) if os.environ.get("ANTHROPIC_API_KEY") else None
+    world.tick(brain, TICK_MINUTES * 60)
+    file_wish_issues()
+    world.save()
+
+
+if __name__ == "__main__":
+    main()
