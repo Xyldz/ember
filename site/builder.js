@@ -39,6 +39,8 @@ const STYLE = `
   #builder .item { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin: 4px 0; padding: 6px 8px;
     border: 1px solid var(--line); border-radius: 3px; cursor: pointer; }
   #builder .item.selected { border-color: var(--cyan); color: var(--cyan); }
+  #builder .item .row { margin: 0; flex-wrap: nowrap; }
+  #builder .item button { padding: 2px 8px; }
   #builder .hint { margin: 4px 0; color: var(--muted); font-size: 11px; font-style: italic; }
   #builder .status { min-height: 1.4em; margin: 6px 0; color: var(--amber); white-space: pre-wrap; }
   #builder .shape { margin: 8px 0; padding: 8px; border: 1px dashed var(--line); border-radius: 3px; }
@@ -166,17 +168,20 @@ export async function startBuilder(ctx) {
     rebuild();
     select(building.id);
   }
-  function removeSelected() {
-    const building = selected();
-    if (!building || !confirm(`Remove "${building.name}" from the roof?`)) return;
+  function removeBuilding(building) {
+    if (!building) return;
     if (doc.buildings.length === 1) return setStatus('Ember needs at least one building.');
+    if (!confirm(`Remove "${building.name}" from the roof?`)) return;
     doc.buildings = doc.buildings.filter((b) => b !== building);
-    selectedId = null;
-    gizmo.detach();
+    if (building.id === selectedId) {
+      selectedId = null;
+      gizmo.detach();
+    }
     changed();
     rebuild();
     renderPanel();
   }
+  const removeSelected = () => removeBuilding(selected());
 
   // ---- saving, uploading, publishing ---------------------------------------------------------
   async function post(path, body, contentType = 'application/json') {
@@ -265,7 +270,11 @@ export async function startBuilder(ctx) {
 
       h('h2', { textContent: 'Buildings' }),
       doc.buildings.map((b) => h('div', { className: `item${b.id === selectedId ? ' selected' : ''}`, onclick: () => select(b.id) },
-        h('span', { textContent: b.name }), h('span', { className: 'hint', textContent: b.id }))),
+        h('span', { textContent: b.name }),
+        h('span', { className: 'row' },
+          h('span', { className: 'hint', textContent: b.id }),
+          h('button', { className: 'danger', title: `Delete ${b.name}`, textContent: '✕',
+            onclick: (event) => { event.stopPropagation(); removeBuilding(b); } })))),
       h('div', { className: 'row' }, h('button', { textContent: '+ New building', onclick: () => addBuilding(doc.empty_lots.shift() ?? [0, 6]) })),
 
       h('h2', { textContent: 'Empty lots' }),
