@@ -73,7 +73,7 @@
         "radio"
       ],
       "boosts": {
-        "connection": 8,
+        "connection": 3,
         "joy": 2
       }
     },
