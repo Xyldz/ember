@@ -53,62 +53,6 @@
     "glow": 0.4,
     "exposure": 0.85
   },
-  "signs": [
-    {
-      "id": "sign_1",
-      "text": "EMBER.NET",
-      "color": "#3ff0ff",
-      "size": 12,
-      "pos": [
-        -30.49,
-        14,
-        -15.05
-      ]
-    },
-    {
-      "id": "sign_2",
-      "text": "24/7",
-      "color": "#ff3fb4",
-      "size": 8,
-      "pos": [
-        22.17,
-        22,
-        -33.29
-      ]
-    },
-    {
-      "id": "sign_3",
-      "text": "DATA",
-      "color": "#ffcc4d",
-      "size": 9,
-      "pos": [
-        -9.7,
-        8,
-        -44.97
-      ]
-    },
-    {
-      "id": "sign_4",
-      "text": "狐",
-      "color": "#ff3fb4",
-      "size": 6,
-      "pos": [
-        -32.56,
-        18,
-        19.59
-      ]
-    },
-    {
-      "id": "sign_5",
-      "text": "OPEN",
-      "color": "#8b5bff",
-      "size": 8,
-      "pos": [
-        27.35,
-        12,
-        34.47
-      ]
-    }
-  ],
+  "signs": [],
   "props": []
 }

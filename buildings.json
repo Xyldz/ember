@@ -14,30 +14,65 @@
     {
       "id": "terminal",
       "name": "Data terminal",
-      "pos": [0, -1.5],
+      "pos": [
+        0,
+        -1
+      ],
       "model": "terminal",
       "about": "A big humming terminal wired into the real internet.",
-      "actions": ["search"],
-      "boosts": {"curiosity": 4}
+      "actions": [
+        "search"
+      ],
+      "boosts": {
+        "curiosity": 4
+      },
+      "rotation": 0,
+      "scale": 1
     },
     {
       "id": "pod",
       "name": "Charging pod",
-      "pos": [-6, 2.5],
+      "pos": [
+        -6,
+        2.5
+      ],
       "model": "pod",
       "about": "A padded capsule that glows softly and hums with power.",
-      "actions": ["rest"],
-      "boosts": {"calm": 4}
+      "actions": [
+        "rest"
+      ],
+      "boosts": {
+        "calm": 4
+      }
     },
     {
       "id": "edge",
       "name": "Rooftop edge",
-      "pos": [3, -9.3],
+      "pos": [
+        3,
+        -9.3
+      ],
       "model": "railing",
       "about": "The edge of the roof. Below: the endless neon city, flying cars, rain and a million lit windows.",
       "actions": [],
-      "boosts": {"calm": 6, "curiosity": 3}
+      "boosts": {
+        "calm": 6,
+        "curiosity": 3
+      }
     }
   ],
-  "empty_lots": [[-6.5, -6], [7, 2.5], [-1, 7.5]]
+  "empty_lots": [
+    [
+      -6.5,
+      -6
+    ],
+    [
+      7,
+      2.5
+    ],
+    [
+      -1,
+      7.5
+    ]
+  ]
 }
