@@ -119,7 +119,10 @@ Your browser opens Ember's rooftop with a builder panel. It only works on your o
 - **Look**: a built-in piece, simple shapes (editable boxes, cylinders and spheres, neon or not), or **your own 3D model**:
   - From **Roblox Studio**: select your build, **File → Export Selection**, then in the builder pick the `.obj`
     **and** the `.mtl` (and any textures) together.
-  - From **Blender** or anything else: export `.glb`.
+  - From **Blender**: **File → Export → glTF 2.0**, Format **glTF Binary (.glb)** (one file, textures packed in).
+    Tick **Selected Objects** to export just your build. Blender's **Compression** option works too.
+    Anything you **animate** in Blender plays on a loop on the roof. Give a material an **Emission** colour
+    and it glows like neon. 1 Blender unit is about 1 unit on the roof (24 wide by default).
   - Models are auto-fitted to a lot; untick that to use the model's own size.
 - **Save** (or Ctrl+S) writes `buildings.json` and `site/scenery.json`, and keeps your models in `site/models/`.
 - **Publish to GitHub** sends them to the live Ember, which notices the new building on its next thought.

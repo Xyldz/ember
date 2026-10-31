@@ -171,6 +171,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -543,8 +545,22 @@ function shapesBuilder(shapes) { // simple buildings described in buildings.json
     return { anchor: new THREE.Vector3(x, top + 0.8, z - 1.5) };
   };
 }
-// 3D models you make yourself, in site/models/: .glb/.gltf (Blender etc.) or .obj (Roblox Studio: File > Export Selection)
-const gltfLoader = new GLTFLoader();
+// 3D models you make yourself, in site/models/: .glb/.gltf (Blender etc.) or .obj (Roblox Studio: File > Export Selection).
+// Compressed .glb files (Blender's "Compression" option) work too, and any animations in them play on a loop.
+const gltfLoader = new GLTFLoader()
+  .setDRACOLoader(new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/gltf/'))
+  .setMeshoptDecoder(MeshoptDecoder);
+const animations = []; // { mixer, root } for every animated model on the roof
+function playAnimations(gltf) {
+  if (!gltf.animations.length) return;
+  const mixer = new THREE.AnimationMixer(gltf.scene);
+  for (const clip of gltf.animations) mixer.clipAction(clip).play();
+  animations.push({ mixer, root: gltf.scene });
+}
+function inScene(object) {
+  for (let o = object; o; o = o.parent) if (o === scene) return true;
+  return false;
+}
 function modelBuilder(building) {
   return (x, z, group) => {
     const info = { anchor: new THREE.Vector3(x, 3.4, z - 1.8) };
@@ -569,7 +585,7 @@ function modelBuilder(building) {
       if (building.mtl) new MTLLoader().load(building.mtl, loadObj, undefined, () => loadObj(null));
       else loadObj(null);
     } else {
-      gltfLoader.load(building.model, (gltf) => place(gltf.scene), undefined, failed);
+      gltfLoader.load(building.model, (gltf) => { place(gltf.scene); playAnimations(gltf); }, undefined, failed);
     }
     return info;
   };
@@ -755,6 +771,7 @@ function pinToScreen(el, worldPosition) {
 
 function resize() {
   const w = worldEl.clientWidth, h = worldEl.clientHeight;
+  if (!w || !h) return; // hidden for a moment (e.g. while the window is opening)
   renderer.setSize(w, h, false);
   composer.setSize(w, h);
   bloom.resolution.set(w, h);
@@ -810,9 +827,13 @@ function animate() {
   rainGeometry.attributes.position.needsUpdate = true;
   artHolo.position.y = 2.6 + Math.sin(t * 1.3) * 0.08;
   artHolo.rotation.y = Math.sin(t * 0.4) * 0.25;
+  for (let i = animations.length - 1; i >= 0; i--) { // models' own animations; forget ones that were removed
+    if (inScene(animations[i].root)) animations[i].mixer.update(dt);
+    else animations.splice(i, 1);
+  }
 
   controls.update();
-  composer.render();
+  if (worldEl.clientWidth && worldEl.clientHeight) composer.render();
   for (const { el, anchor, group } of labels) pinToScreen(el, group ? group.localToWorld(labelSpot.copy(anchor)) : anchor);
   bubbleAnchor.set(avatar.position.x, avatar.position.y + 1.3, avatar.position.z);
   pinToScreen(bubble, bubbleAnchor);
