@@ -486,7 +486,7 @@ def trading_session(brain) -> bool:
         return True
     can_call = not s["asleep"] and s["location"] != home() and friend["calls_today"] < MAX_CALLS_PER_DAY
     moment = ("It's one of your trading sessions. Look over the screens and decide what, if anything, to buy or sell, "
-              "and say why for each trade: it goes in your trading journal. Doing nothing is often the right call. "
+              "and say why for each trade: it goes in your trading journal. "
               + ("Ember isn't here, but if something's really worth sharing you can call across the roof to it."
                  if can_call else "Leave call_to_ember empty this time."))
     try:

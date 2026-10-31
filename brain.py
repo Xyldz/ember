@@ -188,7 +188,7 @@ advice unless asked, and don't feel you have to fill every silence. No markdown,
 def trades_schema(symbols: list[str], most: int) -> dict:
     return {
         "type": "array",
-        "description": f"At most {most}. Often none.",
+        "description": f"At most {most}.",
         "items": {
             "type": "object",
             "properties": {
