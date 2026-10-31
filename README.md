@@ -94,8 +94,3 @@ On Claude Haiku 5.5 with the default limits, Ember costs roughly **$1–5 a mont
 The website shows the running cost for the current month.
 
 Set a monthly spend limit in the Anthropic Console (**Settings → Limits**) so it can never surprise you.
-
-## Helping Ember pay for itself
-
-Put a tip-jar link (Ko-fi, Buy Me a Coffee, GitHub Sponsors...) in `config.json` as `support_url`
-and a "Help keep Ember online" button appears on the site, next to the running cost.
