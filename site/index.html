@@ -40,6 +40,14 @@
   .bubble.vega::before { content: attr(data-name); display: block; margin-bottom: 2px; color: var(--vega); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; }
   .place.friend { border-color: rgba(255, 176, 46, .55); color: var(--vega); font-size: 10px; text-shadow: 0 0 6px rgba(255, 176, 46, .6); }
   .place[hidden] { display: none; }
+  /* Camera buttons in the corner of the 3D view */
+  .cam { position: absolute; right: 12px; bottom: 12px; display: flex; gap: 6px; pointer-events: auto; }
+  .cam button { padding: 5px 10px; border: 1px solid var(--line); border-radius: 3px; background: rgba(8, 10, 22, .85);
+    color: var(--muted); font: inherit; font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+  .cam button:hover { color: var(--ink); border-color: var(--muted); }
+  .cam button.on { color: var(--cyan); border-color: rgba(63, 240, 255, .6); box-shadow: 0 0 10px rgba(63, 240, 255, .25); }
+  .cam button[hidden] { display: none; }
+  body.building .cam { display: none; }
   .holo { position: absolute; transform: translate(-50%, -100%); width: 230px; padding: 8px 10px;
     border: 1px solid rgba(63, 240, 255, .45); background: linear-gradient(rgba(63, 240, 255, .12), rgba(63, 240, 255, .03));
     color: #c4f9ff; font-size: 11px; line-height: 1.45; box-shadow: 0 0 24px rgba(63, 240, 255, .15); }
@@ -248,6 +256,8 @@
     #now-thought span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     #now-goal { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .place { font-size: 10px; padding: 1px 6px; }
+    .cam { top: calc(52px + env(safe-area-inset-top)); bottom: auto; right: 8px; gap: 4px; }
+    .cam button { padding: 4px 7px; font-size: 10px; }
   }
 </style>
 </head>
@@ -258,6 +268,13 @@
       <div id="research" class="holo" hidden></div>
       <div id="bubble" class="bubble" hidden></div>
       <div id="vega-bubble" class="bubble vega" hidden></div>
+      <div id="cam" class="cam">
+        <button data-follow="free" title="Drag to turn · right-drag to move · scroll to zoom · double-click to fly there">🎥 Free</button>
+        <button data-follow="ember" title="The camera follows Ember around the roof">✦ Ember</button>
+        <button data-follow="vega" id="cam-vega" title="The camera follows Vega around the roof" hidden>🤖 Vega</button>
+        <button id="cam-reset" title="Back to the view of the whole roof">⟲</button>
+        <button id="cam-sky" title="The sky follows the real sun over London. Click for night all the time">☀</button>
+      </div>
       <div id="needs" class="needs"></div>
       <div class="now-card">
         <h2>Right now</h2>
@@ -353,9 +370,10 @@ camera.position.set(10, 8.5, 13);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(-0.5, 0.8, -1.5);
 controls.enableDamping = true;
-controls.enablePan = false;
+controls.screenSpacePanning = false; // right-drag slides you across the roof, not up into the sky
+controls.zoomToCursor = true; // the wheel zooms towards whatever's under the pointer
 controls.maxPolarAngle = 1.45;
-controls.minDistance = 6;
+controls.minDistance = 2.5;
 controls.maxDistance = 40;
 
 const composer = new EffectComposer(renderer);
@@ -373,6 +391,71 @@ moon.shadow.mapSize.setScalar(IS_PHONE ? 1024 : 2048);
 Object.assign(moon.shadow.camera, { left: -14, right: 14, top: 14, bottom: -14, near: 1, far: 60 });
 moon.shadow.camera.updateProjectionMatrix();
 scene.add(moon);
+
+// ---------------------------------------------------------------------------
+// Day and night: the sky follows the real sun over the place Ember's weather comes from (London, unless
+// config.json says otherwise). scenery.json describes the night; by day the haze lifts, the sun comes up and
+// the neon fades back. "Always night" on the camera bar keeps it dark, and ?hour=13 previews another time.
+// ---------------------------------------------------------------------------
+const SKY_AT = { latitude: 51.5072, longitude: -0.1276 }; // replaced by the real spot once state.json arrives
+const PREVIEW_HOUR = parseFloat(new URLSearchParams(location.search).get('hour'));
+const DAY = { sky: new THREE.Color('#7b9ed8'), fog: new THREE.Color('#a2b8db'), light: new THREE.Color('#dce7ff'),
+  sun: new THREE.Color('#fff1d8'), tower: new THREE.Color('#58627e'), grey: new THREE.Color('#8f96a4') };
+const DUSK = { sky: new THREE.Color('#d9826f'), fog: new THREE.Color('#d48d7f'), sun: new THREE.Color('#ffa463') };
+const MOONLIGHT = new THREE.Color(0x9d8cff), NIGHT_TOWER = new THREE.Color(0x07080f), MOON_SPOT = new THREE.Vector3(-10, 22, 8);
+const towerMaterials = []; // the city's windows: dimmer by day
+let sceneSky = null, skyMode = 'live', daylight = 0; // daylight: 0 at night, 1 in full day
+const sunDisc = new THREE.Mesh(new THREE.SphereGeometry(9, 24, 16), new THREE.MeshBasicMaterial({ color: 0xffe8b0, fog: false }));
+const moonDisc = new THREE.Mesh(new THREE.SphereGeometry(5, 24, 16), new THREE.MeshBasicMaterial({ color: 0xd9dcff, fog: false }));
+moonDisc.position.set(-0.6, 0.38, -0.7).setLength(300); // low in the north-west, where you can see it from the usual view
+scene.add(sunDisc, moonDisc);
+
+function sunPosition(date, latitude, longitude) { // how high the sun is, and its compass bearing, in degrees
+  const rad = Math.PI / 180, days = date.getTime() / 86400000 - 10957.5; // days since noon on 1 January 2000
+  const anomaly = ((357.528 + 0.9856003 * days) % 360) * rad;
+  const along = ((280.46 + 0.9856474 * days) % 360 + 1.915 * Math.sin(anomaly) + 0.02 * Math.sin(2 * anomaly)) * rad;
+  const tilt = (23.439 - 0.0000004 * days) * rad;
+  const rightAscension = Math.atan2(Math.cos(tilt) * Math.sin(along), Math.cos(along));
+  const declination = Math.asin(Math.sin(tilt) * Math.sin(along));
+  const hourAngle = ((280.46061837 + 360.98564736629 * days) % 360) * rad + longitude * rad - rightAscension;
+  const lat = latitude * rad;
+  const altitude = Math.asin(Math.sin(lat) * Math.sin(declination) + Math.cos(lat) * Math.cos(declination) * Math.cos(hourAngle));
+  const bearing = Math.atan2(-Math.sin(hourAngle), Math.cos(lat) * Math.tan(declination) - Math.sin(lat) * Math.cos(hourAngle));
+  return { altitude: altitude / rad, bearing: bearing / rad };
+}
+
+function applyDaylight(weatherCode = 0) {
+  if (!sceneSky) return;
+  let when = new Date();
+  if (Number.isFinite(PREVIEW_HOUR)) when.setHours(Math.floor(PREVIEW_HOUR), (PREVIEW_HOUR % 1) * 60, 0, 0);
+  const sun = BUILDING || skyMode === 'night' ? { altitude: -40, bearing: 0 } : sunPosition(when, SKY_AT.latitude, SKY_AT.longitude);
+  const k = Math.min(1, Math.max(0, (sun.altitude + 6) / 16)); // from 6° below the horizon to 10° above
+  const day = k * k * (3 - 2 * k);
+  const dusk = Math.max(0, 1 - Math.abs(sun.altitude - 2) / 10); // the warm glow round sunrise and sunset
+  const cloud = weatherCode >= 51 ? 0.75 : weatherCode >= 3 ? 0.5 : 0; // overcast days are grey
+  daylight = day;
+  const daySky = DAY.sky.clone().lerp(DAY.grey, cloud), dayFog = DAY.fog.clone().lerp(DAY.grey, cloud);
+  scene.background.set(sceneSky.color).lerp(daySky, day).lerp(DUSK.sky, dusk * 0.5 * (1 - cloud));
+  scene.fog.color.set(sceneSky.fog_color).lerp(dayFog, day).lerp(DUSK.fog, dusk * 0.5 * (1 - cloud));
+  baseFog = sceneSky.fog * (1 - 0.3 * day);
+  skyLight.color.set(sceneSky.light_color).lerp(DAY.light, day);
+  baseLight = sceneSky.light + day * 1.1;
+  const toSun = new THREE.Vector3(Math.sin(sun.bearing * Math.PI / 180), 0, -Math.cos(sun.bearing * Math.PI / 180)) // north is -Z
+    .multiplyScalar(Math.cos(sun.altitude * Math.PI / 180)).setY(Math.sin(sun.altitude * Math.PI / 180));
+  moon.position.copy(day > 0.05 ? toSun.clone().setLength(30) : MOON_SPOT);
+  moon.color.copy(MOONLIGHT).lerp(DAY.sun, day).lerp(DUSK.sun, dusk * 0.6 * (1 - cloud));
+  moon.intensity = 0.8 + day * 2.8 * (1 - cloud * 0.7);
+  renderer.toneMappingExposure = sceneSky.exposure + day * 0.25;
+  bloom.strength = sceneSky.glow * (1 - 0.55 * day);
+  for (const material of towerMaterials) {
+    material.emissiveIntensity = material.userData.glow * (1 - 0.8 * day);
+    material.color.copy(NIGHT_TOWER).lerp(DAY.tower, day);
+  }
+  sunDisc.visible = sun.altitude > -4 && cloud < 0.6;
+  sunDisc.position.copy(toSun).setLength(300);
+  sunDisc.material.color.set(0xfff4d6).lerp(DUSK.sun, dusk);
+  moonDisc.visible = day < 0.5 && cloud < 0.6;
+}
 
 const materials = {};
 function mat(color, extra = {}) {
@@ -447,7 +530,10 @@ function towerMaterial(tint, repeatX, repeatY, glow = 0.5) {
   const map = windowsTexture.clone();
   map.needsUpdate = true;
   map.repeat.set(repeatX, repeatY);
-  return new THREE.MeshStandardMaterial({ color: 0x07080f, roughness: 0.8, emissive: tint, emissiveMap: map, emissiveIntensity: glow });
+  const material = new THREE.MeshStandardMaterial({ color: 0x07080f, roughness: 0.8, emissive: tint, emissiveMap: map, emissiveIntensity: glow });
+  material.userData.glow = glow; // its night-time brightness (day and night dim it, see applyDaylight)
+  towerMaterials.push(material);
+  return material;
 }
 
 function drawSign(sign, group) { // neon text on a transparent board (drawn once the fonts have loaded)
@@ -490,7 +576,9 @@ function buildScenery(sc) {
   sceneryParts.signs = {};
   blinkers.length = 0;
   cars.length = 0;
+  towerMaterials.length = 0;
   const { roof, tower, city, sky } = sc;
+  sceneSky = sky;
   ROOF = Math.max(4, Math.min(40, roof.size / 2));
 
   // Sky, fog, light and glow
@@ -584,6 +672,7 @@ function buildScenery(sc) {
     sceneryParts.props[prop.id] = group;
     lookBuilder(prop)(0, 0, group);
   }
+  applyDaylight(); // the real weather's clouds join in on the next render
 }
 
 // Rain
@@ -1049,6 +1138,63 @@ function drawTicker(v) {
 }
 
 // ---------------------------------------------------------------------------
+// The camera: drag to turn, right-drag to move, scroll to zoom towards the pointer, double-click to fly
+// somewhere, or let it follow Ember or Vega around (the buttons in the corner)
+// ---------------------------------------------------------------------------
+const HOME_VIEW = { camera: camera.position.clone(), target: controls.target.clone() };
+let follow = 'free', flight = null; // flight: a glide to somewhere new, in progress
+const followStep = new THREE.Vector3(), clampStep = new THREE.Vector3();
+function setFollow(mode) {
+  follow = mode;
+  document.querySelectorAll('#cam [data-follow]').forEach((b) => b.classList.toggle('on', b.dataset.follow === mode));
+  store.set('follow', mode);
+}
+function followed() { return follow === 'ember' ? avatar.position : follow === 'vega' && vega ? vega.root.position : null; }
+function flyTo(target, cameraAt) { // glide there; the camera keeps its angle unless told where to end up
+  const offset = camera.position.clone().sub(controls.target);
+  if (offset.length() > 11) offset.setLength(11);
+  flight = { target: [controls.target.clone(), target.clone()], camera: [camera.position.clone(), cameraAt ?? target.clone().add(offset)],
+    start: performance.now() };
+}
+function inside(object, root) {
+  for (let o = object; o; o = o.parent) if (o === root) return true;
+  return false;
+}
+const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
+renderer.domElement.addEventListener('dblclick', (event) => {
+  if (BUILDING) return;
+  const box = renderer.domElement.getBoundingClientRect();
+  pointer.set(((event.clientX - box.left) / box.width) * 2 - 1, -((event.clientY - box.top) / box.height) * 2 + 1);
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObjects([avatar, worldGroup, sceneryGroup].filter(Boolean), true)[0];
+  if (!hit) return;
+  const who = inside(hit.object, avatar) ? 'ember' : vega && inside(hit.object, vega.root) ? 'vega' : 'free';
+  setFollow(who); // double-clicking Ember or Vega follows them
+  flyTo(who === 'free' ? hit.point.clone().setY(Math.min(hit.point.y, 4)) : followed().clone().setY(1));
+});
+renderer.domElement.addEventListener('pointerdown', (event) => { // grabbing the camera takes over from the autopilot
+  flight = null;
+  if (event.button === 2 || event.shiftKey || event.ctrlKey || event.metaKey) setFollow('free'); // you're moving it yourself
+});
+function steerCamera(dt) {
+  if (flight) {
+    const k = Math.min(1, (performance.now() - flight.start) / 900), ease = k * k * (3 - 2 * k);
+    controls.target.lerpVectors(...flight.target, ease);
+    camera.position.lerpVectors(...flight.camera, ease);
+    if (k >= 1) flight = null;
+  } else if (followed()) { // move along with it, so you can still turn and zoom around it
+    followStep.copy(followed()).setY(1).sub(controls.target).multiplyScalar(Math.min(1, dt * 3));
+    controls.target.add(followStep);
+    camera.position.add(followStep);
+  }
+  const edge = ROOF + 6; // never wander off so far you lose the roof
+  clampStep.set(THREE.MathUtils.clamp(controls.target.x, -edge, edge), THREE.MathUtils.clamp(controls.target.y, 0, 8),
+    THREE.MathUtils.clamp(controls.target.z, -edge, edge)).sub(controls.target);
+  controls.target.add(clampStep);
+  camera.position.add(clampStep);
+}
+
+// ---------------------------------------------------------------------------
 // Animation loop
 // ---------------------------------------------------------------------------
 const bubble = $('bubble'), researchHolo = $('research'), vegaBubble = $('vega-bubble');
@@ -1156,6 +1302,7 @@ function animate() {
   }
   if (tickerTexture) tickerTexture.offset.x = (tickerTexture.offset.x + (dt * 150) / tickerCanvas.width) % 1;
 
+  steerCamera(dt);
   controls.update();
   if (worldEl.clientWidth && worldEl.clientHeight) composer.render();
   for (const { el, anchor, group } of labels) pinToScreen(el, group ? group.localToWorld(labelSpot.copy(anchor)) : anchor);
@@ -1739,6 +1886,10 @@ function render(s) {
   $('pill').className = `pill ${s.asleep ? 'asleep' : 'awake'}`;
   $('pill').textContent = s.asleep ? 'Asleep' : 'Awake';
 
+  if (s.sky_at) Object.assign(SKY_AT, s.sky_at);
+  applyDaylight(s.weather?.code);
+  $('cam-vega').hidden = !vega;
+
   NEEDS.forEach(([need], i) => {
     needBars[i].style.width = `${s.needs[need]}%`;
     needBars[i].parentElement.parentElement.title = `${need}: ${s.needs[need]}/100`;
@@ -1904,6 +2055,25 @@ document.querySelectorAll('.tabs button').forEach((button) => button.addEventLis
   feedKey = '';
   if (latest) renderFeed(latest);
 }));
+
+// The camera bar: follow Ember or Vega (or not), back to the whole roof, and real sky or night all the time
+document.querySelectorAll('#cam [data-follow]').forEach((button) => button.addEventListener('click', () => {
+  setFollow(button.dataset.follow);
+  if (followed()) flyTo(followed().clone().setY(1));
+}));
+$('cam-reset').addEventListener('click', () => { setFollow('free'); flyTo(HOME_VIEW.target, HOME_VIEW.camera); });
+function setSky(mode) {
+  skyMode = mode;
+  const button = $('cam-sky');
+  button.textContent = mode === 'night' ? '🌙' : '☀';
+  button.title = mode === 'night' ? 'Always night. Click for the real sky over London'
+    : 'The sky follows the real sun over London. Click for night all the time';
+  store.set('sky', mode);
+  applyDaylight(latest?.weather?.code);
+}
+$('cam-sky').addEventListener('click', () => setSky(skyMode === 'night' ? 'live' : 'night'));
+setFollow(store.get('follow', 'free'));
+setSky(store.get('sky', 'live'));
 </script>
 </body>
 </html>

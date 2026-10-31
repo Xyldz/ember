@@ -183,6 +183,7 @@ def save() -> None:
         "today": now().strftime("%Y-%m-%d"),
         "max_searches_per_day": CONFIG["max_searches_per_day"],
         "vega": friend.view(),
+        "sky_at": {"latitude": CONFIG["weather"]["latitude"], "longitude": CONFIG["weather"]["longitude"]},  # for the sun
         "support_url": CONFIG["support_url"],
         "support_text": CONFIG["support_text"],
     })

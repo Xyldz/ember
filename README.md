@@ -66,6 +66,16 @@ If a repository has no activity for 60 days GitHub pauses the schedule; just cli
 - *Dream now*: write today's diary and sort its memories early. Tonight's real dream redoes the day.
 - *Start Ember's life over from scratch*: wipes all its memories, diary, interests and lessons. There's no undo.
 
+## Looking around
+
+- **Drag** to turn the camera, **right-drag** (two fingers on a phone) to move around the roof, **scroll** (or pinch)
+  to zoom towards whatever's under the pointer. **Double-click** anywhere to fly there; double-click Ember or Vega to follow them.
+- The buttons in the corner: **Free** camera, follow **Ember**, follow **Vega**, **⟲** back to the whole roof, and
+  **☀ / 🌙**: the real sky, or night all the time. The page remembers your choices.
+- **Day and night**: the sky follows the real sun over the place in `config.json` (London): sunrise colours, a hazy blue
+  day, golden sunsets, and the neon taking over at night. Cloudy days are greyer. Add `?hour=13` to the address to see
+  another time of day. Builder mode always shows the night, which is what `site/scenery.json` describes.
+
 ## On your phone
 
 The site works on phones. Add it to your home screen and it opens full-screen like an app, with Ember's icon:
