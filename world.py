@@ -408,7 +408,7 @@ def sleep_tick() -> None:
 
 def live(brain, never_sleep: bool) -> None:
     if brain is None:
-        state["status"] = "Brain offline: no API key. Set ANTHROPIC_API_KEY and restart."
+        state["status"] = "Brain offline: no API key (ANTHROPIC_API_KEY isn't set)."
         return
     hour = now().hour
     if not never_sleep and (hour >= CONFIG["bedtime"] or hour < CONFIG["wake_time"]):

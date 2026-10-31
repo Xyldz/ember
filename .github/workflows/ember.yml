@@ -10,6 +10,11 @@ on:
   schedule:
     - cron: "*/15 * * * *"
   workflow_dispatch:
+    inputs:
+      awake:
+        description: "Wake Ember up even if it's bedtime"
+        type: boolean
+        default: false
   push:
     branches: [main]
 
@@ -48,7 +53,7 @@ jobs:
 
       - name: Live one moment
         if: github.event_name != 'push'
-        run: python tick_once.py
+        run: python tick_once.py ${{ inputs.awake && '--no-sleep' || '' }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
