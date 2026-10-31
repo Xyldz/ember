@@ -37,6 +37,8 @@ VISIT_EVERY = 90 * 60  # on average, once Ember's awake, elsewhere, and they hav
 QUIET_BEFORE_VISIT = 2 * 3600  # ...this long (seconds)
 VISIT_LENGTH = 40 * 60  # then it heads back to its screens
 PRICES_EVERY = 9 * 60  # seconds between price checks
+PRICE_POINTS = 160  # prices kept per market (about a day's worth), for the charts on the page
+MAX_TRADES_KEPT = 100  # in its trading journal
 HEADERS = {"User-Agent": "Mozilla/5.0 (ember-rooftop)"}
 BRAIN_ERRORS = (BrainError, json.JSONDecodeError, anthropic.APIStatusError, anthropic.APIConnectionError)
 FEED_ERRORS = (OSError, ValueError, KeyError, TypeError, IndexError, ZeroDivisionError)
@@ -45,7 +47,7 @@ FEED_ERRORS = (OSError, ValueError, KeyError, TypeError, IndexError, ZeroDivisio
 def new_friend() -> dict:
     return {"arrived": False, "cash": START_CASH, "realised": 0.0, "holdings": {}, "trades": [], "history": [],
             "chat": [], "notes": [], "days": [], "doing": "Setting up the desks", "say": "", "said_at": 0,
-            "location": "", "visit_since": 0, "last_talk": 0, "last_session": "", "day": "",
+            "since": "", "location": "", "visit_since": 0, "last_talk": 0, "last_session": "", "day": "",
             "replies_today": 0, "calls_today": 0, "visits_today": 0}
 
 
@@ -137,6 +139,9 @@ def check_prices(max_age: float = PRICES_EVERY) -> dict:
                                     "open": quote["open"], "fresh": True}
     for symbol in set(market["prices"]) - set(found):
         market["prices"][symbol]["fresh"] = False
+    history = market.setdefault("history", {})  # the last day or so of prices, for the little charts on the page
+    for symbol, quote in found.items():
+        history[symbol] = (history.get(symbol, []) + [[int(time.time()), quote["price"]]])[-PRICE_POINTS:]
     return market["prices"]
 
 
@@ -169,12 +174,14 @@ def price_text(price: float) -> str:
     return f"${price:,.4f}" if price < 1 else f"${price:,.2f}"  # coins worth less than a dollar need more digits
 
 
-def trade(side: str, symbol: str, dollars: float) -> None:
-    """Buy or sell about this many dollars' worth at today's real price, if the account and the market allow it."""
-    friend, quote = me(), world.state["market"]["prices"].get(symbol)
+def trade(order: dict, source: str = "session") -> None:
+    """Buy or sell about this many dollars' worth at today's real price, if the account and the market allow it.
+    Every trade goes in Vega's trading journal, with its reason and (for a sale) what it made or lost."""
+    friend, quote = me(), world.state["market"]["prices"].get(order["symbol"])
+    side, symbol, dollars, why = order["side"], order["symbol"], float(order["dollars"]), order.get("why", "").strip()
     if not quote or not quote["open"] or dollars <= 0:
         return
-    price = quote["price"]
+    price, gain = quote["price"], None
     if side == "buy":
         dollars = min(dollars, friend["cash"])
         if dollars < MIN_TRADE:
@@ -193,6 +200,7 @@ def trade(side: str, symbol: str, dollars: float) -> None:
         if dollars < MIN_TRADE and qty < holding["qty"]:
             return
         cost = holding["cost"] * qty / holding["qty"]
+        gain = round(dollars - cost, 2)
         friend["cash"] += dollars
         friend["realised"] += dollars - cost
         holding["qty"] -= qty
@@ -200,9 +208,11 @@ def trade(side: str, symbol: str, dollars: float) -> None:
         if holding["qty"] * price < 1:
             del friend["holdings"][symbol]
     friend["trades"] = (friend["trades"] + [{**stamp(), "side": side, "symbol": symbol, "qty": qty, "price": price,
-                                             "dollars": round(dollars, 2)}])[-40:]
+                                             "dollars": round(dollars, 2), "why": why, "gain": gain,
+                                             "source": source}])[-MAX_TRADES_KEPT:]
     verb = "bought" if side == "buy" else "sold"
-    world.log_event(f"{NAME} {verb} {amount(qty)} {symbol} at {price_text(price)} (${dollars:,.0f}).", "trade")
+    world.log_event(f"{NAME} {verb} {amount(qty)} {symbol} at {price_text(price)} (${dollars:,.0f})"
+                    + (f': "{why}"' if why else "."), "trade")
 
 
 def note_worth() -> None:
@@ -259,7 +269,8 @@ def situation(moment: str) -> str:
     here = (f"at your desk in the {place_name(home())}" if where() == home()
             else f"out at the {place_name(where())}, visiting Ember (your desk is at the {place_name(home())})")
     trades = "\n".join(f"- {x['date']} {x['time']}: {'bought' if x['side'] == 'buy' else 'sold'} {amount(x['qty'])} "
-                       f"{x['symbol']} at {price_text(x['price'])}" for x in friend["trades"][-8:]) or "- none yet"
+                       f"{x['symbol']} at {price_text(x['price'])}" + (f" (\"{x['why']}\")" if x.get("why") else "")
+                       for x in friend["trades"][-8:]) or "- none yet"
     notes = "\n".join(f"- {note}" for note in friend["notes"]) or "- not much yet"
     chat = "\n".join(f"- {c['time']} {'Ember' if c['who'] == 'ember' else 'You'}: \"{c['text']}\""
                      for c in friend["chat"][-12:]) or "- nothing yet: you two haven't really talked"
@@ -343,8 +354,10 @@ def tick(brain) -> None:
     friend, today = me(), world.now().strftime("%Y-%m-%d")
     if friend["day"] != today:
         friend.update(day=today, replies_today=0, calls_today=0, visits_today=0)
+    if friend["arrived"] and not friend["since"]:
+        friend["since"] = today  # moved in before this was kept
     if not friend["arrived"]:
-        friend["arrived"] = True
+        friend.update(arrived=True, since=today)
         world.change_need("curiosity", 10)
         world.change_need("connection", 6)
         world.log_event(f"Someone moved into the {place_name(base)}: an old trading bot called {NAME}.", "build")
@@ -365,8 +378,8 @@ def trading_session(brain) -> None:
     if not any(q["open"] for q in check_prices(max_age=120).values()):
         return
     can_call = not s["asleep"] and s["location"] != home() and friend["calls_today"] < MAX_CALLS_PER_DAY
-    moment = ("It's one of your trading sessions. Look over the screens and decide what, if anything, to buy or sell. "
-              "Doing nothing is often the right call. "
+    moment = ("It's one of your trading sessions. Look over the screens and decide what, if anything, to buy or sell, "
+              "and say why for each trade: it goes in your trading journal. Doing nothing is often the right call. "
               + ("Ember isn't here, but if something's really worth sharing you can call across the roof to it."
                  if can_call else "Leave call_to_ember empty this time."))
     try:
@@ -375,7 +388,7 @@ def trading_session(brain) -> None:
         return
     friend["doing"] = plan["doing"].strip() or friend["doing"]
     for order in plan["trades"][:MAX_TRADES_PER_SESSION]:
-        trade(order["side"], order["symbol"], float(order["dollars"]))
+        trade(order)
     if plan["muttered"].strip():
         world.log_event(f'{NAME} (at the screens): "{plan["muttered"].strip()}"', "trade")
     if plan["call_to_ember"].strip() and can_call:
@@ -428,7 +441,7 @@ def after_ember_thinks(brain, decision: dict, came_from: str) -> None:
     friend["doing"] = reply["doing"].strip() or friend["doing"]
     if where() == home():
         for order in reply["trades"][:1]:  # Ember might talk it into something
-            trade(order["side"], order["symbol"], float(order["dollars"]))
+            trade(order, source="chat")
     remember(reply["remember"].strip())
     if reply["say"].strip():
         speak(reply["say"].strip())
@@ -469,15 +482,20 @@ def view() -> dict | None:
     if not base:
         return None
     friend, market = me(), world.state["market"]
+    charts = market.get("history", {})
     return {
-        "name": NAME, "home": base, "location": where(), "arrived": friend["arrived"], "doing": friend["doing"],
-        "say": friend["say"], "said_at": friend["said_at"], "start": START_CASH, "worth": round(worth(), 2),
-        "cash": round(friend["cash"], 2), "realised": round(friend["realised"], 2),
+        "name": NAME, "home": base, "location": where(), "arrived": friend["arrived"], "since": friend["since"],
+        "doing": friend["doing"], "say": friend["say"], "said_at": friend["said_at"],
+        "session_hours": SESSION_HOURS, "timezone": world.CONFIG["timezone"],
+        "start": START_CASH, "worth": round(worth(), 2), "cash": round(friend["cash"], 2),
+        "realised": round(friend["realised"], 2),
         "holdings": [{"symbol": symbol, "qty": h["qty"], "worth": round(h["qty"] * price_of(symbol), 2),
                       "paid": round(h["cost"], 2)} for symbol, h in friend["holdings"].items()],
-        "prices": [{"symbol": symbol, **market["prices"][symbol]} for symbol in SYMBOLS if symbol in market["prices"]],
-        "checked": market["checked"], "trades": friend["trades"][-12:], "history": friend["history"],
-        "notes": friend["notes"], "days": friend["days"][-10:],
+        "prices": [{"symbol": symbol, **market["prices"][symbol], "kind": "crypto" if symbol in CRYPTO else "stock",
+                    "chart": [p for _, p in charts.get(symbol, [])]}
+                   for symbol in SYMBOLS if symbol in market["prices"]],
+        "checked": market["checked"], "trades": friend["trades"], "history": friend["history"],
+        "chat": friend["chat"], "notes": friend["notes"], "days": friend["days"][-10:],
     }
 
 

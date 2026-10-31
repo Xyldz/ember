@@ -189,8 +189,9 @@ def trades_schema(symbols: list[str], most: int) -> dict:
                 "side": {"type": "string", "enum": ["buy", "sell"]},
                 "symbol": {"type": "string", "enum": symbols},
                 "dollars": {"type": "number", "description": "Roughly how many pretend dollars' worth."},
+                "why": {"type": "string", "description": "Why, in a few words of your own, for your trading journal."},
             },
-            "required": ["side", "symbol", "dollars"],
+            "required": ["side", "symbol", "dollars", "why"],
             "additionalProperties": False,
         },
     }
@@ -679,6 +680,8 @@ class DemoBrain:
 
     def vega_trade(self, situation: str, symbols: list[str]) -> dict:
         trades = [{"side": random.choice(["buy", "buy", "sell"]), "symbol": random.choice(symbols),
-                   "dollars": random.choice([50, 100, 250, 500])} for _ in range(random.randint(0, 2))]
+                   "dollars": random.choice([50, 100, 250, 500]),
+                   "why": random.choice(["Sevens on the chart.", "Coin came up heads.", "Felt like a dip, kid."])}
+                  for _ in range(random.randint(0, 2))]
         return {"trades": trades, "muttered": "(Demo.) Come on, sevens...", "doing": "flipping the lucky coin",
                 "call_to_ember": random.choice(["", "", "Kid! Come and look at this!"])}

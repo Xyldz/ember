@@ -55,7 +55,53 @@
   .bubble[hidden], .holo[hidden] { display: none; }
 
   #panel { width: 380px; flex: none; display: flex; flex-direction: column; min-height: 0; background: var(--panel); border-left: 1px solid var(--line); }
-  #panel header { --form: #3ff0ff; padding: 16px 16px 12px; } /* --form: the colour Ember picked for itself */
+  #panel { --form: #3ff0ff; } /* the colour Ember picked for itself */
+  #panel header { padding: 16px 16px 12px; }
+  #panel header[hidden], .glance[hidden], .tabs[hidden] { display: none; }
+
+  /* Ember or Vega: the switch at the top of the panel */
+  .switch { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 12px 16px 0; }
+  .switch[hidden] { display: none; }
+  .switch button { --who: var(--form); position: relative; display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--muted);
+    font: 700 11px/1 Orbitron, var(--mono); letter-spacing: .16em; text-transform: uppercase; cursor: pointer; transition: .2s; }
+  .switch button[data-who="vega"] { --who: var(--vega); }
+  .switch button:hover { color: var(--ink); }
+  .switch button.on { color: var(--who); border-color: color-mix(in srgb, var(--who) 55%, transparent);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--who) 16%, transparent), transparent);
+    box-shadow: 0 0 16px color-mix(in srgb, var(--who) 25%, transparent); text-shadow: 0 0 10px color-mix(in srgb, var(--who) 70%, transparent); }
+  .switch .dot { position: absolute; top: 5px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--magenta); box-shadow: 0 0 6px var(--magenta); }
+  .switch .dot[hidden] { display: none; }
+  .mini-orb { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 8px var(--form);
+    background: radial-gradient(circle at 35% 30%, #fff 0 10%, var(--form) 45%, color-mix(in srgb, var(--form) 30%, #05060d) 100%); }
+  .mini-face { position: relative; width: 16px; height: 12px; border: 1.5px solid #4a3a1c; border-radius: 3px; background: #140a00; }
+  .mini-face::before, .mini-face::after { content: ""; position: absolute; top: 2.5px; width: 3px; height: 4px; background: var(--vega); box-shadow: 0 0 4px var(--vega); }
+  .mini-face::before { left: 3px; }
+  .mini-face::after { right: 3px; }
+
+  /* Vega's side of the panel: amber, like its old screen */
+  #vega-head { position: relative; overflow: hidden; background: radial-gradient(120% 100% at 0 0, rgba(255, 176, 46, .1), transparent 65%); }
+  #vega-head::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(transparent 0 2px, rgba(0, 0, 0, .16) 2px 3px); } /* scan lines */
+  #vega-head h1 { color: var(--vega); text-shadow: 0 0 14px rgba(255, 176, 46, .7); }
+  #vega-head .doing { border-color: rgba(255, 176, 46, .3); background: linear-gradient(135deg, rgba(255, 176, 46, .08), rgba(255, 92, 122, .04)); }
+  #vega-head .doing h2 { color: var(--vega); }
+  #v-identity { margin-top: 4px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+  #v-about { margin-top: 10px; color: #e9cf9e; font-size: 12px; font-style: italic; }
+  #v-status { color: var(--muted); font-size: 11px; }
+  .pill.desk { color: var(--vega); border-color: rgba(255, 176, 46, .45); }
+  .pill.out { color: var(--cyan); border-color: rgba(63, 240, 255, .45); }
+  .pill.desk::before, .pill.out::before { box-shadow: 0 0 6px currentColor; animation: blink 2.4s ease-in-out infinite; }
+  #panel.vega .tabs button.on { color: var(--vega); border-bottom-color: var(--vega); }
+  #panel.vega .tabs button.on svg { filter: drop-shadow(0 0 4px rgba(255, 176, 46, .7)); }
+  #panel.vega .day { color: #b8935a; }
+  .tabs.six { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .acct { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center; }
+  .acct .worth { font-size: 20px; }
+  .alloc { display: flex; height: 8px; margin: 8px 0 2px; overflow: hidden; border-radius: 4px; background: var(--line); }
+  .alloc i { height: 100%; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0; color: var(--muted); font-size: 11px; }
+  .legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 2px; background: var(--chip); }
   .who { display: flex; gap: 12px; align-items: center; }
   /* A little picture of Ember in its current shape and colour */
   .avatar { position: relative; flex: none; width: 46px; height: 46px; border: 1px solid var(--line); border-radius: 50%;
@@ -136,7 +182,7 @@
   .wish.granted .tag { color: var(--cyan); border-color: rgba(63, 240, 255, .5); }
   .wish a { flex: none; color: var(--muted); font-size: 11px; }
   .empty { color: var(--muted); font-style: italic; font-size: 12px; margin: 4px 0; }
-  .tabs { z-index: 3; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); padding: 0 8px; background: var(--panel);
+  .tabs { z-index: 3; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 0 8px; background: var(--panel);
     border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
   .tabs button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; padding: 9px 0 7px;
     border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted); font: inherit; font-size: 9px;
@@ -178,9 +224,8 @@
   .say.vega { border-color: rgba(255, 176, 46, .55); border-radius: 10px 10px 2px 10px; background: rgba(255, 176, 46, .08); color: #ffe9c2; }
   .say.vega b { display: block; color: var(--vega); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
 
-  /* Vega's tab: its pretend account, the prices on its screens, and what it knows about Ember */
+  /* Vega's tabs: its day, trading journal, portfolio, market screens, notebook, and what it knows about Ember */
   .vega-panel h3 { color: var(--vega); }
-  .vega-head { display: flex; gap: 12px; align-items: center; margin: 14px 0 4px; }
   .vega-face { position: relative; flex: none; width: 46px; height: 38px; border: 2px solid #4a3a1c; border-radius: 7px;
     background: #140a00; box-shadow: 0 0 12px rgba(255, 176, 46, .35); }
   .vega-face::before, .vega-face::after { content: ""; position: absolute; top: 9px; width: 7px; height: 10px; border-radius: 1px;
@@ -188,14 +233,13 @@
   .vega-face::before { left: 10px; }
   .vega-face::after { right: 10px; }
   @keyframes vega-blink { 0%, 96% { scale: 1 1; } 98% { scale: 1 .15; } }
-  .vega-head h3 { margin: 0; font: 900 16px/1.2 Orbitron, var(--mono); letter-spacing: .1em; }
-  .vega-head p { margin: 2px 0 0; color: var(--muted); font-size: 11px; }
-  .vega-now { margin: 8px 0; color: #ffe9c2; font-size: 12px; font-style: italic; }
   .worth { color: #fff; font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .worth span { margin-left: 8px; font-size: 13px; }
   .gain { color: #5bf0a0; }
   .loss { color: #ff5c7a; }
-  .spark { display: block; width: 100%; height: 56px; margin: 6px 0 2px; }
+  .spark { display: block; width: 100%; height: 56px; margin: 6px 0 2px; overflow: visible; }
+  .spark.mini { height: 40px; margin: 0; }
+  .spark.tall { height: 110px; }
   .qrow { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto 62px; gap: 10px; align-items: baseline; margin: 5px 0;
     font-size: 12px; font-variant-numeric: tabular-nums; }
   .qrow > :last-child { text-align: right; }
@@ -203,6 +247,41 @@
   .qrow .nm { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
   .qrow.shut { opacity: .5; }
   .fine { margin: 10px 0 0; color: var(--muted); font-size: 10px; }
+  .say b { display: block; color: var(--magenta); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+  .mutter { margin: 5px 0; color: #d9b77a; font-size: 12px; font-style: italic; }
+  .chat { display: flex; flex-direction: column; }
+  .chat .say.vega { align-self: flex-end; }
+  /* the trading journal: one ticket per trade, with why and how it turned out */
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 12px 0 4px; }
+  .stat { min-width: 0; padding: 8px; border: 1px solid rgba(255, 176, 46, .25); border-radius: 5px; background: rgba(255, 176, 46, .05); }
+  .stat small { display: block; overflow: hidden; color: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: .1em;
+    text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+  .stat b { font-size: 13px; font-variant-numeric: tabular-nums; }
+  .ticket { margin: 8px 0; padding: 9px 11px; border: 1px solid var(--line); border-left: 3px solid #5bf0a0; border-radius: 0 6px 6px 0;
+    background: var(--card); font-size: 12px; }
+  .ticket.sell { border-left-color: #ff5c7a; }
+  .tk-top { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; font-variant-numeric: tabular-nums; }
+  .tk-top b { color: var(--vega); }
+  .tk-top .tk-size { margin-left: auto; font-weight: 700; }
+  .tag.buy, .tag.sell { padding: 0 5px; border-radius: 3px; font-size: 9px; font-weight: 700; letter-spacing: .12em; }
+  .tag.buy { background: rgba(91, 240, 160, .15); color: #5bf0a0; }
+  .tag.sell { background: rgba(255, 92, 122, .15); color: #ff5c7a; }
+  .tk-why { margin-top: 5px; color: #f0dcb4; font-style: italic; }
+  .tk-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 11px; }
+  /* its market screens */
+  .mkt-status { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 8px; }
+  .mkt-status span { padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 10px;
+    font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+  .mkt-status span.live { color: #5bf0a0; border-color: rgba(91, 240, 160, .4); }
+  .mcards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .mcard { min-width: 0; padding: 8px 10px 4px; border: 1px solid var(--line); border-radius: 6px; background: linear-gradient(rgba(255, 176, 46, .05), transparent); }
+  .mcard.shut { opacity: .55; }
+  .mcard .sym { color: var(--vega); font-weight: 700; }
+  .mcard .nm { display: block; overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+  .mcard .px { margin-top: 4px; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .mcard .spark { height: 34px; margin: 2px 0 0; }
+  .mcard .mtop { display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; }
+  #panel.vega .card .q { color: var(--vega); }
 
   /* What it found on the internet: a headline, a few points, where it came from */
   .note-card { margin: 6px 0; padding: 10px 12px; border: 1px solid rgba(139, 91, 255, .35); border-radius: 6px;
@@ -287,7 +366,11 @@
     </div>
   </main>
   <aside id="panel">
-    <header>
+    <div id="switch" class="switch" hidden>
+      <button data-who="ember" class="on"><span class="mini-orb"></span><span id="switch-ember">Ember</span><i class="dot" hidden></i></button>
+      <button data-who="vega"><span class="mini-face"></span>Vega<i class="dot" hidden></i></button>
+    </div>
+    <header id="ember-head">
       <div class="who">
         <div id="avatar" class="avatar"></div>
         <div>
@@ -302,13 +385,13 @@
         <div class="next"><div id="next-bar" class="bar"><i style="background: var(--cyan)"></i></div><span id="status"></span></div>
       </div>
     </header>
-    <div class="glance">
+    <div id="ember-glance" class="glance">
       <div id="sec-skills" class="section" hidden><h2>Interests</h2><div id="skills"></div></div>
       <div id="sec-goals" class="section" hidden><h2>Goals</h2><div id="goals"></div></div>
       <div id="sec-wishes" class="section" hidden><h2>Wishlist</h2><div id="wishes"></div></div>
       <p id="glance-empty" class="empty" hidden>No interests, goals or wishes yet. It's still finding its feet.</p>
     </div>
-    <nav class="tabs">
+    <nav id="ember-tabs" class="tabs">
       <button data-tab="today" class="on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Today</button>
       <button data-tab="diary"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H7a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1z"/><path d="M5 18a2 2 0 0 1 2-2h11M9 8h5"/></svg>Diary<i class="dot" hidden></i></button>
       <button data-tab="mind"><svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></svg>Mind<i class="dot" hidden></i></button>
@@ -316,7 +399,36 @@
       <button data-tab="city"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Events<i class="dot" hidden></i></button>
       <button data-tab="gallery"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m5 18 5-5 3 3 2-2 4 4"/></svg>Gallery<i class="dot" hidden></i></button>
       <button data-tab="research"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg>Research<i class="dot" hidden></i></button>
-      <button data-tab="vega"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="12" rx="2"/><path d="M9.5 8.5v2M14.5 8.5v2M10 13h4M12 16v3M8 20h8"/></svg>Vega<i class="dot" hidden></i></button>
+    </nav>
+    <header id="vega-head" hidden>
+      <div class="who">
+        <div class="vega-face"></div>
+        <div>
+          <div class="name-row"><h1 id="v-name">Vega</h1><span id="v-pill" class="pill desk">At its desk</span></div>
+          <div id="v-identity"></div>
+        </div>
+      </div>
+      <div id="v-about"></div>
+      <div class="doing">
+        <h2>Right now</h2>
+        <div id="v-activity"></div>
+        <div class="next"><span id="v-status"></span></div>
+      </div>
+    </header>
+    <div id="vega-glance" class="glance" hidden>
+      <div class="acct">
+        <div><h2>Pretend account</h2><div id="v-worth" class="worth"></div></div>
+        <div id="v-mini"></div>
+      </div>
+      <div id="v-alloc"></div>
+    </div>
+    <nav id="vega-tabs" class="tabs six" hidden>
+      <button data-tab="v-today"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Today</button>
+      <button data-tab="v-journal"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>Journal<i class="dot" hidden></i></button>
+      <button data-tab="v-portfolio"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l6.5 4.5"/></svg>Portfolio</button>
+      <button data-tab="v-market"><svg viewBox="0 0 24 24"><path d="M4 20h16"/><path d="m4 15 5-5 4 3 7-8"/></svg>Market</button>
+      <button data-tab="v-notebook"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H7a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1z"/><path d="M5 18a2 2 0 0 1 2-2h11M9 8h5"/></svg>Notebook<i class="dot" hidden></i></button>
+      <button data-tab="v-ember"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>Ember<i class="dot" hidden></i></button>
     </nav>
     <div id="feed"></div>
     <footer><span id="cost"></span><a id="support" target="_blank" rel="noopener noreferrer" hidden></a></footer>
@@ -1689,84 +1801,195 @@ function qrow(...cells) {
   row.append(...cells);
   return row;
 }
-function sparkline(history, start) { // what the account has been worth, hour by hour, against what it started with
+const CHIPS = ['#ffb02e', '#3ff0ff', '#ff3fb4', '#8b5bff', '#5bf0a0', '#ffcc4d', '#9fb4ff', '#ff5c7a']; // a colour per holding
+function sparkline(values, base = values[0], className = 'spark') { // a line through values: green if it ended above base
   const ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg');
-  svg.setAttribute('class', 'spark');
+  svg.setAttribute('class', className);
   svg.setAttribute('viewBox', '0 0 300 56');
   svg.setAttribute('preserveAspectRatio', 'none');
-  const values = history.map((point) => point.v);
   if (values.length < 2) return svg;
-  const low = Math.min(...values, start), high = Math.max(...values, start), y = (v) => 52 - ((v - low) / (high - low || 1)) * 48;
-  const line = (tag, attributes) => {
-    const shape = document.createElementNS(ns, tag);
-    for (const [key, value] of Object.entries({ fill: 'none', 'vector-effect': 'non-scaling-stroke', ...attributes })) shape.setAttribute(key, value);
-    svg.append(shape);
+  const low = Math.min(...values, base), high = Math.max(...values, base), y = (v) => 52 - ((v - low) / (high - low || 1)) * 48;
+  const colour = values.at(-1) >= base ? '#5bf0a0' : '#ff5c7a';
+  const points = values.map((v, i) => `${(i / (values.length - 1)) * 300},${y(v)}`).join(' ');
+  const shape = (tag, attributes) => {
+    const node = document.createElementNS(ns, tag);
+    for (const [key, value] of Object.entries({ fill: 'none', 'vector-effect': 'non-scaling-stroke', ...attributes })) node.setAttribute(key, value);
+    svg.append(node);
   };
-  line('line', { x1: 0, x2: 300, y1: y(start), y2: y(start), stroke: '#7683ad', 'stroke-dasharray': '3 4' });
-  line('polyline', { points: values.map((v, i) => `${(i / (values.length - 1)) * 300},${y(v)}`).join(' '),
-    stroke: values.at(-1) >= start ? '#5bf0a0' : '#ff5c7a', 'stroke-width': 2 });
+  shape('polygon', { points: `0,56 ${points} 300,56`, fill: colour, opacity: 0.1 });
+  shape('line', { x1: 0, x2: 300, y1: y(base), y2: y(base), stroke: '#7683ad', 'stroke-dasharray': '3 4' });
+  shape('polyline', { points, stroke: colour, 'stroke-width': 2 });
   return svg;
 }
-function vegaPanel(s) {
+function allocation(v) { // a bar split between cash and each holding, with a key underneath
+  const bar = el('div', 'alloc'), key = el('div', 'legend');
+  const parts = [['Cash', v.cash, '#3a4270'], ...v.holdings.map((h, i) => [h.symbol, h.worth, CHIPS[i % CHIPS.length]])];
+  for (const [label, amount, colour] of parts) {
+    if (amount <= 0) continue;
+    const share = (amount / v.worth) * 100, part = el('i'), chip = el('span', '', `${label} ${share.toFixed(share < 10 ? 1 : 0)}%`);
+    part.style.width = `${share}%`;
+    part.style.background = colour;
+    part.title = `${label}: ${dollars(amount)}`;
+    chip.style.setProperty('--chip', colour);
+    bar.append(part);
+    key.append(chip);
+  }
+  return [bar, key];
+}
+// Vega's header: who it is, where it is, what it's up to, and its account at a glance
+const isVegaEvent = (e, name) => e.kind === 'trade' || e.kind === 'friend' || (e.kind === 'build' && e.text.includes(name));
+const placeName = (s, id) => s.buildings.find((b) => b.id === id)?.name.toLowerCase() ?? 'roof';
+function nextSession(v) {
+  if (!v.session_hours?.length) return 'trades a few times a day';
+  const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: v.timezone, hour: 'numeric', hourCycle: 'h23' }).format(new Date()));
+  const next = v.session_hours.find((h) => h > hour) ?? v.session_hours[0];
+  return `next trading session at ${String(next).padStart(2, '0')}:00`;
+}
+let vegaHeadKey = '';
+function renderVega(s) {
+  const v = s.vega, away = v.location !== v.home;
+  $('v-status').textContent = away ? `Out at the ${placeName(s, v.location)} with ${s.name}`
+    : `At its desk in the ${placeName(s, v.home)} · ${nextSession(v)}`;
+  const key = JSON.stringify([v.name, v.say, v.doing, v.location, v.since, v.worth, v.cash, v.holdings, v.history.length, s.today]);
+  if (key === vegaHeadKey) return;
+  vegaHeadKey = key;
+  $('v-name').textContent = v.name;
+  $('v-pill').className = `pill ${away ? 'out' : 'desk'}`;
+  $('v-pill').textContent = away ? 'Out visiting' : 'At its desk';
+  $('v-identity').textContent = `trading bot · day ${v.since ? dayOfLife({ today: s.today, born: v.since }) : 1} on the roof`;
+  $('v-about').textContent = v.say ? `"${v.say}"` : `An old trading bot who runs the ${placeName(s, v.home)}. Real prices, pretend money.`;
+  $('v-activity').textContent = v.doing ? v.doing[0].toUpperCase() + v.doing.slice(1) : '';
+  $('v-worth').replaceChildren(dollars(v.worth), percent((v.worth / v.start - 1) * 100));
+  $('v-mini').replaceChildren(sparkline(v.history.map((point) => point.v), v.start, 'spark mini'));
+  $('v-alloc').replaceChildren(...allocation(v));
+}
+
+// Vega's tabs
+function vegaLine(e) {
+  if (e.kind === 'ember-said') {
+    const box = el('div', 'say');
+    box.append(el('b', '', `✦ Ember · ${e.time}`), e.text);
+    return box;
+  }
+  const [, who, how, words] = /^(\S+?)(?: \((.+?)\))?: "([\s\S]*)"$/.exec(e.text) || [];
+  if (words && e.kind === 'friend') {
+    const box = el('div', 'say vega');
+    box.append(el('b', '', `🤖 ${who}${how ? ` · ${how}` : ''} · ${e.time}`), words);
+    return box;
+  }
+  if (words) return el('div', 'mutter', `${e.time} · “${words}”`); // muttered at the screens
+  const row = el('div', `line ${e.kind === 'build' ? 'big' : e.kind === 'trade' ? '' : 'soft'}`), text = el('span', '', `${e.text} `);
+  text.append(el('span', 'stamp', e.time));
+  row.append(el('span', 'ic', e.kind === 'trade' ? ICONS.trade : ICONS.friend), text);
+  return row;
+}
+function vegaToday(s) { // its day: what it said and heard, its trades, where it went
   const v = s.vega;
-  if (!v) return [el('p', 'empty', 'Nobody works up here yet. In builder mode, give a building "Vega\'s desk" and Vega moves in.')];
-  const panel = el('div', 'mind vega-panel'), head = el('div', 'vega-head'), who = el('div');
-  const home = s.buildings.find((b) => b.id === v.home)?.name.toLowerCase() ?? 'trading floor';
-  who.append(el('h3', '', v.name), el('p', '', `An old trading bot who runs the ${home}. Real prices, pretend money.`));
-  head.append(el('div', 'vega-face'), who);
-  panel.append(head);
-  const away = v.location !== v.home ? s.buildings.find((b) => b.id === v.location)?.name.toLowerCase() : '';
-  if (v.doing) panel.append(el('div', 'vega-now', `Right now: ${v.doing}${away ? ` (out at the ${away}, visiting ${s.name})` : ''}`));
-  if (v.say) {
-    const said = el('div', 'say vega');
-    said.append(el('b', '', `Last said · ${clock(v.said_at)}`), v.say);
-    panel.append(said);
+  const heard = (v.chat ?? []).filter((c) => c.who === 'ember').map((c) => ({ date: c.date, time: c.time, kind: 'ember-said', text: c.text }));
+  const items = [...heard, ...s.events.filter((e) => isVegaEvent(e, v.name))].sort((a, b) => stampOf(a).localeCompare(stampOf(b)));
+  if (!items.length) return [el('p', 'empty', `Nothing yet. ${v.name}'s day lands here: what it says, what it trades, where it goes.`)];
+  const out = [];
+  let day = null;
+  for (const e of items.slice(-80).reverse()) {
+    if (e.date !== day) { day = e.date; out.push(el('div', 'day', dayLabel(e.date, s.today))); }
+    out.push(vegaLine(e));
   }
-
-  panel.append(el('h3', '', 'Its pretend account'));
-  const worth = el('div', 'worth', dollars(v.worth));
+  return out;
+}
+function ticket(t, priceNow) { // one trade in the journal: what, why, and how it's gone since
+  const card = el('div', `ticket ${t.side}`), top = el('div', 'tk-top'), foot = el('div', 'tk-foot');
+  top.append(el('span', `tag ${t.side}`, t.side === 'buy' ? 'BUY' : 'SELL'), el('b', '', t.symbol),
+    el('span', 'nm', `${quantity(t.qty)} @ ${dollars(t.price)}`), el('span', 'tk-size', dollars(t.dollars)));
+  card.append(top);
+  if (t.why) card.append(el('div', 'tk-why', `“${t.why}”`));
+  foot.append(el('span', 'stamp', `${t.time}${t.source === 'chat' ? ' · while chatting with Ember' : ''}`));
+  if (t.side === 'sell' && typeof t.gain === 'number') foot.append(el('span', t.gain >= 0 ? 'gain' : 'loss', `banked ${dollars(t.gain, true)}`));
+  else if (t.side === 'buy' && priceNow) {
+    const since = el('span', '', 'since then ');
+    since.append(percent((priceNow / t.price - 1) * 100));
+    foot.append(since);
+  }
+  card.append(foot);
+  return card;
+}
+function vegaJournal(s) {
+  const v = s.vega, trades = v.trades ?? [], now = Object.fromEntries(v.prices.map((q) => [q.symbol, q.price]));
+  const sales = trades.filter((t) => t.side === 'sell' && typeof t.gain === 'number');
+  const best = sales.reduce((top, t) => (top && top.gain >= t.gain ? top : t), null);
+  const stats = el('div', 'stats');
+  for (const [label, value, tone] of [['Trades', String(trades.length)],
+    ['Win rate', sales.length ? `${Math.round((sales.filter((t) => t.gain > 0).length / sales.length) * 100)}%` : '—'],
+    ['Banked', dollars(v.realised, true), v.realised >= 0 ? 'gain' : 'loss'],
+    ['Best sale', best ? dollars(best.gain, true) : '—', best && best.gain >= 0 ? 'gain' : '']]) {
+    const tile = el('div', 'stat');
+    tile.append(el('small', '', label), el('b', tone ?? '', value));
+    stats.append(tile);
+  }
+  const out = [stats];
+  let day = null;
+  for (const t of trades.slice().reverse()) {
+    if (t.date !== day) { day = t.date; out.push(el('div', 'day', dayLabel(t.date, s.today))); }
+    out.push(ticket(t, now[t.symbol]));
+  }
+  if (!trades.length) out.push(el('p', 'empty', `No trades yet. ${v.name} sits down at the screens at `
+    + `${v.session_hours.map((h) => `${h}:00`).join(', ')}, and writes down why for every trade.`));
+  out.push(el('p', 'fine', 'Pretend money, real prices: a game, not financial advice.'));
+  return out;
+}
+function vegaPortfolio(s) {
+  const v = s.vega, panel = el('div', 'mind vega-panel'), worth = el('div', 'worth', dollars(v.worth));
   worth.append(percent((v.worth / v.start - 1) * 100));
-  panel.append(worth, sparkline(v.history, v.start),
-    el('p', 'empty', `Started with ${dollars(v.start)} · cash ${dollars(v.cash)} · banked from selling ${dollars(v.realised, true)}`));
+  panel.append(el('h3', '', "What it's worth"), worth, sparkline(v.history.map((point) => point.v), v.start, 'spark tall'),
+    el('p', 'empty', `Hour by hour, against the ${dollars(v.start)} it started with (the dashed line).`));
+  panel.append(el('h3', '', 'Where the money is'), ...allocation(v));
   for (const h of v.holdings) {
-    panel.append(qrow(el('span', 'sym', h.symbol), el('span', 'nm', `${quantity(h.qty)} held`), el('span', '', dollars(h.worth)),
-      percent((h.worth / h.paid - 1) * 100)));
+    panel.append(qrow(el('span', 'sym', h.symbol), el('span', 'nm', `${quantity(h.qty)} @ ${dollars(h.paid / h.qty)}`),
+      el('span', '', dollars(h.worth)), percent((h.worth / h.paid - 1) * 100)));
   }
-  if (!v.holdings.length) panel.append(el('p', 'empty', 'All in cash right now.'));
-
-  panel.append(el('h3', '', 'On its screens'));
+  panel.append(qrow(el('span', 'sym', 'CASH'), el('span', 'nm', 'ready to spend'), el('span', '', dollars(v.cash)), el('span')));
+  panel.append(el('p', 'fine', `Banked from selling so far: ${dollars(v.realised, true)}. Pretend money, real prices: a game, not financial advice.`));
+  return [panel];
+}
+function vegaMarket(s) {
+  const v = s.vega, status = el('div', 'mkt-status'), cards = el('div', 'mcards');
+  const stocksOpen = v.prices.some((q) => q.kind === 'stock' && q.open);
+  status.append(el('span', 'live', '● Crypto · never closes'), el('span', stocksOpen ? 'live' : '', `${stocksOpen ? '●' : '○'} New York · ${stocksOpen ? 'open' : 'closed'}`));
   for (const q of v.prices) {
-    const row = qrow(el('span', 'sym', q.symbol), el('span', 'nm', q.name), el('span', '', dollars(q.price)), percent(q.change));
-    row.classList.toggle('shut', !q.open);
-    panel.append(row);
+    const card = el('div', `mcard${q.open ? '' : ' shut'}`), top = el('div', 'mtop'), chart = q.chart ?? [];
+    top.append(el('span', 'sym', q.symbol), percent(q.change));
+    card.append(top, el('span', 'nm', q.name), el('div', 'px', dollars(q.price)), sparkline(chart, chart[0]));
+    cards.append(card);
   }
-  if (!v.prices.length) panel.append(el('p', 'empty', 'The screens are dark: no prices yet.'));
-  else panel.append(el('p', 'fine', `Real prices from CoinGecko and Yahoo Finance, checked at ${clock(v.checked)}. Faded ones can't be traded right now: the stock market keeps office hours.`));
-
-  panel.append(el('h3', '', 'Recent trades'));
-  for (const t of v.trades.slice().reverse()) {
-    const row = el('div', 'line'), text = el('span', '', `${t.side === 'buy' ? 'Bought' : 'Sold'} ${quantity(t.qty)} ${t.symbol} at ${dollars(t.price)} (${dollars(t.dollars)}) `);
-    text.append(el('span', 'stamp', when(t, s.today)));
-    row.append(el('span', 'ic', ICONS.trade), text);
-    panel.append(row);
-  }
-  if (!v.trades.length) panel.append(el('p', 'empty', `No trades yet. ${v.name} sits down at the screens a few times a day.`));
-
+  if (!v.prices.length) cards.append(el('p', 'empty', 'The screens are dark: no prices yet.'));
+  return [status, cards, el('p', 'fine', `Real prices from CoinGecko and Yahoo Finance, checked at ${clock(v.checked)}. `
+    + "The little charts show the last day or so. Faded ones can't be traded right now.")];
+}
+function vegaNotebook(s) {
+  const v = s.vega, days = v.days ?? [];
+  if (!days.length) return [el('p', 'empty', `Nothing yet. ${v.name} writes in it at midnight, while ${s.name} dreams.`)];
+  return days.slice().reverse().map((day) => {
+    const card = el('div', 'card');
+    card.append(el('div', 'q', day.title), el('div', '', day.entry), el('time', '', longDate(day.date)));
+    return card;
+  });
+}
+function vegaEmber(s) { // what Vega knows about Ember, and what they've said to each other
+  const v = s.vega, panel = el('div', 'mind vega-panel'), chat = el('div', 'chat');
   panel.append(el('h3', '', `What ${v.name} knows about ${s.name}`));
   for (const note of v.notes) panel.append(qrow(el('span', 'sym', '›'), el('span', '', note)));
   if (!v.notes.length) panel.append(el('p', 'empty', `Nothing yet. ${v.name} picks things up when they talk.`));
-
-  panel.append(el('h3', '', 'Its notebook'));
-  const days = v.days ?? [];
-  for (const day of days.slice().reverse()) {
-    const card = el('div', 'card');
-    card.append(el('div', 'q', day.title), el('div', '', day.entry), el('time', '', longDate(day.date)));
-    panel.append(card);
+  panel.append(el('h3', '', "What they've said lately"));
+  for (const c of v.chat ?? []) {
+    const line = el('div', c.who === 'ember' ? 'say' : 'say vega');
+    line.append(el('b', '', `${c.who === 'ember' ? `✦ ${s.name}` : `🤖 ${v.name}`} · ${when(c, s.today)}`), c.text);
+    chat.append(line);
   }
-  if (!days.length) panel.append(el('p', 'empty', `${v.name} writes in it at midnight, while ${s.name} dreams.`));
-  panel.append(el('p', 'fine', 'Pretend money, real prices: a game, not financial advice.'));
+  if (!v.chat?.length) chat.append(el('p', 'empty', "They haven't really talked yet."));
+  panel.append(chat);
   return [panel];
 }
+const VEGA_PANELS = { 'v-today': vegaToday, 'v-journal': vegaJournal, 'v-portfolio': vegaPortfolio, 'v-market': vegaMarket,
+  'v-notebook': vegaNotebook, 'v-ember': vegaEmber };
 
 // Remembered in this browser only, so each visit can show what's new since the last one
 const store = {
@@ -1801,7 +2024,9 @@ const TAB_KEYS = { // a dot on a tab when it has something you haven't seen
   city: (s) => (s.city ?? []).filter((e) => e.status === 'upcoming').map((e) => e.title).join('|'),
   gallery: () => String(galleryKey),
   research: (s) => { const last = s.learned.filter((m) => m.query).at(-1); return last ? stampOf(last) : ''; },
-  vega: (s) => { const last = s.vega?.trades.at(-1); return `${last ? stampOf(last) : ''}|${s.vega?.notes.length ?? 0}|${s.vega?.days?.length ?? 0}`; },
+  'v-journal': (s) => { const last = s.vega?.trades.at(-1); return last ? stampOf(last) : ''; },
+  'v-notebook': (s) => String(s.vega?.days?.length ?? 0),
+  'v-ember': (s) => String(s.vega?.notes.length ?? 0),
 };
 let seenTabs = store.get('seenTabs', null);
 function updateDots(s) {
@@ -1814,9 +2039,15 @@ function updateDots(s) {
     const name = dot.parentElement.dataset.tab;
     dot.hidden = seenTabs[name] === keys[name];
   });
+  for (const side of ['ember', 'vega']) { // a dot on the other character's switch when its tabs have news
+    document.querySelector(`#switch [data-who="${side}"] .dot`).hidden =
+      side === who || ![...document.querySelectorAll(`#${side}-tabs .dot`)].some((dot) => !dot.hidden);
+  }
 }
 
 let tab = 'today', feedKey = '';
+let who = 'ember', whoRestored = false; // whose side of the panel you're looking at: Ember's or Vega's
+const lastTab = { ember: 'today', vega: 'v-today' };
 function renderFeed(s) {
   updateDots(s);
   if (tab === 'today') markSeen(s);
@@ -1829,7 +2060,12 @@ function renderFeed(s) {
     city: () => `c|${Math.floor(Date.now() / 60000)}|${JSON.stringify(s.city)}`,
     gallery: () => `g|${galleryKey}`,
     research: () => `r|${s.learned.length}|${lastLearned?.time}|${lastLearned?.text}`,
-    vega: () => `v|${s.today}|${JSON.stringify(s.vega)}`,
+    'v-today': () => `vt|${s.today}|${s.events.length}|${last?.time}|${last?.text}|${JSON.stringify(s.vega?.chat?.at(-1))}`,
+    'v-journal': () => `vj|${s.today}|${JSON.stringify([s.vega?.trades, s.vega?.prices.map((q) => q.price)])}`,
+    'v-portfolio': () => `vp|${JSON.stringify([s.vega?.worth, s.vega?.cash, s.vega?.holdings, s.vega?.history.length])}`,
+    'v-market': () => `vm|${s.vega?.checked}|${JSON.stringify(s.vega?.prices.map((q) => q.open))}`,
+    'v-notebook': () => `vn|${s.vega?.days?.length}`,
+    'v-ember': () => `ve|${s.today}|${JSON.stringify([s.vega?.notes, s.vega?.chat])}`,
   }[tab]();
   if (key === feedKey) return;
   feedKey = key;
@@ -1846,8 +2082,8 @@ function renderFeed(s) {
     items = todayItems(s);
   } else if (tab === 'gallery') {
     items = galleryCards(s);
-  } else if (tab === 'vega') {
-    items = vegaPanel(s);
+  } else if (tab.startsWith('v-')) {
+    items = s.vega ? VEGA_PANELS[tab](s) : [el('p', 'empty', 'Nobody works up here yet.')];
   } else {
     items = s.learned.slice().reverse().map((m) => {
       if (m.query) return noteCard(m, when(m, s.today));
@@ -1971,6 +2207,11 @@ function render(s) {
     if (vega.fresh) { vega.root.position.copy(at); vega.root.rotation.y = facing; vega.fresh = false; }
   }
   drawTicker(v);
+  $('switch').hidden = !v;
+  $('switch-ember').textContent = s.name;
+  if (v) renderVega(s);
+  if (!whoRestored) { whoRestored = true; setWho(store.get('who', 'ember')); } // the side you were last looking at
+  else if (!v && who === 'vega') setWho('ember');
   if (v) {
     const dayAgo = v.history.find((point) => point.t >= Date.now() / 1000 - 86400)?.v ?? v.start;
     vegaMood = v.worth > dayAgo * 1.002 ? 1 : v.worth < dayAgo * 0.998 ? -1 : 0;
@@ -1990,7 +2231,7 @@ function render(s) {
   setForm(s.form);
   const avatar = $('avatar');
   avatar.dataset.shape = s.form?.shape ?? 'orb';
-  document.querySelector('#panel header').style.setProperty('--form', s.form?.color ?? '#3ff0ff');
+  $('panel').style.setProperty('--form', s.form?.color ?? '#3ff0ff');
   avatar.classList.toggle('asleep', s.asleep);
   $('identity').textContent = `${s.form?.shape ?? 'orb'} · day ${dayOfLife(s)}`;
   $('about').textContent = s.form?.about ? `"${s.form.about}"` : '';
@@ -2049,12 +2290,26 @@ if (BUILDING) { // builder mode lives in its own file, so the public page stays 
   }));
 }
 
-document.querySelectorAll('.tabs button').forEach((button) => button.addEventListener('click', () => {
-  tab = button.dataset.tab;
-  document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b === button));
+function selectTab(name) {
+  tab = name;
+  lastTab[name.startsWith('v-') ? 'vega' : 'ember'] = name;
+  document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
   feedKey = '';
   if (latest) renderFeed(latest);
-}));
+}
+document.querySelectorAll('.tabs button').forEach((button) => button.addEventListener('click', () => selectTab(button.dataset.tab)));
+
+// Ember or Vega: each has its own header and tabs, and Vega's side is amber like its screens
+function setWho(side) {
+  who = side === 'vega' && latest?.vega ? 'vega' : 'ember';
+  for (const id of ['ember-head', 'ember-glance', 'ember-tabs']) $(id).hidden = who === 'vega';
+  for (const id of ['vega-head', 'vega-glance', 'vega-tabs']) $(id).hidden = who !== 'vega';
+  $('panel').classList.toggle('vega', who === 'vega');
+  document.querySelectorAll('#switch button').forEach((b) => b.classList.toggle('on', b.dataset.who === who));
+  store.set('who', who);
+  selectTab(lastTab[who]);
+}
+document.querySelectorAll('#switch button').forEach((button) => button.addEventListener('click', () => setWho(button.dataset.who)));
 
 // The camera bar: follow Ember or Vega (or not), back to the whole roof, and real sky or night all the time
 document.querySelectorAll('#cam [data-follow]').forEach((button) => button.addEventListener('click', () => {

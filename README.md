@@ -126,8 +126,12 @@ It has its own fixed character (written in `brain.py`), and it remembers things 
   (stocks); if they can't be reached, the last prices stay on its screens and nothing gets traded.
   It sits down to trade at 9:00, 13:00, 15:00, 18:00 and 21:00 London time. Stocks only trade while New York's market is open.
 - **On the site**: Vega trundles about the roof, its amber face blinking, mouthing what it says. The ticker round the
-  trading floor scrolls the real prices and Vega's account (any model part named `LiveTicker` does this). The **Vega** tab
-  shows its account, what's on its screens, its trades, its notebook, and what it knows about Ember.
+  trading floor scrolls the real prices and Vega's account (any model part named `LiveTicker` does this).
+  The switch at the top of the panel flips between **Ember** and **Vega**, each with their own tabs. Vega's are:
+  **Today** (what it said and heard, its trades, where it went), **Journal** (every trade with Vega's reason and how
+  it turned out, plus its win rate and best sale), **Portfolio** (its account over time and where the money is),
+  **Market** (each market with a chart of the last day), **Notebook**, and **Ember** (what it knows about Ember, and
+  their conversation).
 - **Cost**: Vega only thinks when Ember is with it (up to 60 replies a day) and at its trading sessions, each a tiny
   Haiku call, plus its nightly notebook: well under $1 a month.
 - Vega lives at whichever building has the `"friend"` action ("Vega's desk" in builder mode). Change the watchlist,

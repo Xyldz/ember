@@ -120,7 +120,7 @@ def new_state() -> dict:
         "costs": {"month": "", "usd": 0.0, "total_usd": 0.0},
         "tick_started_at": 0, "next_think_at": 0,
         "friend": friend.new_friend(),  # Vega, who runs the trading floor (see friend.py)
-        "market": {"prices": {}, "checked": 0},  # the real prices on Vega's screens
+        "market": {"prices": {}, "checked": 0, "history": {}},  # the real prices on Vega's screens
     }
 
 
