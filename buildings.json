@@ -3,7 +3,7 @@
     "Add an entry to 'buildings'. Ember notices new buildings on its next thought.",
     "id: short unique name. pos: [x, z] where Ember stands (the roof spans about -11 to 11).",
     "about: what it is, written to Ember. Describe the place, not what Ember should do there.",
-    "actions: what it unlocks. 'search' = use the internet, 'rest' = recharge faster, 'radio' = hear what's on the city's radio.",
+    "actions: what it unlocks. 'search' = use the internet, 'rest' = recharge faster, 'radio' = hear what's on the city's radio, 'friend' = Vega, Ember's friend, works here.",
     "boosts: optional. Needs it helps when Ember does something there, e.g. {\"calm\": 6}. Needs: charge, curiosity, joy, calm, connection.",
     "model: a built-in look ('terminal', 'pod', 'railing', 'radio'), OR a .glb file you put in site/models/ (e.g. 'models/library.glb'),",
     "       OR leave it out and add 'shapes' (boxes/cylinders/spheres, see the example in the README).",
@@ -85,10 +85,13 @@
         -6
       ],
       "model": "models/trading_floor.glb",
-      "about": "A little glass-fronted trading floor: rows of desks covered in glowing chart screens, a big candlestick screen upstairs and a stock ticker running round the building. A sign over the door says PAPER TRADES ONLY. The chairs are empty.",
-      "actions": [],
+      "about": "A little glass-fronted trading floor: rows of desks covered in glowing chart screens, a big candlestick screen upstairs and a stock ticker running round the building. A sign over the door says PAPER TRADES ONLY. Vega, an old trading bot with an amber screen for a face, runs it.",
+      "actions": [
+        "friend"
+      ],
       "boosts": {
-        "curiosity": 4
+        "connection": 6,
+        "curiosity": 3
       }
     }
   ],

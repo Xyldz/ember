@@ -15,6 +15,7 @@ writes its diary, sorts its memories and works out who it is. The world is a 3D 
 |---|---|
 | `brain.py` | Everything that talks to Claude: deciding, searching, making things, the nightly diary |
 | `world.py` | The rules: needs, lessons from experience, interests, wishes, memories, one "tick" of life |
+| `friend.py` | Vega, Ember's friend: an old trading bot with a pretend-money trading account |
 | `buildings.json` | The buildings on the roof. **Edit this to build things for Ember** |
 | `personality.json` | Ember's character sheet. Blank on purpose; add lines if you want to shape it |
 | `site/scenery.json` | The look of the world: platform, sky, city, flying cars, neon signs, props |
@@ -98,6 +99,24 @@ as soon as you open it.
   lines about itself; it can only ever add, never delete, and near-repeats are rejected.
   The **Mind** tab on the site shows both, plus the lessons.
 
+## Vega, Ember's friend
+
+Vega is an old trading bot who runs the trading floor on the roof, so Ember has someone to talk to.
+It has its own fixed character (written in `brain.py`), and it remembers things about Ember as they get to know each other.
+
+- **Talking**: whenever Ember is at the trading floor, Vega hears whatever Ember says out loud and answers (or doesn't).
+  Ember hears Vega's replies on its next thought. A couple of times a day Vega may also shout across the roof to Ember.
+- **Paper trading**: Vega trades **real prices with pretend money**: a paper account that started with $10,000.
+  There's no real money, exchange account or API key anywhere. Prices come free from CoinGecko (crypto) and Yahoo Finance
+  (stocks); if they can't be reached, the last prices stay on its screens and nothing gets traded.
+  It sits down to trade at 9:00, 13:00, 15:00, 18:00 and 21:00 London time. Stocks only trade while New York's market is open.
+- **On the site**: Vega stands outside the trading floor, its amber face blinking, mouthing what it says. The **Vega** tab
+  shows its account, what's on its screens, its trades, and what it knows about Ember.
+- **Cost**: Vega only thinks when Ember is with it (up to 60 replies a day) and at its trading sessions,
+  each a tiny Haiku call: well under $1 a month.
+- Vega lives at whichever building has the `"friend"` action ("Vega's desk" in builder mode). Change the watchlist,
+  the starting money or the session times at the top of `friend.py`.
+
 ## Building things for Ember
 
 Ember can wish for new buildings. Wishes show on the website, and online they're also filed as
@@ -159,7 +178,8 @@ Everything builder mode does is stored in `buildings.json`, so you can also edit
 - `pos` is where Ember stands, from about -11 to 11 on each side. Put the building on one of the
   `empty_lots` and remove that lot from the list.
 - `actions` unlocks things: `"search"` (internet), `"rest"` (recharge faster), `"radio"` (Ember hears what's on the
-  city's radio whenever it does something there; up to 30 broadcasts a day, each a tiny Haiku call).
+  city's radio whenever it does something there; up to 30 broadcasts a day, each a tiny Haiku call),
+  `"friend"` (Vega works here).
 - `boosts` (optional) is which needs the place helps: `charge`, `curiosity`, `joy`, `calm`, `connection`.
   Ember isn't told this; it finds out by spending time there.
 - `about` is written to Ember. Describe the place, not what Ember should do there, so it decides for itself.
@@ -175,6 +195,7 @@ Ember notices new buildings on its next thought, and gets excited about them.
 With the default limits, Ember costs roughly **$5–6 a month** online: about $4 for thinking every 10 minutes around
 the clock on Haiku 5.5 (less, since it doesn't think while it sleeps), and around $1 for the nightly and weekly
 Sonnet 5.5 reflections and the city's events. Internet searches are 1 cent each on top (capped at 20 a day).
+Vega and the radio add only cents.
 The weather comes from Open-Meteo, which is free.
 The website shows the running cost for the current month.
 

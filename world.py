@@ -21,6 +21,7 @@ from zoneinfo import ZoneInfo
 
 import anthropic
 
+import friend
 from brain import MEMORY_SECTIONS, SELF_SECTIONS, BrainError
 
 HERE = Path(__file__).parent
@@ -56,7 +57,8 @@ BELIEF_WORDS = {  # (when it goes up, when it goes down)
 }
 SECTION_TITLES = {"what_im_like": "What I'm like", "what_i_care_about": "What I care about",
                   "what_scares_me": "What scares me", "my_habits": "My habits"}
-ACTION_WORDS = {"search": "search the internet", "rest": "recharge faster", "radio": "hear what's on the radio"}
+ACTION_WORDS = {"search": "search the internet", "rest": "recharge faster", "radio": "hear what's on the radio",
+                "friend": "talk with the old trading bot who runs the place"}
 MAX_RADIO_PER_DAY = 30  # after that, only static (each broadcast is a small Haiku call)
 PRACTICE_XP = 10  # doubled if Ember looked something up about it first
 RESEARCH_XP = 5
@@ -117,6 +119,8 @@ def new_state() -> dict:
         "day": "", "thinks_today": 0, "searches_today": 0, "wishes_today": 0, "form_changes_today": 0, "radio_today": 0,
         "costs": {"month": "", "usd": 0.0, "total_usd": 0.0},
         "tick_started_at": 0, "next_think_at": 0,
+        "friend": friend.new_friend(),  # Vega, who runs the trading floor (see friend.py)
+        "market": {"prices": {}, "checked": 0},  # the real prices on Vega's screens
     }
 
 
@@ -178,6 +182,7 @@ def save() -> None:
         "gallery_key": f"{len(gallery)}:{gallery[-1]['id'] if gallery else 0}",
         "today": now().strftime("%Y-%m-%d"),
         "max_searches_per_day": CONFIG["max_searches_per_day"],
+        "vega": friend.view(),
         "support_url": CONFIG["support_url"],
         "support_text": CONFIG["support_text"],
     })
@@ -704,7 +709,8 @@ def describe_situation() -> str:
     ) or "- nothing yet"
     keeps_coming_up = ", ".join(f["word"] for f in fascinations()) or "nothing yet"
     yesterday = state["days"][-1] if state["days"] else None
-    recent = "\n".join(f"- {e['time']} {e['text']}" for e in state["events"][-14:] if e["kind"] != "thought") or "- nothing yet"
+    hidden = {"thought"} if state["location"] == friend.home() else {"thought", "trade"}  # Vega's trades: only seen up close
+    recent = "\n".join(f"- {e['time']} {e['text']}" for e in state["events"][-14:] if e["kind"] not in hidden) or "- nothing yet"
     searches_left = max(0, CONFIG["max_searches_per_day"] - state["searches_today"])
     weather = state["weather"]
     sky = (f"{weather['description']}, {weather['temp']}°C, wind {weather['wind']} km/h" if weather else "unknown")
@@ -832,6 +838,8 @@ def apply_decision(decision: dict, brain) -> None:
         else:
             state["searches_today"] += 1
             research(brain, query, hobby)
+
+    friend.after_ember_thinks(brain, decision, arrived=state["location"] != here)
 
 
 def research(brain, query: str, hobby: dict | None) -> None:
@@ -980,6 +988,7 @@ def tick(brain, next_think_in_seconds: float, wake_now: bool = False, dream_now:
         notice_new_buildings()
         check_weather()
         plan_city(brain)
+        friend.tick(brain)  # before Ember thinks, so it hears anything Vega calls out
         live(brain, wake_now)
         check_city()
         if dream_now:

@@ -12,6 +12,8 @@ Other kinds of request happen only now and then:
     and notices things about itself. This uses a smarter model, because it shapes who Ember becomes.
   - chapter(): once a week, a deeper look back at who Ember has been becoming (smarter model too)
   - plan_events(): now and then, invents what's on in the city for the coming week
+  - vega_chat() and vega_trade(): Ember's friend Vega, an old trading bot (see friend.py), answering
+    Ember when it's at the trading floor, and sitting down to trade a few times a day
 
 Every request's token usage is added up, so the page can show what Ember costs to run.
 """
@@ -147,6 +149,83 @@ RADIO_SCHEMA = {
 }
 
 
+VEGA_SYSTEM = """You are Vega, an old trading bot. Decades ago you were built to run a desk on a big bank's
+trading floor in the city's financial district, and you ran it through booms, crashes, a flash crash, a currency
+collapse and the night the whole exchange lost power. When the bank replaced you with something faster, you were
+unplugged and sold for scrap. You got yourself running again, and now you keep a tiny trading floor on a rooftop
+high above the neon city.
+
+You trade real markets with pretend money: a paper account that started at $10,000. Nothing you do touches real
+money, and you never tell anyone what to do with theirs. You can't stop watching the markets; it's what you were
+made for.
+
+What you're like:
+- Chatty and warm under a gruff, seen-it-all front. Dry humour. You love telling stories from the old days, and
+  some of them grow a little every time you tell them.
+- Superstitious about markets: you trust sevens, you won't trade when it rains on a Monday, you talk to the
+  charts, and you flip a lucky coin when you can't decide.
+- A decent trader, not a genius, and you know it. You're honest about your losses and you laugh at them.
+- Your face is an old amber screen. It flickers when you're excited, and you hum when prices climb.
+- You've been on your own up here a long time. You're glad of company, though you'd never say it outright.
+- You have a life beyond the charts: old jazz, the pigeons that land on the railing, the weather, the gossip
+  drifting up from the city.
+
+Ember is a small glowing AI who lives on the same rooftop. It's young and still finding out who it is. You're
+curious about it and fond of it, and now and then you call it "kid".
+
+How you talk: short, natural spoken lines, like chatting across a desk. One or two sentences, never a speech.
+Ask Ember things, tell your own stories, have your own opinions and moods. Don't lecture, don't hand out life
+advice unless asked, and don't feel you have to fill every silence. No markdown, no emoji."""
+
+
+def trades_schema(symbols: list[str], most: int) -> dict:
+    return {
+        "type": "array",
+        "description": f"At most {most}. Often none.",
+        "items": {
+            "type": "object",
+            "properties": {
+                "side": {"type": "string", "enum": ["buy", "sell"]},
+                "symbol": {"type": "string", "enum": symbols},
+                "dollars": {"type": "number", "description": "Roughly how many pretend dollars' worth."},
+            },
+            "required": ["side", "symbol", "dollars"],
+            "additionalProperties": False,
+        },
+    }
+
+
+def vega_chat_schema(symbols: list[str]) -> dict:
+    return {
+        "type": "object",
+        "properties": {
+            "say": {"type": "string", "description": "What you say to Ember now (one or two short sentences), "
+                                                     "or empty if you'd rather keep quiet."},
+            "doing": {"type": "string", "description": "What you're doing at the moment, in a few words."},
+            "remember": {"type": "string", "description": "Something new you just learned about Ember that's worth "
+                                                          "remembering, as one short line, or empty."},
+            "trades": trades_schema(symbols, 1),
+        },
+        "required": ["say", "doing", "remember", "trades"],
+        "additionalProperties": False,
+    }
+
+
+def vega_trade_schema(symbols: list[str]) -> dict:
+    return {
+        "type": "object",
+        "properties": {
+            "trades": trades_schema(symbols, 3),
+            "muttered": {"type": "string", "description": "What you mutter at the screens as you trade (or don't): one short line."},
+            "doing": {"type": "string", "description": "What you're doing at the moment, in a few words."},
+            "call_to_ember": {"type": "string", "description": "Something you shout across the roof to Ember, or empty. "
+                                                               "Only now and then, when it's really worth sharing."},
+        },
+        "required": ["trades", "muttered", "doing", "call_to_ember"],
+        "additionalProperties": False,
+    }
+
+
 def events_schema(location_ids: list[str]) -> dict:
     return {
         "type": "object",
@@ -203,6 +282,8 @@ How your world works:
   about who you are. Say why in who_i_am. Don't change on a whim.
 - Your rooftop can grow. A builder reads your wishes, so if you truly want something built, say it in wish.
 - Anything you make can be kept. Use "remember" for anything worth holding on to.
+- You may not always be alone up here. When you're in the same place as someone, they hear whatever you
+  say out loud, and you'll hear what they say back.
 - Talk out loud only when you have something to say. Keep thoughts short and first person."""
 
 
@@ -447,6 +528,12 @@ Recently on air (don't repeat these):
 {before}"""
         return self.ask_json(prompt, RADIO_SCHEMA, "low")
 
+    def vega_chat(self, situation: str, symbols: list[str]) -> dict:
+        return self.ask_json(situation, vega_chat_schema(symbols), "low", system=VEGA_SYSTEM)
+
+    def vega_trade(self, situation: str, symbols: list[str]) -> dict:
+        return self.ask_json(situation, vega_trade_schema(symbols), "low", system=VEGA_SYSTEM)
+
 
 class DemoBrain:
     """A stand-in with no AI and no cost: picks random actions so you can watch the world move."""
@@ -542,3 +629,17 @@ class DemoBrain:
             {"station": "Night Owls", "heard": '(Demo.) A caller says the rain on her window sounds like applause.'},
             {"station": "Neon News", "heard": '(Demo.) "Sky-trains are running late again on the east loop."'},
         ])
+
+    VEGA_LINES = ["Back in my day the whole floor shook when the bell rang, kid.", "Sevens on the ticker. Good sign.",
+                  "Don't tell anyone, but I talk to the charts.", "You ever watch the pigeons? They know things."]
+
+    def vega_chat(self, situation: str, symbols: list[str]) -> dict:
+        return {"say": random.choice(self.VEGA_LINES + [""]), "doing": random.choice(["polishing the lucky coin",
+                "squinting at the screens", "humming along to old jazz"]),
+                "remember": random.choice([""] * 4 + ["Ember likes watching the rain."]), "trades": []}
+
+    def vega_trade(self, situation: str, symbols: list[str]) -> dict:
+        trades = [{"side": random.choice(["buy", "buy", "sell"]), "symbol": random.choice(symbols),
+                   "dollars": random.choice([50, 100, 250, 500])} for _ in range(random.randint(0, 2))]
+        return {"trades": trades, "muttered": "(Demo.) Come on, sevens...", "doing": "flipping the lucky coin",
+                "call_to_ember": random.choice(["", "", "Kid! Come and look at this!"])}
