@@ -1931,8 +1931,8 @@ function vegaJournal(s) {
     if (t.date !== day) { day = t.date; out.push(el('div', 'day', dayLabel(t.date, s.today))); }
     out.push(ticket(t, now[t.symbol]));
   }
-  if (!trades.length) out.push(el('p', 'empty', `No trades yet. ${v.name} sits down at the screens at `
-    + `${v.session_hours.map((h) => `${h}:00`).join(', ')}, and writes down why for every trade.`));
+  const sessions = v.session_hours?.length ? `at ${v.session_hours.map((h) => `${h}:00`).join(', ')}` : 'a few times a day';
+  if (!trades.length) out.push(el('p', 'empty', `No trades yet. ${v.name} sits down at the screens ${sessions}, and writes down why for every trade.`));
   out.push(el('p', 'fine', 'Pretend money, real prices: a game, not financial advice.'));
   return out;
 }
