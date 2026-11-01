@@ -393,6 +393,14 @@
   #support { padding: 6px 14px; border-radius: var(--pill); background: var(--pop); color: var(--bg); font-weight: 700; text-decoration: none; white-space: nowrap; }
   #support[hidden] { display: none; }
 
+  /* Touch screens: buttons big enough for a fingertip */
+  @media (pointer: coarse) {
+    .cam button { min-width: 36px; min-height: 42px; padding-left: 6px; padding-right: 6px; }
+    .cam .sep { margin: 8px 2px; }
+    .close { width: 40px; height: 40px; }
+    .switch button { padding: 11px 10px; }
+  }
+
   /* ---------- Touches only one look has ---------- */
   [data-theme="terminal"] body::after { content: ""; position: fixed; inset: 0; z-index: 50; pointer-events: none;
     background: repeating-linear-gradient(transparent 0 2px, rgba(0, 0, 0, .22) 2px 3px); } /* scan lines */
@@ -406,10 +414,10 @@
   [data-theme="lofi"] .who-name { text-transform: none; font-size: 16px; }
   [data-theme="lofi"] .switch button { text-transform: none; font-size: 13px; }
 
-  /* ---------- Phones: the roof full screen, the story slides up from the bottom ---------- */
-  @media (max-width: 760px) {
-    .hud { top: calc(8px + env(safe-area-inset-top)); left: 8px; right: 8px; width: auto; flex-direction: row; gap: 6px; }
-    .who-card { flex: 1 1 0; min-width: 0; gap: 8px; padding: 8px 10px; border-radius: var(--radius-sm); }
+  /* ---------- Phones, upright or on their side: compact cards, an icon-only toolbar ---------- */
+  @media (max-width: 760px), (max-height: 500px) {
+    .hud { top: calc(8px + env(safe-area-inset-top)); left: calc(8px + env(safe-area-inset-left)); width: 250px; gap: 6px; }
+    .who-card { gap: 8px; padding: 8px 10px; border-radius: var(--radius-sm); }
     .who-card .pill { display: none; }
     .avatar { width: 30px; height: 30px; }
     .avatar::before { inset: 6px; }
@@ -426,8 +434,18 @@
     .holo { display: none; }
     .place { padding: 2px 7px; font-size: 9px; }
     .cam { bottom: calc(10px + env(safe-area-inset-bottom)); }
-    .cam button { padding: 7px 9px; font-size: 13px; }
+    .cam button { padding: 7px 6px; font-size: 13px; }
     .cam .lbl { display: none; }
+  }
+  @media (max-height: 500px) { /* on its side: the drawer stays on the right, full height */
+    .act { -webkit-line-clamp: 1; }
+    #panel { top: 8px; right: calc(8px + env(safe-area-inset-right)); bottom: 8px; }
+    .drawer-open .cam, .drawer-open .note-box { left: calc(50% - 214px); }
+  }
+  /* ---------- Upright phones: the cards side by side, the story slides up from the bottom ---------- */
+  @media (max-width: 760px) {
+    .hud { left: 8px; right: 8px; width: auto; flex-direction: row; }
+    .who-card { flex: 1 1 0; min-width: 0; }
     .drawer-open .cam, .drawer-open .note-box { left: 50%; }
     #panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: min(80vh, 760px); border-bottom: 0;
       border-radius: var(--radius) var(--radius) 0 0; transform: translateY(105%); padding-bottom: env(safe-area-inset-bottom); }
@@ -439,6 +457,9 @@
     .day { margin: 0 -16px; padding: 14px 16px 6px; }
     .tabs { padding: 0 4px; }
     footer { padding: 12px 16px; }
+  }
+  @media (pointer: coarse) and (max-width: 380px) { /* the narrowest phones: every button still fits */
+    .cam button { min-width: 32px; padding-left: 3px; padding-right: 3px; }
   }
 </style>
 </head>
@@ -564,6 +585,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -586,6 +608,8 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_PHONE ? 1.5 : 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.85;
 renderer.shadowMap.enabled = true;
+renderer.shadowMap.autoUpdate = false; // the frame loop says when (see shadowFrame)
+let shadowFrame = 0;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 worldEl.prepend(renderer.domElement);
 
@@ -596,6 +620,10 @@ const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
 camera.position.set(10, 8.5, 13);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(-0.5, 0.8, -1.5);
+if (innerWidth < innerHeight) { // a phone held upright: a wider lens, from higher up, so the roof fits the narrow screen
+  camera.fov = 58;
+  camera.position.set(11, 20, 17);
+}
 controls.enableDamping = true;
 controls.screenSpacePanning = false; // right-drag slides you across the roof, not up into the sky
 controls.zoomToCursor = true; // the wheel zooms towards whatever's under the pointer
@@ -800,22 +828,52 @@ function disposeTree(root) { // free the old city's textures before building a n
 let cityKit = null;
 const loadCityKit = () => cityKit ??= new Promise((resolve) => gltfLoader.load('models/city.glb', (gltf) => resolve(gltf.scene),
   undefined, () => { console.warn("Couldn't load the city kit"); resolve(null); }));
-function kitTower(kit, h, tint, beacon, [pick, turn, wide, offset], glow) {
+function kitCity(kit, towers, glow) {
   const designs = kit.children.filter((o) => o.name.startsWith('Tower_'));
-  const fits = designs.filter((o) => h / o.userData.height > 0.6 && h / o.userData.height < 1.6);
-  const pool = fits.length ? fits : designs, source = pool[Math.floor(pick * pool.length)];
-  const tower = source.clone(), up = h / source.userData.height, across = THREE.MathUtils.clamp(up, 0.6, 1.4) * (0.85 + wide * 0.3);
-  tower.scale.set(across, up, across);
-  tower.rotation.y = turn * Math.PI * 2;
-  const windows = towerMaterial(tint, 1, 1, glow);
-  windows.emissiveMap.offset.set(offset, offset * 7.3); // so neighbours' lit windows don't match
-  tower.traverse((o) => {
-    if (!o.isMesh) return;
-    if (o.name.startsWith('Windows')) o.material = windows;
-    else if (o.name.startsWith('Trim')) o.material = neon(tint, 1.4);
-    else if (o.name.startsWith('Beacon')) { if (beacon) blinkers.push(o); else o.visible = false; }
+  const parts = new Map(), windows = new Map(), beacons = [[], [], [], []];
+  const add = (material, geometry) => (parts.get(material) ?? parts.set(material, []).get(material)).push(geometry);
+  towers.forEach(({ x, z, h, tint, beacon, look: [pick, turn, wide, offset] }, i) => {
+    const fits = designs.filter((o) => h / o.userData.height > 0.6 && h / o.userData.height < 1.6);
+    const pool = fits.length ? fits : designs, tower = pool[Math.floor(pick * pool.length)].clone();
+    const up = h / tower.userData.height, across = THREE.MathUtils.clamp(up, 0.6, 1.4) * (0.85 + wide * 0.3);
+    tower.position.set(x, -70, z);
+    tower.scale.set(across, up, across);
+    tower.rotation.y = turn * Math.PI * 2;
+    tower.updateMatrixWorld(true);
+    tower.traverse((o) => {
+      if (!o.isMesh || (o.name.startsWith('Beacon') && !beacon)) return;
+      const geometry = o.geometry.clone().applyMatrix4(o.matrixWorld);
+      const material = o.name.startsWith('Windows') ? windows.get(tint) ?? windows.set(tint, towerMaterial(tint, 1, 1, glow)).get(tint)
+        : o.name.startsWith('Trim') ? neon(tint, 1.4) : o.material;
+      for (const name of Object.keys(geometry.attributes)) {
+        if (name !== 'position' && name !== 'normal' && (name !== 'uv' || !(material.map || material.emissiveMap))) geometry.deleteAttribute(name);
+      }
+      if (o.name.startsWith('Windows')) { // shift each tower's windows, so neighbours' lit windows don't match
+        const uv = geometry.attributes.uv;
+        for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) + offset, uv.getY(k) + offset * 7.3);
+      }
+      if (o.name.startsWith('Beacon')) beacons[i % 4].push([material, geometry]);
+      else add(material, geometry);
+    });
   });
-  return tower;
+  // One mesh per material for the whole city (a handful of draw calls instead of hundreds), and the beacons in four
+  // groups that blink out of step
+  const city = new THREE.Group();
+  for (const [material, list] of parts) city.add(new THREE.Mesh(mergeGeometries(list), material));
+  for (const group of beacons) {
+    if (!group.length) continue;
+    const mesh = new THREE.Mesh(mergeGeometries(group.map(([, g]) => g)), group[0][0]);
+    city.add(mesh);
+    blinkers.push(mesh);
+  }
+  return city;
+}
+function blockCity(towers, glow) { // no kit (offline?): plain lit blocks
+  const city = new THREE.Group();
+  for (const { x, z, w, d, h, tint } of towers) {
+    put(new THREE.BoxGeometry(w, h, d), towerMaterial(tint, Math.round(w / 2), Math.round(h / 6), glow), x, -70 + h / 2, z, city).castShadow = false;
+  }
+  return city;
 }
 
 function buildScenery(sc) {
@@ -872,37 +930,32 @@ function buildScenery(sc) {
   // The city all around (the same seed always makes the same city), built from the Blender kit once it has loaded
   const rand = seeded(city.seed);
   const palette = city.colors.length ? city.colors.map(hex) : [0x8b5bff];
-  const near = Math.max(city.near, ROOF + 8), far = Math.max(city.far, near + 1);
+  const near = Math.max(city.near, ROOF + 8), far = Math.max(city.far, near + 1), towers = [];
   for (let i = 0; i < (IS_PHONE ? Math.min(city.towers, 80) : city.towers); i++) {
     const angle = rand() * Math.PI * 2, dist = near + rand() * (far - near);
     const w = 5 + rand() * 9, d = 5 + rand() * 9, h = city.min_height + rand() * Math.max(0, city.max_height - city.min_height);
-    const tint = palette[Math.floor(rand() * palette.length)], beacon = rand() < city.antennas, look = [rand(), rand(), rand(), rand()];
-    const slot = new THREE.Group();
-    slot.position.set(Math.cos(angle) * dist, -70, Math.sin(angle) * dist);
-    sceneryGroup.add(slot);
-    loadCityKit().then((kit) => {
-      if (!inScene(slot)) return; // the city was rebuilt while the kit loaded
-      if (kit) return slot.add(kitTower(kit, h, tint, beacon, look, city.window_glow));
-      const box = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), towerMaterial(tint, Math.round(w / 2), Math.round(h / 6), city.window_glow));
-      box.position.y = h / 2; // no kit (offline?): a plain block
-      slot.add(box);
-    });
+    towers.push({ x: Math.cos(angle) * dist, z: Math.sin(angle) * dist, w, d, h, tint: palette[Math.floor(rand() * palette.length)],
+      beacon: rand() < city.antennas, look: [rand(), rand(), rand(), rand()] });
   }
 
-  // Flying cars on circular lanes
-  for (let i = 0; i < sc.cars.count; i++) {
+  // Flying cars on circular lanes (fewer on a phone)
+  for (let i = 0; i < (IS_PHONE ? Math.min(sc.cars.count, 6) : sc.cars.count); i++) {
     const car = new THREE.Group();
     car.userData = { radius: Math.max(22, ROOF + 10) + rand() * 40, height: -6 + rand() * 30,
       speed: (0.04 + rand() * 0.06) * (rand() < 0.5 ? 1 : -1), angle: rand() * Math.PI * 2 };
     sceneryGroup.add(car);
     cars.push(car);
-    loadCityKit().then((kit) => {
-      const model = kit?.getObjectByName('Car');
-      if (model && inScene(car)) car.add(model.clone());
-      else if (inScene(car)) put(new THREE.BoxGeometry(1.6, 0.45, 0.8), 0x15182a, 0, 0, 0, car).castShadow = false;
-    });
   }
-  loadCityKit().then(() => applyDaylight(latest?.weather?.code)); // the new towers' windows dim by day too
+  const group = sceneryGroup;
+  loadCityKit().then((kit) => {
+    if (group !== sceneryGroup) return; // the scenery was rebuilt while the kit loaded
+    group.add(kit ? kitCity(kit, towers, city.window_glow) : blockCity(towers, city.window_glow));
+    for (const car of cars) {
+      if (kit) car.add(kit.getObjectByName('Car').clone());
+      else put(new THREE.BoxGeometry(1.6, 0.45, 0.8), 0x15182a, 0, 0, 0, car).castShadow = false;
+    }
+    applyDaylight(latest?.weather?.code); // the new towers' windows dim by day too
+  });
 
   // Neon signs: face the roof unless you've turned them
   for (const sign of sc.signs) {
@@ -993,12 +1046,15 @@ setInterval(drawCode, 300);
 // The four built-in places are made in Blender (blender/rooftop.py) to the same measurements as the plain boxes they
 // replaced, so Ember stands, sleeps and looks in the same spots. The page adds what moves: the live code on the
 // terminal's CodeScreen, lights, and the radio's antenna tip and signal rings.
+function castsShadow(material) { // glass lets the light through, and glowing parts (neon, screens, LEDs) are lights
+  return !material.transparent && !(material.emissive?.getHex() && material.emissiveIntensity > 0);
+}
 function withModel(file, x, z, group) {
   gltfLoader.load(file, (gltf) => {
     gltf.scene.position.set(x, 0, z);
     gltf.scene.traverse((o) => {
       if (!o.isMesh) return;
-      o.castShadow = !o.material.transparent; // glass lets the light through
+      o.castShadow = castsShadow(o.material);
       o.receiveShadow = true;
       if (o.name === 'CodeScreen') o.material = new THREE.MeshBasicMaterial({ map: codeTexture, color: 0x9a9a9a });
     });
@@ -1080,7 +1136,8 @@ function modelBuilder(building) {
     const place = (object) => {
       object.traverse((o) => {
         if (!o.isMesh) return;
-        o.castShadow = o.receiveShadow = true;
+        o.castShadow = castsShadow(o.material);
+        o.receiveShadow = true;
         if (o.name.startsWith('LiveTicker')) o.material = tickerMaterial; // real prices scroll across it
       });
       if (building.autofit !== false) { // resize it to fill a lot, sitting on the roof just behind where Ember stands
@@ -1640,6 +1697,8 @@ function animate() {
 
   steerCamera(dt);
   controls.update();
+  shadowFrame = (shadowFrame + 1) % 3;
+  renderer.shadowMap.needsUpdate = !IS_PHONE || shadowFrame === 0; // on a phone, shadows every third frame save a lot of work
   if (worldEl.clientWidth && worldEl.clientHeight) composer.render();
   for (const { el, anchor, group } of labels) pinToScreen(el, group ? group.localToWorld(labelSpot.copy(anchor)) : anchor);
   bubbleAnchor.set(avatar.position.x, avatar.position.y + 1.3, avatar.position.z);

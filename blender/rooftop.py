@@ -238,9 +238,9 @@ def picture(name, width, height, location, mat, tilt=0.0, turn=0.0):
     return add(name, mesh, mat, location, (-tilt, 0, turn))
 
 
-def text(name, body, size, location, mat, rotation=(math.pi / 2, 0, 0)):
+def text(name, body, size, location, mat, rotation=(math.pi / 2, 0, 0), extrude=0.012):
     curve = bpy.data.curves.new(name, "FONT")
-    curve.body, curve.size, curve.align_x, curve.align_y, curve.extrude = body, size, "CENTER", "CENTER", 0.012
+    curve.body, curve.size, curve.align_x, curve.align_y, curve.extrude = body, size, "CENTER", "CENTER", extrude
     font = Path(r"C:\Windows\Fonts\bahnschrift.ttf")
     if font.exists():
         curve.font = bpy.data.fonts.load(str(font), check_existing=True)

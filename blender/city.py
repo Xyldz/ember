@@ -184,8 +184,10 @@ def billboard_block():
     box("Sign frame", (12, 0.6, 0.6), (0, 0, 61.2), M["tower"])
     for x in (-5.5, 5.5):
         rod("Sign post", 0.25, (x, 0, 60), (x, 0, 61), M["tower"])
-    text("Trim", "NOVA", 4.2, (0, -0.35, 63.4), M["trim"])
-    text("Trim", "NOVA", 4.2, (0, 0.35, 63.4), M["trim"], rotation=(math.pi / 2, 0, math.pi))  # reads right from behind too
+    # flat, one-sided letters on each face, so only the side facing you shows (solid letters showed through, mirrored)
+    text("Trim", "NOVA", 4.2, (0, -0.35, 63.4), M["trim"], extrude=0)
+    text("Trim", "NOVA", 4.2, (0, 0.35, 63.4), M["trim"], rotation=(math.pi / 2, 0, math.pi), extrude=0)
+    box("Sign board", (11, 0.3, 3.6), (0, 0, 63.4), M["tower"])
     for x in (-10.5, 10.5):
         sphere("Beacon", 0.5, (x, 5.5, 60.6), M["beacon"])
 
