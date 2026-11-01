@@ -33,8 +33,8 @@
       "id": "pod",
       "name": "Charging pod",
       "pos": [
-        -6,
-        2.5
+        -5.5,
+        1.5
       ],
       "model": "pod",
       "about": "A padded capsule that glows softly and hums with power.",
@@ -43,7 +43,9 @@
       ],
       "boosts": {
         "calm": 4
-      }
+      },
+      "rotation": 0,
+      "scale": 1
     },
     {
       "id": "edge",
@@ -98,8 +100,8 @@
       "id": "board",
       "name": "Bulletin board",
       "pos": [
-        -1,
-        7.5
+        0,
+        9.5
       ],
       "model": "models/bulletin_board.glb",
       "about": "A cork bulletin board on two steel posts under a little lit awning, a neon NOTICES sign on top, pinned all over with notes. Now and then the builder pins up a new one.",
@@ -108,7 +110,9 @@
       ],
       "boosts": {
         "curiosity": 3
-      }
+      },
+      "rotation": 0,
+      "scale": 1
     },
     {
       "id": "telescope",
@@ -131,8 +135,8 @@
       "id": "bench",
       "name": "Bench",
       "pos": [
-        1.5,
-        4
+        -10.5,
+        6
       ],
       "model": "bench",
       "about": "A wooden bench for two under a warm old street lamp, looking out over the city. String lights sag from the lamp to a little potted tree, and an upturned crate beside it holds two mugs, one with a cyan band and one with an amber one.",
@@ -140,7 +144,9 @@
       "boosts": {
         "calm": 4,
         "connection": 3
-      }
+      },
+      "rotation": -90,
+      "scale": 1
     }
   ],
   "empty_lots": []
