@@ -808,8 +808,13 @@ def describe_situation() -> str:
     note, screen = message_waiting()
     if note and screen in (None, state["location"]):
         message = f'A note from the builder (whoever builds things up here) is pinned in front of you: "{note["text"]}"'
-    elif note:
-        message = f"There's a note for you pinned on the {buildings[screen]['name'].lower()}."
+    elif note:  # who it's from, how long it's waited and its first few words: enough to wonder about, not enough to skip it
+        board = buildings[screen]["name"].lower()
+        minutes = (time.time() - (note.get("pinned") or note.get("told") or time.time())) / 60
+        waited = f"{round(minutes / 60)} hours" if minutes >= 90 else f"{max(1, round(minutes))} minutes"
+        opening = " ".join(note["text"].split()[:6]).rstrip(".,;:!?")
+        message = (f"The builder (whoever builds things up here) pinned a note for you on the {board} {waited} ago, "
+                   f'and you haven\'t read it yet. It starts: "{opening}…" The rest is on the {board}.')
     else:
         message = ""
 
