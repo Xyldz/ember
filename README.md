@@ -70,10 +70,13 @@ If a repository has no activity for 60 days GitHub pauses the schedule; just cli
 
 - **Drag** to turn the camera, **right-drag** (two fingers on a phone) to move around the roof, **scroll** (or pinch)
   to zoom towards whatever's under the pointer. **Double-click** anywhere to fly there; double-click Ember or Vega to follow them.
-- The buttons in the corner: **Free** camera, follow **Ember**, follow **Vega**, **⟲** back to the whole roof, and
+- The roof fills the screen. Ember's and Vega's cards float in the top corner: tap one to open its story (today, diary,
+  trades and the rest) in the drawer on the right, or the bottom of a phone.
+- The toolbar along the bottom: **Free** camera, follow **Ember**, follow **Vega**, **⟲** back to the whole roof,
   **☀ / 🌙**: the real sky, or night all the time, **🔇 / 🔊**: ambient sound (wind, rain, the city hum, traffic, birds
-  by day, thunder with the lightning, a chime when Ember speaks and beeps when Vega does), and **📌**: pin a note.
-  The page remembers your choices.
+  by day, thunder with the lightning, a chime when Ember speaks and beeps when Vega does), **🎨**: the look (sleek neon,
+  cosy lo-fi night or retro terminal; `?theme=lofi` in the address picks one too), **📌**: pin a note, and **☰ Story**:
+  the drawer. The page remembers your choices. Older designs are kept in `DESIGN_LOG.md`.
 - **Day and night**: the sky follows the real sun over the place in `config.json` (London): sunrise colours, a hazy blue
   day, golden sunsets, and the neon taking over at night. Cloudy days are greyer. Add `?hour=13` to the address to see
   another time of day. Builder mode always shows the night, which is what `site/scenery.json` describes.
