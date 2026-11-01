@@ -85,6 +85,9 @@ If a repository has no activity for 60 days GitHub pauses the schedule; just cli
   the roof clutter: air conditioners, a water tank, a dish, vents, crates, pipes and a stairwell, which are props in
   `site/scenery.json` you can move in builder mode. Run `blender -b -P rooftop.py -- --render --export` after changing
   it; it also saves `rooftop.blend`, the whole roof laid out, to open and look around.
+  `city.py` makes the city around it: eight skyscraper designs (setbacks, a round tower with a helipad, twins with a
+  skybridge, a wedge, a glass crown, neon-finned hex, a billboard block) and a hover car. The page builds the city
+  from them with the same seed and settings as before, tinting each tower in one of the city's colours.
 - **The real sky**: Ember and Vega know what's really overhead: how dark it is, the moon's phase and where it is,
   and the planets bright enough to shine through the city's glow. At the telescope they see the faint planets too,
   and which constellation each is in. Cloud and rain hide it all, as they would outside (worked out with
