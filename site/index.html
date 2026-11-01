@@ -393,6 +393,7 @@
       <div id="sec-goals" class="section" hidden><h2>Goals</h2><div id="goals"></div></div>
       <p id="glance-empty" class="empty" hidden>No interests or goals yet. It's still finding its feet.</p>
       <div id="sec-wishes" class="section"><h2>Wishlist</h2><div id="wishes"></div></div>
+      <a id="e-note" class="note-link" target="_blank" rel="noopener noreferrer" hidden>📌 Pin a note for Ember on the bulletin board</a>
     </div>
     <nav id="ember-tabs" class="tabs">
       <button data-tab="today" class="on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Today</button>
@@ -426,7 +427,7 @@
       <div id="v-alloc"></div>
       <div id="v-goals"></div>
       <div class="section"><h2>Wishlist</h2><div id="v-wishes"></div></div>
-      <a id="v-note" class="note-link" target="_blank" rel="noopener noreferrer" hidden>📌 Leave Vega a note on its desk</a>
+      <a id="v-note" class="note-link" target="_blank" rel="noopener noreferrer" hidden>📌 Pin a note for Vega on the bulletin board</a>
     </div>
     <nav id="vega-tabs" class="tabs six" hidden>
       <button data-tab="v-today"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Today</button>
@@ -1571,7 +1572,7 @@ const ICONS = {
   create: '🎨', learn: '📖', explore: '🧭', socialise: '📡', reflect: '🌀', levelup: '🏅', creation: '🖼️',
   wish: '🌠', build: '🏗️', form: '✨', diary: '📓', self: '🪞', forgot: '🌫️', sleep: '💤', wake: '☀️',
   goal: '🎯', weather: '🌦️', city: '📰', event: '🎆', missed: '🕳️', chapter: '📖', rut: '🔁', radio: '📻',
-  friend: '🤖', trade: '💹', together: '🤝',
+  friend: '🤖', trade: '💹', together: '🤝', message: '📌',
 };
 const clock = (seconds) => new Date(seconds * 1000).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 const dayClock = (seconds) => new Date(seconds * 1000).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
@@ -1768,7 +1769,7 @@ function noteCard(entry, footer = '') {
 
 // Today: the log grouped into moments, each one a thought and whatever it led to
 const ACTIVITY_KINDS = new Set(['rest', 'play', 'create', 'learn', 'explore', 'socialise', 'reflect']);
-const BIG_KINDS = new Set(['levelup', 'hobby', 'goal', 'wish', 'form', 'build', 'creation', 'self', 'diary', 'chapter', 'together']);
+const BIG_KINDS = new Set(['levelup', 'hobby', 'goal', 'wish', 'form', 'build', 'creation', 'self', 'diary', 'chapter', 'together', 'message']);
 const SOFT_KINDS = new Set(['weather', 'city', 'sleep', 'wake', 'missed', 'rut', 'forgot', 'search', 'event']);
 const minuteOf = (e) => { const [h, m] = e.time.split(':').map(Number); return h * 60 + m; };
 const stampOf = (e) => `${e.date ?? ''} ${e.time}`;
@@ -2373,9 +2374,12 @@ function setWho(side) {
   selectTab(lastTab[who]);
 }
 document.querySelectorAll('#switch button').forEach((button) => button.addEventListener('click', () => setWho(button.dataset.who)));
-if (location.hostname.endsWith('.github.io')) { // a note for Vega is an issue on this site's own repository (see tick_once.py)
-  $('v-note').href = `https://github.com/${location.hostname.split('.')[0]}/${location.pathname.split('/')[1]}/issues/new?title=${encodeURIComponent('Note for Vega: ')}`;
-  $('v-note').hidden = false;
+if (location.hostname.endsWith('.github.io')) { // a note is an issue on this site's own repository (see tick_once.py)
+  const newIssue = `https://github.com/${location.hostname.split('.')[0]}/${location.pathname.split('/')[1]}/issues/new?title=`;
+  for (const [id, name] of [['e-note', 'Ember'], ['v-note', 'Vega']]) {
+    $(id).href = newIssue + encodeURIComponent(`Note for ${name}: `);
+    $(id).hidden = false;
+  }
 }
 
 // The camera bar: follow Ember or Vega (or not), back to the whole roof, and real sky or night all the time

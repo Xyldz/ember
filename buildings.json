@@ -3,7 +3,7 @@
     "Add an entry to 'buildings'. Ember notices new buildings on its next thought.",
     "id: short unique name. pos: [x, z] where Ember stands (the roof spans about -11 to 11).",
     "about: what it is, written to Ember. Describe the place, not what Ember should do there.",
-    "actions: what it unlocks. 'search' = use the internet, 'rest' = recharge faster, 'radio' = hear what's on the city's radio, 'friend' = Vega, Ember's friend, works here.",
+    "actions: what it unlocks. 'search' = use the internet, 'rest' = recharge faster, 'radio' = hear what's on the city's radio, 'friend' = Vega, Ember's friend, works here, 'board' = notes you leave them (GitHub issues) get pinned here.",
     "boosts: optional. Needs it helps when Ember does something there, e.g. {\"calm\": 6}. Needs: charge, curiosity, joy, calm, connection.",
     "model: a built-in look ('terminal', 'pod', 'railing', 'radio'), OR a .glb file you put in site/models/ (e.g. 'models/library.glb'),",
     "       OR leave it out and add 'shapes' (boxes/cylinders/spheres, see the example in the README).",
@@ -93,12 +93,23 @@
         "connection": 6,
         "curiosity": 3
       }
+    },
+    {
+      "id": "board",
+      "name": "Bulletin board",
+      "pos": [
+        -1,
+        7.5
+      ],
+      "model": "models/bulletin_board.glb",
+      "about": "A cork bulletin board on two steel posts under a little lit awning, a neon NOTICES sign on top, pinned all over with notes. Now and then the builder pins up a new one.",
+      "actions": [
+        "board"
+      ],
+      "boosts": {
+        "curiosity": 3
+      }
     }
   ],
-  "empty_lots": [
-    [
-      -1,
-      7.5
-    ]
-  ]
+  "empty_lots": []
 }

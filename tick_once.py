@@ -6,8 +6,8 @@ GitHub Actions runs this every 10 minutes (see .github/workflows/ember.yml).
   python tick_once.py --dream      dream over today now: diary, memories, self (tonight's dream redoes it)
   python tick_once.py --reset      start Ember's life over from scratch first (the "start over" checkbox)
 New wishes (Ember's and Vega's) are also filed as GitHub issues, so you get a notification when either wants something built.
-Notes you leave Vega (issues titled "Note for Vega...") go on its desk; once it's read one, its answer is posted
-on the issue and the issue is closed.
+Notes you leave them (issues titled "Note for Ember..." or "Note for Vega...") wait for them to get round to them;
+once one's been read, its answer is posted on the issue and the issue is closed.
 """
 
 import json
@@ -20,7 +20,11 @@ import world
 from brain import Brain
 
 TICK_MINUTES = 10
-NOTE_TITLE = f"note for {friend.NAME.lower()}"
+
+
+def desks() -> dict:
+    """The notes waiting for each of them on the bulletin board."""
+    return {world.CONFIG["name"]: world.state["desk"], friend.NAME: friend.me()["desk"]}
 
 
 def github(path: str, data: dict | None = None, method: str = "GET"):
@@ -58,39 +62,41 @@ def file_wish_issues() -> None:
 
 
 def fetch_notes() -> None:
-    """Your notes for Vega go on its desk. Only issues you opened count: anyone can open one on a public repo."""
+    """Your notes for Ember or Vega. Only issues you opened count: anyone can open one on a public repo."""
     owner = os.environ.get("GITHUB_REPOSITORY", "/").split("/")[0]
     try:
         issues = github(f"issues?state=open&creator={owner}&per_page=30") or []
     except OSError as error:
         print(f"Couldn't check for notes: {error}")
         return
-    desk = friend.me()["desk"]
-    known = {note["number"] for note in desk}
+    known = {note["number"] for desk in desks().values() for note in desk}
     for issue in issues:
         title = issue["title"].strip()
-        if ("pull_request" in issue or issue["user"]["login"].lower() != owner.lower() or issue["number"] in known
-                or not title.lower().startswith(NOTE_TITLE)):
+        if "pull_request" in issue or issue["user"]["login"].lower() != owner.lower() or issue["number"] in known:
             continue
-        text = f"{title[len(NOTE_TITLE):].strip(' :-')}\n{issue['body'] or ''}".strip()[:1000]
-        desk.append({"number": issue["number"], "text": text or "(a blank note)", "read": False, "reply": "", "answered": False})
+        for name, desk in desks().items():
+            prefix = f"note for {name.lower()}"
+            if title.lower().startswith(prefix):
+                text = f"{title[len(prefix):].strip(' :-')}\n{issue['body'] or ''}".strip()[:1000]
+                desk.append({"number": issue["number"], "text": text or "(a blank note)", "read": False, "reply": "",
+                             "answered": False})
 
 
 def answer_notes() -> None:
-    """Once Vega has read a note, post what it made of it on the issue and close it."""
-    desk = friend.me()["desk"]
-    for note in desk:
-        if not note["read"] or note["answered"]:
-            continue
-        reply = f'**{friend.NAME}:** "{note["reply"]}"' if note["reply"] else f"{friend.NAME} read your note."
-        try:
-            github(f"issues/{note['number']}/comments", {"body": reply}, "POST")
-            github(f"issues/{note['number']}", {"state": "closed"}, "PATCH")
-        except OSError as error:
-            print(f"Couldn't answer the note: {error}")
-            return
-        note["answered"] = True
-    friend.me()["desk"] = [n for n in desk if not n["answered"]] + [n for n in desk if n["answered"]][-10:]
+    """Once a note's been read, post what they made of it on the issue and close it."""
+    for name, desk in desks().items():
+        for note in desk:
+            if not note["read"] or note["answered"]:
+                continue
+            reply = f'**{name}:** "{note["reply"]}"' if note["reply"] else f"{name} read your note."
+            try:
+                github(f"issues/{note['number']}/comments", {"body": reply}, "POST")
+                github(f"issues/{note['number']}", {"state": "closed"}, "PATCH")
+            except OSError as error:
+                print(f"Couldn't answer the note: {error}")
+                return
+            note["answered"] = True
+        desk[:] = [n for n in desk if not n["answered"]] + [n for n in desk if n["answered"]][-10:]
 
 
 def main() -> None:

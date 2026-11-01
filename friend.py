@@ -52,7 +52,7 @@ def new_friend() -> dict:
             "thought": "", "thought_time": "", "mood": "content", "battery": 100.0, "asleep": False,
             "goals": [], "log": [],  # its own little goals, and its own day (kept apart from Ember's feed)
             "wishes": [], "wishes_today": 0,  # things it'd love built, filed as GitHub issues like Ember's
-            "desk": [],  # notes the builder leaves it (GitHub issues, see tick_once.py)
+            "desk": [],  # notes the builder pins up for it on the bulletin board (GitHub issues, see tick_once.py)
             "since": "", "location": "", "visit_since": 0, "last_talk": 0, "last_session": "", "day": "",
             "replies_today": 0, "calls_today": 0, "thinks_today": 0}
 
@@ -425,12 +425,12 @@ What you've been up to lately (newest last):
 {log}
 
 It's a moment to yourself. What do you do?"""
-    note = next((n for n in friend["desk"] if not n["read"]), None)
-    reading = note if note and where() == home() else None
+    note, board = next((n for n in friend["desk"] if not n["read"]), None), world.notice_board()
+    reading = note if note and board in (None, where()) else None
     if reading:
-        moment += f'\n\nThere\'s a note on your desk from the builder (whoever builds things up here): "{note["text"]}"'
+        moment += f'\n\nA note from the builder (whoever builds things up here) is pinned in front of you: "{note["text"]}"'
     elif note:
-        moment += f"\n\nThere's a note waiting on your desk at the {place_name(home())}. You'll see it when you're back."
+        moment += f"\n\nThere's a note for you pinned on the {place_name(board)}."
     try:
         plan = brain.vega_live(situation(moment), list(world.buildings), MOODS)
     except BRAIN_ERRORS:

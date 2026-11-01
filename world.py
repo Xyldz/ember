@@ -58,7 +58,8 @@ BELIEF_WORDS = {  # (when it goes up, when it goes down)
 SECTION_TITLES = {"what_im_like": "What I'm like", "what_i_care_about": "What I care about",
                   "what_scares_me": "What scares me", "my_habits": "My habits"}
 ACTION_WORDS = {"search": "search the internet", "rest": "recharge faster", "radio": "hear what's on the radio",
-                "friend": "talk with the old trading bot who runs the place"}
+                "friend": "talk with the old trading bot who runs the place",
+                "board": "read any notes the builder pins up for you"}
 MAX_RADIO_PER_DAY = 30  # after that, only static (each broadcast is a small Haiku call)
 PRACTICE_XP = 10  # doubled if Ember looked something up about it first
 RESEARCH_XP = 5
@@ -119,6 +120,7 @@ def new_state() -> dict:
         "day": "", "thinks_today": 0, "searches_today": 0, "wishes_today": 0, "form_changes_today": 0, "radio_today": 0,
         "costs": {"month": "", "usd": 0.0, "total_usd": 0.0},
         "tick_started_at": 0, "next_think_at": 0,
+        "desk": [],  # notes the builder leaves Ember (GitHub issues, see tick_once.py)
         "friend": friend.new_friend(),  # Vega, who runs the trading floor (see friend.py)
         "market": {"prices": {}, "checked": 0, "history": {}},  # the real prices on Vega's screens
     }
@@ -681,6 +683,16 @@ def wake_up(why: str) -> None:
 # What Ember knows, written as plain text for the brain
 # ---------------------------------------------------------------------------
 
+def notice_board() -> str | None:
+    """Where the builder's notes get pinned: the building with the "board" action (anywhere, if there isn't one)."""
+    return next((b for b in buildings if can(b, "board")), None)
+
+
+def message_waiting() -> tuple[dict | None, str | None]:
+    """The next unread note the builder left Ember, and the board it's pinned on."""
+    return next((n for n in state["desk"] if not n["read"]), None), notice_board()
+
+
 def describe_situation() -> str:
     t = now()
     part_of_day = ("night" if t.hour < 6 or t.hour >= 21 else "morning" if t.hour < 12
@@ -723,9 +735,17 @@ def describe_situation() -> str:
     finished_goals = ", ".join(f"{g['text']} ({g['status']})" for g in [g for g in state["goals"] if g["status"] != "active"][-3:])
     chapter = state["chapters"][-1] if state["chapters"] else None
     stale = rut()
+    note, screen = message_waiting()
+    if note and screen in (None, state["location"]):
+        message = f'A note from the builder (whoever builds things up here) is pinned in front of you: "{note["text"]}"'
+    elif note:
+        message = f"There's a note for you pinned on the {buildings[screen]['name'].lower()}."
+    else:
+        message = ""
 
     return f"""It is {t:%A %d %B, %H:%M} ({part_of_day}). The weather: {sky}.
 You are at: {here['name']} ({state['location']}). {here['about']} {friend.presence() or friend.whereabouts()}
+{message}
 Your form: shape {state['form']['shape']}, colour {state['form']['color']}. In your words: {state['form']['about']}
 Your needs (0-100, higher is better): {needs}. {feelings} {stale}
 
@@ -780,6 +800,10 @@ def apply_decision(decision: dict, brain) -> None:
     here = state["location"]
     state["thought"], state["thought_time"] = decision["thought"].strip(), now().strftime("%H:%M")
     log_event(state["thought"], "thought")
+    note, screen = message_waiting()
+    if note and screen in (None, here):  # it was in front of Ember as it thought: its reaction goes back to the builder
+        note.update(read=True, reply=decision["say"].strip() or state["thought"])
+        log_event(f'Read a note from the builder: "{note["text"][:160]}"', "message")
 
     if decision["say"].strip():
         state["say"], state["said_at"] = decision["say"].strip(), time.time()

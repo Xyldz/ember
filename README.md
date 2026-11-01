@@ -122,9 +122,10 @@ It has its own fixed character (written in `brain.py`), and it remembers things 
 - **Its own life**: every tick, like Ember, Vega thinks for itself: it has moods, wanders the roof on its own business,
   talks to itself and the pigeons, sets itself little goals, and powers down when its battery runs flat (waking for its
   trading sessions). Its own day stays on its side of the panel; Ember can see where it is and how it seems.
-- **Notes on its desk**: open a GitHub issue titled `Note for Vega: ...` (or tap "Leave Vega a note" on its side of the
-  panel). It goes on Vega's desk; Vega reads it next time it's there and decides for itself what to make of it, and its
-  answer is posted on the issue, which then closes. Only issues opened by the repository's owner count.
+- **Notes on the bulletin board**: open a GitHub issue titled `Note for Ember: ...` or `Note for Vega: ...` (or tap
+  "Pin a note" under either's wishlist). It gets pinned on the bulletin board; they're told there's a note for them, read
+  it whenever they go over, and decide for themselves what to make of it. Their answer is posted on the issue, which then
+  closes. Only issues opened by the repository's owner count. (`blender/bulletin_board.py` makes the board.)
 - **Wishes**: Vega can wish for things to be built too (at most one a day). Like Ember's, they're filed as GitHub issues
   and come true when a building has `"grants_wish"` with words from the wish.
 - **Notebook**: at midnight, while Ember dreams, Vega writes up its day: the markets, the roof and Ember
@@ -209,7 +210,7 @@ Everything builder mode does is stored in `buildings.json`, so you can also edit
   `empty_lots` and remove that lot from the list.
 - `actions` unlocks things: `"search"` (internet), `"rest"` (recharge faster), `"radio"` (Ember hears what's on the
   city's radio whenever it does something there; up to 30 broadcasts a day, each a tiny Haiku call),
-  `"friend"` (Vega works here).
+  `"friend"` (Vega works here), `"board"` (notes you leave them get pinned here).
 - `boosts` (optional) is which needs the place helps: `charge`, `curiosity`, `joy`, `calm`, `connection`.
   Ember isn't told this; it finds out by spending time there.
 - `about` is written to Ember. Describe the place, not what Ember should do there, so it decides for itself.
