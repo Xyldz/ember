@@ -521,7 +521,7 @@ def handle_goal(action: str, goal_id: str, text: str) -> None:
     if goal is None:
         return
     if action == "progress":
-        goal["progress"] = (goal["progress"] + [{"date": today, "text": text or "worked on it"}])[-12:]
+        goal["progress"] = (goal["progress"] + [{"date": today, "text": text or "worked on it"}])[-50:]
         change_need("joy", 3)
         log_event(f'Worked towards "{goal["text"]}": {text}', "goal")
     elif action == "done":
@@ -533,7 +533,7 @@ def handle_goal(action: str, goal_id: str, text: str) -> None:
     else:
         goal.update(status="dropped", ended=today, why=text)
         log_event(f'Let go of a goal: "{goal["text"]}". {text}'.strip(), "goal")
-    finished = [g for g in state["goals"] if g["status"] != "active"][-10:]
+    finished = [g for g in state["goals"] if g["status"] != "active"][-20:]
     state["goals"] = [g for g in state["goals"] if g["status"] == "active"] + finished
 
 

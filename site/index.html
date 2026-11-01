@@ -239,6 +239,15 @@
   .wish .tag { color: var(--warm); }
   .wish.granted .tag, .wish.goal .tag { color: var(--ember); }
   .wish.goal.done .tag { color: var(--good); }
+  .wish.goal.dropped .tag { color: var(--muted); }
+  button.wish.goal { width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  button.wish.goal::after { content: "›"; margin-left: auto; color: var(--muted); transition: transform .2s; }
+  button.wish.goal[aria-expanded="true"]::after { transform: rotate(90deg); }
+  .goal-steps { margin: 0 0 10px; padding: 8px 12px; border-left: 2px solid color-mix(in srgb, var(--ember) 40%, transparent); font-size: 12.5px; line-height: 1.5; }
+  .goal-steps p { margin: 0 0 6px; color: var(--muted); }
+  .goal-steps ol { margin: 0; padding-left: 20px; }
+  .goal-steps li { margin: 4px 0; }
+  .goal-steps time { display: block; margin-top: 6px; color: var(--muted); font-size: 10.5px; }
   .wish a { flex: none; color: var(--muted); font-size: 11.5px; }
   .note-link { display: inline-flex; margin-top: 12px; padding: 7px 14px; border-radius: var(--pill); background: color-mix(in srgb, var(--vega) 12%, transparent);
     color: var(--vega); font-size: 12.5px; font-weight: 600; text-decoration: none; }
@@ -2509,6 +2518,27 @@ function renderFeed(s) {
   $('feed').replaceChildren(...items);
 }
 
+function goalRows(goal) { // a goal, and when you tap it, every step it took towards it
+  const key = `goal ${goal.id}`, steps = goal.progress ?? [];
+  const row = el('button', `wish goal ${goal.status}`), more = el('div', 'goal-steps');
+  const tag = { done: 'done', dropped: 'let go' }[goal.status] ?? (steps.length ? `${steps.length} step${steps.length === 1 ? '' : 's'}` : 'new');
+  row.append(el('span', 'tag', tag), el('span', '', goal.text));
+  more.append(el('p', '', `Since ${goal.started}${goal.ended ? ` · ${tag} ${goal.ended}` : ''}${goal.why ? `: ${goal.why}` : ''}`));
+  const list = el('ol');
+  steps.forEach((step, i) => {
+    const li = el('li', '', step.text);
+    if (step.date !== steps[i - 1]?.date) li.prepend(el('time', '', step.date));
+    list.append(li);
+  });
+  if (steps.length) more.append(list);
+  const show = (open) => { more.hidden = !open; row.setAttribute('aria-expanded', open); };
+  show(opened.has(key));
+  row.addEventListener('click', () => {
+    if (opened.has(key)) opened.delete(key); else opened.add(key);
+    show(opened.has(key));
+  });
+  return [row, more];
+}
 function wishRows(wishes = [], name) { // a wishlist: what's still wished for, what got built, and its GitHub issue
   if (!wishes.length) return [el('p', 'empty', `Nothing yet. When ${name} wishes for something to be built, it shows up here (and as an issue on GitHub).`)];
   return wishes.slice(-5).reverse().map((wish) => {
@@ -2558,20 +2588,8 @@ function render(s) {
   const activeGoals = goals.filter((g) => g.status === 'active');
   $('now-weather').textContent = s.weather ? `${weatherIcon(s.weather.code)} ${s.weather.place} · ${s.weather.temp}°C · ${s.weather.description}` : '';
   setWeather(s.weather);
-  const finishedGoals = goals.filter((g) => g.status === 'done').slice(-2).reverse();
-  $('goals').replaceChildren(...(activeGoals.length || finishedGoals.length ? [
-    ...activeGoals.map((goal) => {
-      const row = el('div', 'wish goal');
-      const steps = goal.progress.length;
-      row.append(el('span', 'tag', steps ? `${steps} step${steps === 1 ? '' : 's'}` : 'new'), el('span', '', goal.text));
-      return row;
-    }),
-    ...finishedGoals.map((goal) => {
-      const row = el('div', 'wish goal done');
-      row.append(el('span', 'tag', 'done'), el('span', '', goal.text));
-      return row;
-    }),
-  ] : []));
+  const finishedGoals = goals.filter((g) => g.status !== 'active').reverse();
+  $('goals').replaceChildren(...[...activeGoals, ...finishedGoals].flatMap(goalRows));
 
   $('skills').replaceChildren(...s.skills.map((skill) => {
     const row = el('div', 'skill'), name = el('span', '', skill.name);
