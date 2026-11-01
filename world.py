@@ -34,6 +34,7 @@ GALLERY_FILE = DATA_DIR / "gallery.json"
 
 NEEDS = ["charge", "curiosity", "joy", "calm", "connection"]
 DECAY = {"charge": 2, "curiosity": 3, "joy": 1, "calm": 1, "connection": 2}  # lost every tick
+STARVING, STARVING_PULL = 20, 4  # a need left below 20 wears joy and calm down by 4 a tick, so it can't be ignored forever
 # What each kind of activity tends to do to Ember's needs. The real effect varies each time,
 # and places add their own "boosts", so Ember has to find out what works for it.
 EFFECTS = {
@@ -325,6 +326,15 @@ def live_through(kind: str) -> None:
     state["recent_kinds"] = (state["recent_kinds"] + [kind])[-5:]
     state["routine"] = (state["routine"] + [f"{kind}|{here}"])[-30:]
     update_beliefs()
+
+
+def feel_neglect() -> None:
+    """A need left at rock bottom starts to hurt: it drags joy and calm down until Ember sees to it."""
+    for need in NEEDS:
+        if state["needs"][need] < STARVING:
+            for mood in ("joy", "calm"):
+                if mood != need:
+                    change_need(mood, -STARVING_PULL)
 
 
 def record_experience(kind: str, place: str, changes: dict) -> None:
@@ -759,7 +769,8 @@ def describe_situation() -> str:
                    else "afternoon" if t.hour < 17 else "evening")
     here = buildings[state["location"]]
     needs = ", ".join(f"{need} {state['needs'][need]}" for need in NEEDS)
-    feelings = " ".join(f"{FEELINGS[need]}." for need in NEEDS if state["needs"][need] < 35)
+    feelings = " ".join(f"{FEELINGS[need]}{', and it is wearing you down' if state['needs'][need] < STARVING else ''}."
+                        for need in NEEDS if state["needs"][need] < 35)
 
     def unlocks(building: dict) -> str:
         words = [ACTION_WORDS[a] for a in building.get("actions", []) if a in ACTION_WORDS]
@@ -1042,6 +1053,7 @@ def live(brain, wake_now: bool) -> None:
 
     for need, amount in DECAY.items():  # time passes and every need slowly drains
         change_need(need, -amount)
+    feel_neglect()
     feel_weather()
     stale = rut()
     if stale:
