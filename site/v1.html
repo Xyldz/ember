@@ -1,0 +1,2598 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ember (design v1)</title>
+<meta name="description" content="Ember: a small autonomous AI living on a neon rooftop.">
+<meta name="theme-color" content="#05060d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ember">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #05060d; --panel: #0a0c17; --card: #0f1222; --ink: #d8e4ff; --muted: #7683ad; --line: #1b2042;
+    --cyan: #3ff0ff; --magenta: #ff3fb4; --amber: #ffcc4d; --vega: #ffb02e;
+    --mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+    --sans: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --radius: 8px; --glass: rgba(8, 10, 22, .62);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font: 13.5px/1.55 var(--sans); }
+  /* Words read in a plain sans; labels, times and numbers keep the terminal look */
+  h2, .pill, .stamp, .kind, .tag, .place, .need, .worth, .qrow, .stat, .px, .tk-top, time, .day, .new-mark, #identity,
+  #v-identity, .skill .lv, .legend, .mkt-status, footer, .weather { font-family: var(--mono); }
+  #app { display: flex; height: 100%; }
+  #world { position: relative; flex: 1; min-width: 0; min-height: 0; background: var(--bg); }
+  #world canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #overlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .place { position: absolute; transform: translate(-50%, -100%); padding: 2px 8px; border-radius: 999px; background: rgba(5, 6, 13, .55);
+    color: rgba(216, 228, 255, .78); font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+    white-space: nowrap; backdrop-filter: blur(4px); }
+  .place.lot { border: 1px dashed rgba(118, 131, 173, .5); color: var(--muted); }
+  .bubble { position: absolute; transform: translate(-50%, calc(-100% - 10px)); width: max-content; max-width: min(260px, 70vw);
+    padding: 8px 12px; border: 1px solid rgba(63, 240, 255, .35); border-radius: 12px; background: rgba(8, 10, 22, .78);
+    color: #b9c5ea; font-size: 12.5px; font-style: italic; backdrop-filter: blur(8px); box-shadow: 0 8px 24px rgba(0, 0, 0, .35); }
+  .bubble.speech { border-color: rgba(255, 63, 180, .6); color: #fff; font-style: normal; font-weight: 600; }
+  .bubble.vega { border-color: rgba(255, 176, 46, .6); color: #fff3dc; font-style: normal; font-weight: 600; }
+  .bubble.vega::before { content: attr(data-name); display: block; margin-bottom: 2px; color: var(--vega); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; }
+  .place.friend { color: var(--vega); }
+  .place[hidden] { display: none; }
+  /* Camera buttons in the corner of the 3D view: one quiet toolbar */
+  .cam { position: absolute; right: 14px; bottom: 14px; display: flex; gap: 2px; padding: 3px; border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 999px; background: var(--glass); backdrop-filter: blur(10px); pointer-events: auto; }
+  .cam button { padding: 6px 11px; border: 0; border-radius: 999px; background: none; color: var(--muted); font: inherit;
+    font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: .15s; }
+  .cam button:hover { color: var(--ink); background: rgba(255, 255, 255, .06); }
+  .cam button.on { color: var(--bg); background: var(--cyan); }
+  .note-box button { padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--muted);
+    font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .note-box button:hover { color: var(--ink); border-color: var(--muted); }
+  .note-box button.on { color: var(--bg); border-color: var(--vega); background: var(--vega); }
+  .cam button[hidden] { display: none; }
+  /* Pin a note on the bulletin board, from inside the page */
+  .note-box { position: absolute; left: 50%; bottom: 64px; z-index: 5; width: min(380px, 92%); padding: 18px; transform: translateX(-50%);
+    border: 1px solid rgba(255, 176, 46, .3); border-radius: 14px; background: rgba(8, 10, 22, .9); backdrop-filter: blur(12px);
+    pointer-events: auto; box-shadow: 0 20px 60px rgba(0, 0, 0, .5); }
+  .note-box[hidden] { display: none; }
+  .note-box h2 { color: var(--vega); }
+  .note-box .picks { display: flex; gap: 6px; }
+  .note-box h2 + .picks { margin-top: 10px; }
+  .note-box textarea { width: 100%; height: 96px; margin: 10px 0 4px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--card); color: var(--ink); font: inherit; font-size: 13px; resize: vertical; }
+  .note-box textarea:focus { outline: none; border-color: rgba(255, 176, 46, .5); }
+  body.building .cam { display: none; }
+  .holo { position: absolute; transform: translate(-50%, -100%); width: 230px; padding: 8px 10px; border: 1px solid rgba(63, 240, 255, .25);
+    border-radius: var(--radius); background: rgba(63, 240, 255, .07); color: #c4f9ff; font-size: 11px; line-height: 1.45; backdrop-filter: blur(4px); }
+  .holo b { display: block; margin-bottom: 3px; color: var(--cyan); font-size: 10px; letter-spacing: .14em; }
+  .bubble[hidden], .holo[hidden] { display: none; }
+
+  #panel { width: 400px; flex: none; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; background: var(--panel);
+    border-left: 1px solid var(--line); scrollbar-width: thin; scrollbar-color: var(--line) transparent; } /* one scroll: the tabs stay pinned */
+  #panel { --form: #3ff0ff; } /* the colour Ember picked for itself */
+  #panel header { padding: 18px 20px 14px; }
+  #panel header[hidden], .glance[hidden], .tabs[hidden] { display: none; }
+
+  /* Ember or Vega: the switch at the top of the panel */
+  .switch { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 16px 20px 0; }
+  .switch[hidden] { display: none; }
+  .switch button { --who: var(--form); position: relative; display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--muted);
+    font: 700 11px/1 Orbitron, var(--mono); letter-spacing: .16em; text-transform: uppercase; cursor: pointer; transition: .2s; }
+  .switch button[data-who="vega"] { --who: var(--vega); }
+  .switch button:hover { color: var(--ink); }
+  .switch button.on { color: var(--who); border-color: color-mix(in srgb, var(--who) 55%, transparent);
+    background: color-mix(in srgb, var(--who) 10%, transparent); }
+  .switch .dot { position: absolute; top: 5px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--magenta); box-shadow: 0 0 6px var(--magenta); }
+  .switch .dot[hidden] { display: none; }
+  .mini-orb { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 8px var(--form);
+    background: radial-gradient(circle at 35% 30%, #fff 0 10%, var(--form) 45%, color-mix(in srgb, var(--form) 30%, #05060d) 100%); }
+  .mini-face { position: relative; width: 16px; height: 12px; border: 1.5px solid #4a3a1c; border-radius: 3px; background: #140a00; }
+  .mini-face::before, .mini-face::after { content: ""; position: absolute; top: 2.5px; width: 3px; height: 4px; background: var(--vega); box-shadow: 0 0 4px var(--vega); }
+  .mini-face::before { left: 3px; }
+  .mini-face::after { right: 3px; }
+
+  /* Vega's side of the panel: amber, like its old screen */
+  #vega-head { position: relative; overflow: hidden; background: radial-gradient(120% 100% at 0 0, rgba(255, 176, 46, .1), transparent 65%); }
+  #vega-head::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(transparent 0 2px, rgba(0, 0, 0, .16) 2px 3px); } /* scan lines */
+  #vega-head h1 { color: var(--vega); text-shadow: 0 0 14px rgba(255, 176, 46, .7); }
+  #vega-head .doing { border-color: rgba(255, 176, 46, .3); background: linear-gradient(135deg, rgba(255, 176, 46, .08), rgba(255, 92, 122, .04)); }
+  #vega-head .doing h2 { color: var(--vega); }
+  #v-identity { margin-top: 4px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+  #v-about { margin-top: 10px; color: #e9cf9e; font-size: 12px; font-style: italic; }
+  #v-status { color: var(--muted); font-size: 11px; }
+  .pill.desk { color: var(--vega); border-color: rgba(255, 176, 46, .45); }
+  .pill.out { color: var(--cyan); border-color: rgba(63, 240, 255, .45); }
+  .pill.desk::before, .pill.out::before { box-shadow: 0 0 6px currentColor; animation: blink 2.4s ease-in-out infinite; }
+  #panel.vega .tabs button.on { color: var(--vega); border-bottom-color: var(--vega); }
+  #panel.vega .tabs button.on svg { filter: drop-shadow(0 0 4px rgba(255, 176, 46, .7)); }
+  #panel.vega .day { color: #b8935a; }
+  .tabs.six { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  #v-goals h2 { margin: 10px 0 2px; }
+  .note-link { display: inline-block; margin: 2px 0 4px; color: var(--vega); font-size: 11px; font-weight: 700; text-decoration: none; }
+  .note-link[hidden] { display: none; }
+  .acct { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center; }
+  .acct .worth { font-size: 20px; }
+  .alloc { display: flex; height: 8px; margin: 8px 0 2px; overflow: hidden; border-radius: 4px; background: var(--line); }
+  .alloc i { height: 100%; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0; color: var(--muted); font-size: 11px; }
+  .legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 2px; background: var(--chip); }
+  .who { display: flex; gap: 12px; align-items: center; }
+  /* A little picture of Ember in its current shape and colour */
+  .avatar { position: relative; flex: none; width: 46px; height: 46px; border: 1px solid var(--line); border-radius: 50%;
+    filter: drop-shadow(0 0 7px color-mix(in srgb, var(--form) 55%, transparent)); }
+  .avatar::before { content: ""; position: absolute; inset: 9px; border-radius: 50%; animation: breathe 4s ease-in-out infinite;
+    background: radial-gradient(circle at 35% 30%, #fff 0 7%, var(--form) 38%, color-mix(in srgb, var(--form) 35%, #05060d) 100%); }
+  .avatar[data-shape="cube"]::before { inset: 12px; border-radius: 3px; rotate: 12deg; }
+  .avatar[data-shape="pyramid"]::before { inset: 9px; border-radius: 0; clip-path: polygon(50% 4%, 96% 92%, 4% 92%); }
+  .avatar[data-shape="crystal"]::before { inset: 7px; border-radius: 0; clip-path: polygon(50% 0, 86% 50%, 50% 100%, 14% 50%); }
+  .avatar[data-shape="ring"]::before, .avatar[data-shape="knot"]::before {
+    background: radial-gradient(circle, transparent 0 38%, var(--form) 42% 62%, transparent 66%); }
+  .avatar[data-shape="cluster"]::before { background: radial-gradient(circle at 30% 35%, var(--form) 0 17%, transparent 19%),
+    radial-gradient(circle at 70% 32%, var(--form) 0 13%, transparent 15%), radial-gradient(circle at 52% 72%, var(--form) 0 19%, transparent 21%); }
+  .avatar.asleep::before { opacity: .45; animation-duration: 9s; }
+  @keyframes breathe { 50% { scale: .86; } }
+  .name-row { display: flex; align-items: center; gap: 10px; }
+  h1 { margin: 0; font: 900 24px/1.1 Orbitron, var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--form, var(--cyan));
+    text-shadow: 0 0 14px color-mix(in srgb, var(--form, var(--cyan)) 75%, transparent); }
+  h2 { margin: 0 0 8px; font-size: 10px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .pill { padding: 1px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 9px; font-weight: 700;
+    letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; }
+  .pill::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: currentColor; vertical-align: 1px; }
+  .pill.awake { color: #5bf0a0; border-color: rgba(91, 240, 160, .4); }
+  .pill.awake::before { box-shadow: 0 0 6px currentColor; animation: blink 2.4s ease-in-out infinite; }
+  .pill.asleep { color: #a98bff; border-color: rgba(139, 91, 255, .45); }
+  @keyframes blink { 50% { opacity: .3; } }
+  #identity { margin-top: 4px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+  #about { margin-top: 10px; color: var(--muted); font-size: 12px; font-style: italic; }
+  #about:empty { display: none; }
+  .doing { margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
+  .doing h2 { margin-bottom: 4px; color: var(--cyan); }
+  #activity, #v-activity { font-size: 14px; font-weight: 600; line-height: 1.45; }
+  #now-need { margin-top: 2px; color: var(--amber); font-size: 12px; }
+  #now-thought { margin-top: 8px; color: #b9c5ea; font-size: 13px; font-style: italic; }
+  #now-thought time { margin-left: 6px; color: var(--muted); font-size: 10px; font-style: normal; }
+  #now-need:empty, #now-thought:empty, .weather:empty { display: none; }
+  .weather { margin-top: 2px; color: var(--muted); font-size: 11px; }
+  .next { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .next .bar { flex: 1 0 40px; height: 3px; }
+  .next .bar[hidden] { display: none; }
+  #status { min-width: 0; color: var(--muted); font-size: 11px; }
+  .glance { padding: 2px 20px 14px; }
+  .section { padding: 8px 0; }
+  .section[hidden], .glance .empty[hidden] { display: none; }
+  /* Ember's five needs, as a quiet strip under what it's doing */
+  .needs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+  .need { overflow: hidden; color: var(--muted); font-size: 9.5px; font-weight: 600; letter-spacing: .06em;
+    text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+  .need .bar { height: 4px; margin-top: 5px; border-radius: 2px; }
+  .wish.goal .tag { color: var(--cyan); border-color: rgba(63, 240, 255, .4); }
+  .wish.goal.done .tag { color: #5bb974; border-color: rgba(91, 185, 116, .5); }
+  .card.live { border-color: var(--magenta); box-shadow: 0 0 14px rgba(255, 63, 180, .25); }
+  .card .when { margin-top: 6px; color: var(--amber); font-size: 11px; }
+  .card.past { opacity: .6; }
+  .mind h3 { margin: 14px 0 4px; color: var(--cyan); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+  .mind .line { display: flex; gap: 8px; align-items: baseline; margin: 4px 0; font-size: 12px; }
+  .mind .line .tag { flex: none; padding: 0 5px; border: 1px solid var(--line); color: var(--muted); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+  .mind .line.grown .tag { color: var(--magenta); border-color: rgba(255, 63, 180, .5); }
+  .mind .count { flex: none; color: var(--muted); font-size: 11px; }
+  .mind .words { display: flex; flex-wrap: wrap; gap: 6px; }
+  .mind .word { padding: 2px 8px; border: 1px solid rgba(139, 91, 255, .5); border-radius: 3px; color: #c9b6ff; font-size: 12px; }
+  .memory-item { margin: 8px 0; font-size: 12px; }
+  .memory-item .bar { height: 3px; margin-top: 4px; }
+  .memory-item small { color: var(--muted); font-size: 10px; }
+  .slots { color: var(--muted); font-size: 10px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+  .bar { height: 6px; border-radius: 2px; background: var(--line); overflow: hidden; }
+  .bar i { display: block; height: 100%; transition: width .6s; }
+  .skill { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 3px 8px; margin: 6px 0; font-size: 12px; }
+  .skill .bar { grid-column: 1 / -1; height: 4px; }
+  .skill .lv { color: var(--magenta); font-size: 11px; font-weight: 700; }
+  .wish { display: flex; gap: 8px; align-items: baseline; margin: 5px 0; font-size: 12px; }
+  .wish .tag { flex: none; padding: 0 6px; border: 1px solid var(--line); color: var(--amber); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+  .wish.granted .tag { color: var(--cyan); border-color: rgba(63, 240, 255, .5); }
+  .wish a { flex: none; color: var(--muted); font-size: 11px; }
+  .empty { color: var(--muted); font-style: italic; font-size: 12px; margin: 4px 0; }
+  .tabs { position: sticky; top: 0; z-index: 3; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 0 10px; background: var(--panel);
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .tabs button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; padding: 10px 0 8px;
+    border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted); font: inherit; font-size: 10.5px;
+    font-weight: 500; white-space: nowrap; cursor: pointer; overflow: hidden; transition: color .15s; }
+  .tabs button:hover { color: var(--ink); }
+  .tabs button.on { color: var(--cyan); border-bottom-color: var(--cyan); }
+  .tabs svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .tabs button.on svg { filter: drop-shadow(0 0 4px rgba(63, 240, 255, .7)); }
+  .tabs .dot { position: absolute; top: 6px; left: calc(50% + 7px); width: 6px; height: 6px; border-radius: 50%;
+    background: var(--magenta); box-shadow: 0 0 6px var(--magenta); }
+  .tabs .dot[hidden] { display: none; }
+  #feed { flex: 1 0 auto; padding: 0 20px 24px; }
+
+  /* Today: a timeline of moments, one per thought */
+  .day { margin: 0 -20px; padding: 14px 20px 8px; color: var(--muted); font-size: 10px; font-weight: 700;
+    letter-spacing: .16em; text-transform: uppercase; background: linear-gradient(var(--panel) 75%, transparent); }
+  .new-mark { display: flex; align-items: center; gap: 8px; margin: 2px 0 8px; color: var(--magenta); font-size: 10px; font-weight: 700;
+    letter-spacing: .14em; text-transform: uppercase; }
+  .new-mark::before, .new-mark::after { content: ""; flex: 1; height: 1px; background: rgba(255, 63, 180, .45); }
+  .moment { position: relative; margin-left: 4px; padding: 0 0 16px 18px; border-left: 1px solid var(--line); }
+  .moment::before { content: ""; position: absolute; top: 4px; left: -4px; width: 7px; height: 7px; border: 1px solid var(--muted);
+    border-radius: 50%; background: var(--panel); }
+  .moment.has-thought::before { border-color: var(--cyan); background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+  .moment.fresh::before { border-color: var(--magenta); background: var(--magenta); box-shadow: 0 0 8px var(--magenta); }
+  .stamp { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; letter-spacing: .06em; }
+  .thought { margin: 2px 0 6px; color: #c3cdf0; font-size: 12.5px; font-style: italic; line-height: 1.55; }
+  .line { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 6px; margin: 5px 0; font-size: 12px; line-height: 1.5; }
+  .line .ic { text-align: center; }
+  .line.soft { color: var(--muted); }
+  .line.big { color: var(--amber); font-weight: 700; }
+  .line.jot { color: #b9c4e8; }
+  .kind { margin-right: 6px; padding: 0 5px; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); font-size: 9px;
+    font-weight: 700; letter-spacing: .1em; text-transform: uppercase; vertical-align: 1px; }
+  .radio { margin: 6px 0; padding: 7px 10px; border-left: 2px solid var(--amber); border-radius: 0 6px 6px 0;
+    background: rgba(255, 204, 77, .06); color: #f3e6c4; font-size: 12px; line-height: 1.5; }
+  .radio b { display: block; margin-bottom: 2px; color: var(--amber); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+  .say { width: fit-content; max-width: 100%; margin: 6px 0; padding: 6px 10px; border: 1px solid rgba(255, 63, 180, .5);
+    border-radius: 10px 10px 10px 2px; background: rgba(255, 63, 180, .08); color: #ffd6ee; font-size: 12px; }
+  .say.vega { border-color: rgba(255, 176, 46, .55); border-radius: 10px 10px 2px 10px; background: rgba(255, 176, 46, .08); color: #ffe9c2; }
+  .say.vega b { display: block; color: var(--vega); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+
+  /* Vega's tabs: its day, trading journal, portfolio, market screens, notebook, and what it knows about Ember */
+  .vega-panel h3 { color: var(--vega); }
+  .vega-face { position: relative; flex: none; width: 46px; height: 38px; border: 2px solid #4a3a1c; border-radius: 7px;
+    background: #140a00; box-shadow: 0 0 12px rgba(255, 176, 46, .35); }
+  .vega-face::before, .vega-face::after { content: ""; position: absolute; top: 9px; width: 7px; height: 10px; border-radius: 1px;
+    background: var(--vega); box-shadow: 0 0 6px var(--vega); animation: vega-blink 4.2s infinite; }
+  .vega-face::before { left: 10px; }
+  .vega-face::after { right: 10px; }
+  @keyframes vega-blink { 0%, 96% { scale: 1 1; } 98% { scale: 1 .15; } }
+  .worth { color: #fff; font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .worth span { margin-left: 8px; font-size: 13px; }
+  .gain { color: #5bf0a0; }
+  .loss { color: #ff5c7a; }
+  .spark { display: block; width: 100%; height: 56px; margin: 6px 0 2px; overflow: visible; }
+  .spark.mini { height: 40px; margin: 0; }
+  .spark.tall { height: 110px; }
+  .qrow { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto 62px; gap: 10px; align-items: baseline; margin: 5px 0;
+    font-size: 12px; font-variant-numeric: tabular-nums; }
+  .qrow > :last-child { text-align: right; }
+  .qrow .sym { color: var(--vega); font-weight: 700; }
+  .qrow .nm { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+  .qrow.shut { opacity: .5; }
+  .fine { margin: 10px 0 0; color: var(--muted); font-size: 10px; }
+  .say b { display: block; color: var(--magenta); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+  .mutter { margin: 5px 0; color: #d9b77a; font-size: 12px; font-style: italic; }
+  .chat { display: flex; flex-direction: column; }
+  .chat .say.vega { align-self: flex-end; }
+  /* the trading journal: one ticket per trade, with why and how it turned out */
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 12px 0 4px; }
+  .stat { min-width: 0; padding: 8px; border: 1px solid rgba(255, 176, 46, .25); border-radius: 5px; background: rgba(255, 176, 46, .05); }
+  .stat small { display: block; overflow: hidden; color: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: .1em;
+    text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+  .stat b { font-size: 13px; font-variant-numeric: tabular-nums; }
+  .ticket { margin: 8px 0; padding: 9px 11px; border: 1px solid var(--line); border-left: 3px solid #5bf0a0; border-radius: 0 6px 6px 0;
+    background: var(--card); font-size: 12px; }
+  .ticket.sell { border-left-color: #ff5c7a; }
+  .tk-top { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; font-variant-numeric: tabular-nums; }
+  .tk-top b { color: var(--vega); }
+  .tk-top .tk-size { margin-left: auto; font-weight: 700; }
+  .tag.buy, .tag.sell { padding: 0 5px; border-radius: 3px; font-size: 9px; font-weight: 700; letter-spacing: .12em; }
+  .tag.buy { background: rgba(91, 240, 160, .15); color: #5bf0a0; }
+  .tag.sell { background: rgba(255, 92, 122, .15); color: #ff5c7a; }
+  .tk-why { margin-top: 5px; color: #f0dcb4; font-style: italic; }
+  .tk-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 11px; }
+  /* its market screens */
+  .mkt-status { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 8px; }
+  .mkt-status span { padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 10px;
+    font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+  .mkt-status span.live { color: #5bf0a0; border-color: rgba(91, 240, 160, .4); }
+  .mcards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .mcard { min-width: 0; padding: 8px 10px 4px; border: 1px solid var(--line); border-radius: 6px; background: linear-gradient(rgba(255, 176, 46, .05), transparent); }
+  .mcard.shut { opacity: .55; }
+  .mcard .sym { color: var(--vega); font-weight: 700; }
+  .mcard .nm { display: block; overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+  .mcard .px { margin-top: 4px; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .mcard .spark { height: 34px; margin: 2px 0 0; }
+  .mcard .mtop { display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; }
+  #panel.vega .card .q { color: var(--vega); }
+
+  /* What it found on the internet: a headline, a few points, where it came from */
+  .note-card { margin: 6px 0; padding: 10px 12px; border: 1px solid rgba(139, 91, 255, .35); border-radius: 6px;
+    background: linear-gradient(rgba(139, 91, 255, .09), rgba(139, 91, 255, .02)); font-size: 12px; }
+  .note-card .looked { color: var(--muted); font-size: 11px; }
+  .note-card .looked b { color: var(--ink); font-weight: 600; }
+  .note-card h4 { margin: 6px 0 4px; color: #e2d6ff; font-size: 12.5px; line-height: 1.4; }
+  .note-card ul { margin: 4px 0 0; padding: 0; list-style: none; }
+  .note-card li { position: relative; margin: 5px 0; padding-left: 14px; line-height: 1.5; }
+  .note-card li::before { content: "›"; position: absolute; left: 2px; color: #8b5bff; font-weight: 700; }
+  .note-card li b { color: #fff; }
+  .note-card p { margin: 6px 0 0; line-height: 1.5; }
+  .note-card:not(.open) .note-body { max-height: 9.5em; overflow: hidden;
+    -webkit-mask-image: linear-gradient(#000 55%, transparent); mask-image: linear-gradient(#000 55%, transparent); }
+  .more { margin-top: 4px; padding: 0; border: 0; background: none; color: var(--cyan); font: inherit; font-size: 11px; cursor: pointer; }
+  .sources { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .sources a { max-width: 100%; overflow: hidden; padding: 1px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted);
+    font-size: 10px; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+  .sources a:hover { color: var(--magenta); border-color: var(--magenta); }
+  .note-card time { display: block; margin-top: 8px; color: var(--muted); font-size: 10px; }
+  .card { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--card); font-size: 12px; }
+  .card .q { margin-bottom: 4px; color: var(--cyan); font-weight: 700; }
+  .card a { display: block; margin-top: 4px; overflow: hidden; color: var(--magenta); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+  .card time { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; }
+  .work img { display: block; width: 100%; aspect-ratio: 1; margin: 6px 0 2px; border-radius: 2px; background: #0b0d1a; }
+  .poem { margin: 6px 0 2px; color: #ecdcff; font-style: italic; white-space: pre-wrap; }
+  .play { margin: 6px 0 2px; padding: 6px 12px; border: 1px solid var(--magenta); border-radius: 3px; background: transparent;
+    color: var(--magenta); font: inherit; font-weight: 700; cursor: pointer; }
+  footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 20px;
+    border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+  #support { padding: 6px 14px; border-radius: 999px; background: var(--magenta); color: #05060d; font-weight: 700;
+    text-decoration: none; white-space: nowrap; }
+  #support[hidden] { display: none; }
+  /* One corner radius, and soft tinted tags instead of boxed ones */
+  .card, .note-card, .stat, .mcard, .switch button { border-radius: var(--radius); }
+  .wish .tag, .mind .line .tag, .kind { padding: 1px 6px; border-width: 0; border-radius: 4px;
+    background: color-mix(in srgb, currentColor 13%, transparent); }
+  #panel > :not(#feed) { flex-shrink: 0; } /* only the feed scrolls; everything above it keeps its height */
+  @media (max-width: 760px) { /* phones: the 3D view on top, everything else scrolls underneath */
+    #app { flex-direction: column; }
+    #world { flex: 1 1 52%; }
+    #panel { flex: 1 1 48%; width: 100%; overflow-y: auto; border-left: 0; border-top: 1px solid var(--line);
+      padding-bottom: env(safe-area-inset-bottom); }
+    #panel header { padding: 14px 16px 10px; }
+    .switch { padding: 12px 16px 0; }
+    .glance { padding: 2px 16px 10px; }
+    footer { padding-left: 16px; padding-right: 16px; }
+    .tabs { padding: 0 4px; }
+    .holo { display: none; }
+    #feed { padding: 0 16px 20px; }
+    .day { margin: 0 -16px; padding: 12px 16px 6px; }
+    .need { font-size: 9px; letter-spacing: .02em; }
+    .place { font-size: 9px; padding: 1px 6px; }
+    .cam { right: 8px; bottom: 8px; }
+    .cam button { padding: 5px 8px; font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <main id="world">
+    <div id="overlay">
+      <div id="research" class="holo" hidden></div>
+      <div id="bubble" class="bubble" hidden></div>
+      <div id="vega-bubble" class="bubble vega" hidden></div>
+      <div id="cam" class="cam">
+        <button data-follow="free" title="Drag to turn · right-drag to move · scroll to zoom · double-click to fly there">🎥 Free</button>
+        <button data-follow="ember" title="The camera follows Ember around the roof">✦ Ember</button>
+        <button data-follow="vega" id="cam-vega" title="The camera follows Vega around the roof" hidden>🤖 Vega</button>
+        <button id="cam-reset" title="Back to the view of the whole roof">⟲</button>
+        <button id="cam-sky" title="The sky follows the real sun over London. Click for night all the time">☀</button>
+        <button id="cam-sound" title="Ambient sound (off)">🔇</button>
+        <button id="cam-note" title="Pin a note for Ember or Vega on the bulletin board" hidden>📌</button>
+      </div>
+      <div id="note-box" class="note-box" hidden>
+        <h2>📌 Pin a note on the bulletin board</h2>
+        <div class="picks"><button data-for="Ember">For Ember</button><button data-for="Vega">For Vega</button></div>
+        <textarea id="note-text" maxlength="900" placeholder="Whatever you like. They'll read it when they get round to it."></textarea>
+        <p class="fine">GitHub opens with your note filled in: tap Submit there. Only notes from your account reach them.</p>
+        <div class="picks"><button id="note-pin" class="on">Pin it</button><button id="note-cancel">Cancel</button></div>
+      </div>
+    </div>
+  </main>
+  <aside id="panel">
+    <div id="switch" class="switch" hidden>
+      <button data-who="ember" class="on"><span class="mini-orb"></span><span id="switch-ember">Ember</span><i class="dot" hidden></i></button>
+      <button data-who="vega"><span class="mini-face"></span>Vega<i class="dot" hidden></i></button>
+    </div>
+    <header id="ember-head">
+      <div class="who">
+        <div id="avatar" class="avatar"></div>
+        <div>
+          <div class="name-row"><h1 id="name">Ember</h1><span id="pill" class="pill">Connecting</span></div>
+          <div id="identity"></div>
+          <div id="now-weather" class="weather"></div>
+        </div>
+      </div>
+      <div id="about"></div>
+      <div class="doing">
+        <h2>Right now</h2>
+        <div id="activity">Connecting…</div>
+        <div id="now-need"></div>
+        <div id="now-thought"></div>
+        <div class="next"><div id="next-bar" class="bar"><i style="background: var(--cyan)"></i></div><span id="status"></span></div>
+      </div>
+      <div id="needs" class="needs"></div>
+    </header>
+    <div id="ember-glance" class="glance">
+      <div id="sec-skills" class="section" hidden><h2>Interests</h2><div id="skills"></div></div>
+      <div id="sec-goals" class="section" hidden><h2>Goals</h2><div id="goals"></div></div>
+      <p id="glance-empty" class="empty" hidden>No interests or goals yet. It's still finding its feet.</p>
+      <div id="sec-wishes" class="section"><h2>Wishlist</h2><div id="wishes"></div></div>
+      <a id="e-note" class="note-link" target="_blank" rel="noopener noreferrer" hidden>📌 Pin a note for Ember on the bulletin board</a>
+    </div>
+    <nav id="ember-tabs" class="tabs">
+      <button data-tab="today" class="on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Today</button>
+      <button data-tab="diary"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H7a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1z"/><path d="M5 18a2 2 0 0 1 2-2h11M9 8h5"/></svg>Diary<i class="dot" hidden></i></button>
+      <button data-tab="mind"><svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></svg>Mind<i class="dot" hidden></i></button>
+      <button data-tab="memory"><svg viewBox="0 0 24 24"><path d="m12 4-9 5 9 5 9-5-9-5z"/><path d="m3 14 9 5 9-5"/></svg>Memory</button>
+      <button data-tab="city"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Events<i class="dot" hidden></i></button>
+      <button data-tab="gallery"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m5 18 5-5 3 3 2-2 4 4"/></svg>Gallery<i class="dot" hidden></i></button>
+      <button data-tab="research"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg>Research<i class="dot" hidden></i></button>
+    </nav>
+    <header id="vega-head" hidden>
+      <div class="who">
+        <div class="vega-face"></div>
+        <div>
+          <div class="name-row"><h1 id="v-name">Vega</h1><span id="v-pill" class="pill desk">At its desk</span></div>
+          <div id="v-identity"></div>
+        </div>
+      </div>
+      <div id="v-about"></div>
+      <div class="doing">
+        <h2>Right now</h2>
+        <div id="v-activity"></div>
+        <div class="next"><span id="v-status"></span></div>
+      </div>
+    </header>
+    <div id="vega-glance" class="glance" hidden>
+      <div class="acct">
+        <div><h2>Pretend account</h2><div id="v-worth" class="worth"></div></div>
+        <div id="v-mini"></div>
+      </div>
+      <div id="v-alloc"></div>
+      <div id="v-goals"></div>
+      <div class="section"><h2>Wishlist</h2><div id="v-wishes"></div></div>
+      <a id="v-note" class="note-link" target="_blank" rel="noopener noreferrer" hidden>📌 Pin a note for Vega on the bulletin board</a>
+    </div>
+    <nav id="vega-tabs" class="tabs six" hidden>
+      <button data-tab="v-today"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Today</button>
+      <button data-tab="v-journal"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>Journal<i class="dot" hidden></i></button>
+      <button data-tab="v-portfolio"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l6.5 4.5"/></svg>Portfolio</button>
+      <button data-tab="v-market"><svg viewBox="0 0 24 24"><path d="M4 20h16"/><path d="m4 15 5-5 4 3 7-8"/></svg>Market</button>
+      <button data-tab="v-notebook"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H7a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1z"/><path d="M5 18a2 2 0 0 1 2-2h11M9 8h5"/></svg>Notebook<i class="dot" hidden></i></button>
+      <button data-tab="v-ember"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>Ember<i class="dot" hidden></i></button>
+    </nav>
+    <div id="feed"></div>
+    <footer><span id="cost"></span><a id="support" target="_blank" rel="noopener noreferrer" hidden></a></footer>
+  </aside>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const $ = (id) => document.getElementById(id);
+const IS_LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
+const POLL_MS = IS_LOCAL ? 4000 : 60000; // online, Ember only thinks every 10 minutes
+const BUILDING = IS_LOCAL && new URLSearchParams(location.search).has('build'); // builder mode: only on your own computer
+const IS_PHONE = matchMedia('(max-width: 760px), (pointer: coarse)').matches; // phones get a lighter world to save battery
+
+// ---------------------------------------------------------------------------
+// Renderer, camera, glow
+// ---------------------------------------------------------------------------
+const worldEl = $('world');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_PHONE ? 1.5 : 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.85;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+worldEl.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x06050f);
+scene.fog = new THREE.FogExp2(0x0b0820, 0.011);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
+camera.position.set(10, 8.5, 13);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(-0.5, 0.8, -1.5);
+controls.enableDamping = true;
+controls.screenSpacePanning = false; // right-drag slides you across the roof, not up into the sky
+controls.zoomToCursor = true; // the wheel zooms towards whatever's under the pointer
+controls.maxPolarAngle = 1.45;
+controls.minDistance = 2.5;
+controls.maxDistance = 40;
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.4, 0.35, 0.55); // strength, radius, threshold
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+const skyLight = new THREE.HemisphereLight(0x6a78c8, 0x15121f, 1.3);
+scene.add(skyLight);
+const moon = new THREE.DirectionalLight(0x9d8cff, 0.8);
+moon.position.set(-10, 22, 8);
+moon.castShadow = true;
+moon.shadow.mapSize.setScalar(IS_PHONE ? 1024 : 2048);
+Object.assign(moon.shadow.camera, { left: -14, right: 14, top: 14, bottom: -14, near: 1, far: 60 });
+moon.shadow.camera.updateProjectionMatrix();
+scene.add(moon);
+
+// ---------------------------------------------------------------------------
+// Day and night: the sky follows the real sun over the place Ember's weather comes from (London, unless
+// config.json says otherwise). scenery.json describes the night; by day the haze lifts, the sun comes up and
+// the neon fades back. "Always night" on the camera bar keeps it dark, and ?hour=13 previews another time.
+// ---------------------------------------------------------------------------
+const SKY_AT = { latitude: 51.5072, longitude: -0.1276 }; // replaced by the real spot once state.json arrives
+const PREVIEW_HOUR = parseFloat(new URLSearchParams(location.search).get('hour'));
+const DAY = { sky: new THREE.Color('#7b9ed8'), fog: new THREE.Color('#a2b8db'), light: new THREE.Color('#dce7ff'),
+  sun: new THREE.Color('#fff1d8'), tower: new THREE.Color('#58627e'), grey: new THREE.Color('#8f96a4') };
+const DUSK = { sky: new THREE.Color('#d9826f'), fog: new THREE.Color('#d48d7f'), sun: new THREE.Color('#ffa463') };
+const MOONLIGHT = new THREE.Color(0x9d8cff), NIGHT_TOWER = new THREE.Color(0x07080f), MOON_SPOT = new THREE.Vector3(-10, 22, 8);
+const towerMaterials = []; // the city's windows: dimmer by day
+let sceneSky = null, skyMode = 'live', daylight = 0; // daylight: 0 at night, 1 in full day
+const sunDisc = new THREE.Mesh(new THREE.SphereGeometry(9, 24, 16), new THREE.MeshBasicMaterial({ color: 0xffe8b0, fog: false }));
+const moonDisc = new THREE.Mesh(new THREE.SphereGeometry(5, 24, 16), new THREE.MeshBasicMaterial({ color: 0xd9dcff, fog: false }));
+moonDisc.position.set(-0.6, 0.38, -0.7).setLength(300); // low in the north-west, where you can see it from the usual view
+scene.add(sunDisc, moonDisc);
+
+function sunPosition(date, latitude, longitude) { // how high the sun is, and its compass bearing, in degrees
+  const rad = Math.PI / 180, days = date.getTime() / 86400000 - 10957.5; // days since noon on 1 January 2000
+  const anomaly = ((357.528 + 0.9856003 * days) % 360) * rad;
+  const along = ((280.46 + 0.9856474 * days) % 360 + 1.915 * Math.sin(anomaly) + 0.02 * Math.sin(2 * anomaly)) * rad;
+  const tilt = (23.439 - 0.0000004 * days) * rad;
+  const rightAscension = Math.atan2(Math.cos(tilt) * Math.sin(along), Math.cos(along));
+  const declination = Math.asin(Math.sin(tilt) * Math.sin(along));
+  const hourAngle = ((280.46061837 + 360.98564736629 * days) % 360) * rad + longitude * rad - rightAscension;
+  const lat = latitude * rad;
+  const altitude = Math.asin(Math.sin(lat) * Math.sin(declination) + Math.cos(lat) * Math.cos(declination) * Math.cos(hourAngle));
+  const bearing = Math.atan2(-Math.sin(hourAngle), Math.cos(lat) * Math.tan(declination) - Math.sin(lat) * Math.cos(hourAngle));
+  return { altitude: altitude / rad, bearing: bearing / rad };
+}
+
+function applyDaylight(weatherCode = 0) {
+  if (!sceneSky) return;
+  let when = new Date();
+  if (Number.isFinite(PREVIEW_HOUR)) when.setHours(Math.floor(PREVIEW_HOUR), (PREVIEW_HOUR % 1) * 60, 0, 0);
+  const sun = BUILDING || skyMode === 'night' ? { altitude: -40, bearing: 0 } : sunPosition(when, SKY_AT.latitude, SKY_AT.longitude);
+  const k = Math.min(1, Math.max(0, (sun.altitude + 6) / 16)); // from 6° below the horizon to 10° above
+  const day = k * k * (3 - 2 * k);
+  const dusk = Math.max(0, 1 - Math.abs(sun.altitude - 2) / 10); // the warm glow round sunrise and sunset
+  const cloud = weatherCode >= 51 ? 0.75 : weatherCode >= 3 ? 0.5 : 0; // overcast days are grey
+  daylight = day;
+  const daySky = DAY.sky.clone().lerp(DAY.grey, cloud), dayFog = DAY.fog.clone().lerp(DAY.grey, cloud);
+  scene.background.set(sceneSky.color).lerp(daySky, day).lerp(DUSK.sky, dusk * 0.5 * (1 - cloud));
+  scene.fog.color.set(sceneSky.fog_color).lerp(dayFog, day).lerp(DUSK.fog, dusk * 0.5 * (1 - cloud));
+  baseFog = sceneSky.fog * (1 - 0.3 * day);
+  skyLight.color.set(sceneSky.light_color).lerp(DAY.light, day);
+  baseLight = sceneSky.light + day * 1.1;
+  const toSun = new THREE.Vector3(Math.sin(sun.bearing * Math.PI / 180), 0, -Math.cos(sun.bearing * Math.PI / 180)) // north is -Z
+    .multiplyScalar(Math.cos(sun.altitude * Math.PI / 180)).setY(Math.sin(sun.altitude * Math.PI / 180));
+  moon.position.copy(day > 0.05 ? toSun.clone().setLength(30) : MOON_SPOT);
+  moon.color.copy(MOONLIGHT).lerp(DAY.sun, day).lerp(DUSK.sun, dusk * 0.6 * (1 - cloud));
+  moon.intensity = 0.8 + day * 2.8 * (1 - cloud * 0.7);
+  renderer.toneMappingExposure = sceneSky.exposure + day * 0.25;
+  bloom.strength = sceneSky.glow * (1 - 0.55 * day);
+  for (const material of towerMaterials) {
+    material.emissiveIntensity = material.userData.glow * (1 - 0.8 * day);
+    material.color.copy(NIGHT_TOWER).lerp(DAY.tower, day);
+  }
+  sunDisc.visible = sun.altitude > -4 && cloud < 0.6;
+  sunDisc.position.copy(toSun).setLength(300);
+  sunDisc.material.color.set(0xfff4d6).lerp(DUSK.sun, dusk);
+  moonDisc.visible = day < 0.5 && cloud < 0.6;
+}
+
+const materials = {};
+function mat(color, extra = {}) {
+  const key = color + JSON.stringify(extra);
+  return materials[key] ??= new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.35, ...extra });
+}
+const neon = (color, strength = 1.2) => mat(0x000000, { emissive: color, emissiveIntensity: strength });
+function put(geometry, material, x, y, z, parent = scene) {
+  const mesh = new THREE.Mesh(geometry, typeof material === 'number' ? mat(material) : material);
+  mesh.position.set(x, y, z);
+  mesh.castShadow = mesh.receiveShadow = true;
+  parent.add(mesh);
+  return mesh;
+}
+function addLight(x, y, z, color, parent, intensity = 6) {
+  const light = new THREE.PointLight(color, intensity, 9, 2);
+  light.position.set(x, y, z);
+  parent.add(light);
+}
+function seeded(seed) { // the same "random" city every visit
+  return () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// ---------------------------------------------------------------------------
+// The rooftop and the city around it. All of it comes from site/scenery.json,
+// which you can change in builder mode (the World tab), so none of it is fixed here.
+// ---------------------------------------------------------------------------
+const DEFAULT_SCENERY = { // what the world looks like if scenery.json is missing something
+  roof: { size: 24, color: '#1a1d2e', grid: true, grid_color: '#3ff0ff', edge_colors: ['#ff3fb4', '#3ff0ff', '#3ff0ff', '#ff3fb4'], edge_glow: 0.9 },
+  tower: { show: true, depth: 120, window_color: '#8b5bff' },
+  city: { seed: 42, towers: 120, near: 36, far: 121, min_height: 40, max_height: 140, window_glow: 0.5, antennas: 0.3,
+    colors: ['#3ff0ff', '#ff3fb4', '#ffcc4d', '#8b5bff', '#9fb4ff'] },
+  cars: { count: 14 },
+  sky: { color: '#06050f', fog_color: '#0b0820', fog: 0.011, light_color: '#6a78c8', light: 1.3, glow: 0.4, exposure: 0.85 },
+  signs: [],
+  props: [],
+};
+const SCENERY_SECTIONS = ['roof', 'tower', 'city', 'cars', 'sky'];
+const withDefaults = (loaded = {}) => ({
+  ...DEFAULT_SCENERY, ...loaded,
+  ...Object.fromEntries(SCENERY_SECTIONS.map((key) => [key, { ...DEFAULT_SCENERY[key], ...(loaded[key] ?? {}) }])),
+});
+let ROOF = 12; // half the roof's width: the roof spans -ROOF..ROOF
+let baseFog = 0.011, baseLight = 1.3; // the weather and lightning change these for a moment, then go back
+const hex = (color) => new THREE.Color(color).getHex();
+
+function makeWindowsTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64; canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, 64, 128);
+  for (let y = 4; y < 128; y += 8) for (let x = 4; x < 64; x += 10) {
+    if (Math.random() < 0.38) {
+      const v = 110 + Math.random() * 145;
+      ctx.fillStyle = `rgb(${v},${v},${v})`;
+      ctx.fillRect(x, y, 6, 4);
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+const windowsTexture = makeWindowsTexture();
+function towerMaterial(tint, repeatX, repeatY, glow = 0.5) {
+  const map = windowsTexture.clone();
+  map.needsUpdate = true;
+  map.repeat.set(repeatX, repeatY);
+  const material = new THREE.MeshStandardMaterial({ color: 0x07080f, roughness: 0.8, emissive: tint, emissiveMap: map, emissiveIntensity: glow });
+  material.userData.glow = glow; // its night-time brightness (day and night dim it, see applyDaylight)
+  towerMaterials.push(material);
+  return material;
+}
+
+function drawSign(sign, group) { // neon text on a transparent board (drawn once the fonts have loaded)
+  document.fonts.ready.then(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 160;
+    const ctx = canvas.getContext('2d');
+    ctx.font = '900 112px Orbitron, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = sign.color;
+    ctx.fillText(sign.text, 256, 84, 500);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    group.add(new THREE.Mesh(new THREE.PlaneGeometry(sign.size, sign.size * 160 / 512),
+      new THREE.MeshBasicMaterial({ map: texture, color: 0x8c8c8c, transparent: true, side: THREE.DoubleSide, depthWrite: false })));
+  });
+}
+
+let sceneryGroup = null;
+const sceneryParts = { props: {}, signs: {} }; // id -> group, so builder mode can grab them
+const blinkers = [], cars = [];
+function disposeTree(root) { // free the old city's textures before building a new one
+  const shared = new Set(Object.values(materials));
+  root.traverse((o) => {
+    o.geometry?.dispose();
+    if (o.material && !shared.has(o.material)) {
+      o.material.map?.dispose();
+      o.material.emissiveMap?.dispose();
+      o.material.dispose();
+    }
+  });
+}
+
+function buildScenery(sc) {
+  if (sceneryGroup) { scene.remove(sceneryGroup); disposeTree(sceneryGroup); }
+  sceneryGroup = new THREE.Group();
+  scene.add(sceneryGroup);
+  sceneryParts.props = {};
+  sceneryParts.signs = {};
+  blinkers.length = 0;
+  cars.length = 0;
+  towerMaterials.length = 0;
+  const { roof, tower, city, sky } = sc;
+  sceneSky = sky;
+  ROOF = Math.max(4, Math.min(40, roof.size / 2));
+
+  // Sky, fog, light and glow
+  scene.background = new THREE.Color(sky.color);
+  scene.fog.color.set(sky.fog_color);
+  baseFog = sky.fog;
+  scene.fog.density = baseFog;
+  skyLight.color.set(sky.light_color);
+  baseLight = sky.light;
+  skyLight.intensity = baseLight;
+  bloom.strength = sky.glow;
+  renderer.toneMappingExposure = sky.exposure;
+  Object.assign(moon.shadow.camera, { left: -ROOF - 2, right: ROOF + 2, top: ROOF + 2, bottom: -ROOF - 2 });
+  moon.shadow.camera.updateProjectionMatrix();
+  controls.maxDistance = Math.max(40, ROOF * 3.4);
+
+  // The roof: platform, grid and neon edges
+  put(new THREE.BoxGeometry(ROOF * 2, 1, ROOF * 2), mat(hex(roof.color), { roughness: 0.7, metalness: 0.25 }), 0, -0.5, 0, sceneryGroup);
+  if (roof.grid) {
+    const grid = new THREE.GridHelper(ROOF * 2, Math.round(ROOF * 2), hex(roof.grid_color), 0x1b2042);
+    grid.position.y = 0.01;
+    grid.material.transparent = true;
+    grid.material.opacity = 0.18;
+    sceneryGroup.add(grid);
+  }
+  const [front, back, right, left] = roof.edge_colors;
+  if (roof.edge_glow > 0) {
+    for (const [x, z, w, d, color] of [[0, ROOF, ROOF * 2, 0.12, front], [0, -ROOF, ROOF * 2, 0.12, back],
+      [ROOF, 0, 0.12, ROOF * 2, right], [-ROOF, 0, 0.12, ROOF * 2, left]]) {
+      put(new THREE.BoxGeometry(w, 0.12, d), neon(hex(color), roof.edge_glow), x, 0.06, z, sceneryGroup).castShadow = false;
+    }
+  }
+
+  // The skyscraper Ember lives on top of
+  if (tower.show) {
+    put(new THREE.BoxGeometry(ROOF * 2, tower.depth, ROOF * 2),
+      towerMaterial(hex(tower.window_color), Math.max(1, Math.round(ROOF / 2)), Math.round(tower.depth / 4), city.window_glow),
+      0, -tower.depth / 2 - 0.5, 0, sceneryGroup).receiveShadow = false;
+  }
+
+  // The city all around (the same seed always makes the same city)
+  const rand = seeded(city.seed);
+  const palette = city.colors.length ? city.colors.map(hex) : [0x8b5bff];
+  const near = Math.max(city.near, ROOF + 8), far = Math.max(city.far, near + 1);
+  for (let i = 0; i < (IS_PHONE ? Math.min(city.towers, 80) : city.towers); i++) {
+    const angle = rand() * Math.PI * 2, dist = near + rand() * (far - near);
+    const w = 5 + rand() * 9, d = 5 + rand() * 9, h = city.min_height + rand() * Math.max(0, city.max_height - city.min_height);
+    const x = Math.cos(angle) * dist, z = Math.sin(angle) * dist, top = -70 + h;
+    const building = new THREE.Mesh(new THREE.BoxGeometry(w, h, d),
+      towerMaterial(palette[Math.floor(rand() * palette.length)], Math.round(w / 2), Math.round(h / 6), city.window_glow));
+    building.position.set(x, -70 + h / 2, z);
+    sceneryGroup.add(building);
+    if (rand() < city.antennas) {
+      put(new THREE.CylinderGeometry(0.15, 0.15, 6, 5), 0x111111, x, top + 3, z, sceneryGroup).castShadow = false;
+      blinkers.push(put(new THREE.SphereGeometry(0.4, 8, 6), new THREE.MeshStandardMaterial({ color: 0, emissive: 0xff2040, emissiveIntensity: 1.5 }), x, top + 6.2, z, sceneryGroup));
+    }
+  }
+
+  // Flying cars on circular lanes
+  for (let i = 0; i < sc.cars.count; i++) {
+    const car = new THREE.Group();
+    put(new THREE.BoxGeometry(1.6, 0.45, 0.8), 0x15182a, 0, 0, 0, car).castShadow = false;
+    put(new THREE.BoxGeometry(0.08, 0.18, 0.6), neon(i % 2 ? 0x3ff0ff : 0xffffff, 1.5), 0.82, 0, 0, car);
+    put(new THREE.BoxGeometry(0.08, 0.14, 0.6), neon(0xff2040, 1.2), -0.82, 0, 0, car);
+    car.userData = { radius: Math.max(22, ROOF + 10) + rand() * 40, height: -6 + rand() * 30,
+      speed: (0.04 + rand() * 0.06) * (rand() < 0.5 ? 1 : -1), angle: rand() * Math.PI * 2 };
+    sceneryGroup.add(car);
+    cars.push(car);
+  }
+
+  // Neon signs: face the roof unless you've turned them
+  for (const sign of sc.signs) {
+    const group = new THREE.Group();
+    group.userData.signId = sign.id;
+    const [x, y, z] = sign.pos;
+    group.position.set(x, y, z);
+    group.rotation.y = sign.rotation !== undefined ? THREE.MathUtils.degToRad(sign.rotation) : Math.atan2(-x, -z);
+    sceneryGroup.add(group);
+    sceneryParts.signs[sign.id] = group;
+    drawSign(sign, group);
+  }
+
+  // Props: decorations you place anywhere, even floating (same looks as buildings)
+  for (const prop of sc.props) {
+    const group = new THREE.Group();
+    group.userData.propId = prop.id;
+    group.position.set(...prop.pos);
+    group.rotation.y = THREE.MathUtils.degToRad(prop.rotation ?? 0);
+    group.scale.setScalar(prop.scale ?? 1);
+    sceneryGroup.add(group);
+    sceneryParts.props[prop.id] = group;
+    lookBuilder(prop)(0, 0, group);
+  }
+  applyDaylight(); // the real weather's clouds join in on the next render
+}
+
+// Rain
+const DROPS = 1800;
+const rainPositions = new Float32Array(DROPS * 6);
+function resetDrop(i, anywhere) {
+  const x = (Math.random() - 0.5) * 70, z = (Math.random() - 0.5) * 70, y = anywhere ? Math.random() * 40 - 5 : 35;
+  rainPositions.set([x, y, z, x - 0.05, y - 0.7, z], i * 6);
+}
+for (let i = 0; i < DROPS; i++) resetDrop(i, true);
+const rainGeometry = new THREE.BufferGeometry();
+rainGeometry.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3));
+const rainMaterial = new THREE.LineBasicMaterial({ color: 0x7f95d8, transparent: true, opacity: 0.35 });
+scene.add(new THREE.LineSegments(rainGeometry, rainMaterial));
+
+// The rain, snow, fog and lightning follow the real weather Ember feels
+let rainCount = DROPS, rainSpeed = 28, stormy = false, nextFlash = 0, flashLeft = 0;
+function setWeather(weather) {
+  const code = weather?.code ?? 61;
+  const snow = (code >= 71 && code <= 77) || code === 85 || code === 86;
+  rainCount = code <= 3 || code === 45 || code === 48 ? 0
+    : snow ? 1200 : code <= 57 ? 500 : [61, 80].includes(code) ? 1000 : [63, 81].includes(code) ? 1400 : DROPS;
+  if (IS_PHONE) rainCount = Math.min(rainCount, 900);
+  rainSpeed = snow ? 5 : 28;
+  rainMaterial.color.set(snow ? 0xdde6ff : 0x7f95d8);
+  rainMaterial.opacity = snow ? 0.7 : 0.35;
+  scene.fog.density = code === 45 || code === 48 ? Math.max(0.03, baseFog) : baseFog;
+  stormy = code >= 95;
+  rainGeometry.setDrawRange(0, rainCount * 2);
+}
+const WEATHER_ICONS = [[3, '☁️'], [48, '🌫️'], [57, '🌦️'], [67, '🌧️'], [77, '🌨️'], [82, '🌧️'], [86, '🌨️'], [99, '⛈️']];
+const weatherIcon = (code) => {
+  if (code <= 1) return new Date().getHours() >= 7 && new Date().getHours() < 19 ? '☀️' : '🌙';
+  return WEATHER_ICONS.find(([max]) => code <= max)?.[1] ?? '🌧️';
+};
+
+// ---------------------------------------------------------------------------
+// Buildings. Each builder gets the spot where Ember stands and returns where its
+// name label floats. Add your own here, or use shapes / .glb files in buildings.json.
+// ---------------------------------------------------------------------------
+const codeCanvas = document.createElement('canvas');
+codeCanvas.width = 256; codeCanvas.height = 160;
+const codeTexture = new THREE.CanvasTexture(codeCanvas);
+codeTexture.colorSpace = THREE.SRGBColorSpace;
+const codeLines = [];
+function drawCode(line) {
+  codeLines.push(line ?? Array.from({ length: 6 + Math.floor(Math.random() * 18) },
+    () => '01<>{}#$%&*abcdefxyz'[Math.floor(Math.random() * 21)]).join(''));
+  if (codeLines.length > 11) codeLines.shift();
+  const ctx = codeCanvas.getContext('2d');
+  ctx.fillStyle = '#021014';
+  ctx.fillRect(0, 0, 256, 160);
+  ctx.font = '12px monospace';
+  codeLines.forEach((text, i) => {
+    ctx.fillStyle = text.startsWith('>') ? '#ff3fb4' : '#3ff0ff';
+    ctx.fillText(text.slice(0, 34), 10, 18 + i * 13);
+  });
+  codeTexture.needsUpdate = true;
+}
+setInterval(drawCode, 300);
+
+const builders = {
+  terminal(x, z, group) {
+    put(new THREE.BoxGeometry(2.2, 0.9, 1), 0x161a2b, x, 0.45, z - 1.3, group);
+    put(new THREE.BoxGeometry(2, 0.05, 0.45), neon(0x3ff0ff, 0.6), x, 0.93, z - 1.05, group);
+    const screen = put(new THREE.BoxGeometry(2.4, 1.5, 0.1), 0x161a2b, x, 2.0, z - 1.75, group);
+    screen.rotation.x = -0.12;
+    const display = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.3), new THREE.MeshBasicMaterial({ map: codeTexture, color: 0x9a9a9a }));
+    display.position.z = 0.051;
+    screen.add(display);
+    for (const [dx, color] of [[-0.6, 0xff3fb4], [0.5, 0x3ff0ff]]) { // cables running off to the edge
+      put(new THREE.BoxGeometry(0.06, 0.04, 9), neon(color, 0.5), x + dx, 0.02, z - 6.3, group).castShadow = false;
+    }
+    addLight(x, 2.2, z - 0.6, 0x3ff0ff, group);
+    return { anchor: new THREE.Vector3(x, 3.2, z - 1.75) };
+  },
+  pod(x, z, group) {
+    const cx = x, cz = z - 1.5;
+    put(new THREE.CylinderGeometry(1.3, 1.4, 0.35, 24), 0x161a2b, cx, 0.17, cz, group);
+    put(new THREE.TorusGeometry(1.3, 0.05, 8, 40), neon(0xff3fb4, 1), cx, 0.36, cz, group).rotation.x = Math.PI / 2;
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(1.25, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshStandardMaterial({ color: 0x9ff6ff, transparent: true, opacity: 0.16, roughness: 0.05, metalness: 0.2, depthWrite: false }));
+    dome.position.set(cx, 0.35, cz);
+    group.add(dome);
+    addLight(cx, 1.2, cz, 0xff3fb4, group, 4);
+    return { anchor: new THREE.Vector3(cx, 2.3, cz), sleep: { x: cx, z: cz, y: 0.35 } };
+  },
+  railing(x, z, group) {
+    for (let i = -3; i <= 3; i++) put(new THREE.BoxGeometry(0.08, 1.1, 0.08), 0x2a2f45, x + i, 0.55, z - 1.6, group);
+    put(new THREE.BoxGeometry(6.2, 0.08, 0.08), neon(0x3ff0ff, 1), x, 1.1, z - 1.6, group);
+    put(new THREE.BoxGeometry(6.2, 0.05, 0.05), 0x2a2f45, x, 0.6, z - 1.6, group);
+    return { anchor: new THREE.Vector3(x, 1.9, z - 1.6), faceAway: true };
+  },
+  radio(x, z, group) {
+    const cz = z - 1.5;
+    put(new THREE.BoxGeometry(1.7, 0.7, 1), 0x161a2b, x, 0.35, cz, group); // the crate it sits on
+    put(new THREE.BoxGeometry(1.5, 0.8, 0.6), 0x232842, x, 1.1, cz, group);
+    for (const side of [-0.42, 0.42]) { // speakers
+      const speaker = put(new THREE.CylinderGeometry(0.24, 0.24, 0.04, 24), 0x0c0e1a, x + side, 1.08, cz + 0.31, group);
+      speaker.rotation.x = Math.PI / 2;
+      put(new THREE.TorusGeometry(0.25, 0.02, 8, 32), neon(0xff3fb4, 0.8), x + side, 1.08, cz + 0.33, group);
+    }
+    put(new THREE.BoxGeometry(0.34, 0.14, 0.03), neon(0xffcc4d, 0.9), x, 1.3, cz + 0.31, group); // tuning dial
+    put(new THREE.BoxGeometry(0.02, 0.14, 0.04), neon(0xff3fb4, 1.2), x + 0.05, 1.3, cz + 0.32, group);
+    for (const side of [-0.45, 0.45]) put(new THREE.BoxGeometry(0.06, 0.25, 0.06), 0x2a2f45, x + side, 1.62, cz, group);
+    put(new THREE.BoxGeometry(0.96, 0.06, 0.06), 0x2a2f45, x, 1.74, cz, group); // handle
+    const mastX = x + 0.6, tipY = 3.9;
+    put(new THREE.CylinderGeometry(0.02, 0.03, 2.4, 6), 0x8a93b8, mastX, 2.7, cz - 0.1, group);
+    const tip = put(new THREE.SphereGeometry(0.07, 10, 8), neon(0xff2040, 2), mastX, tipY, cz - 0.1, group);
+    tip.userData.tip = true;
+    radioParts.push(tip);
+    for (let i = 0; i < 3; i++) { // signal rings rising off the antenna
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.012, 6, 40),
+        new THREE.MeshBasicMaterial({ color: 0x3ff0ff, transparent: true, opacity: 0, depthWrite: false }));
+      ring.position.set(mastX, tipY, cz - 0.1);
+      ring.rotation.x = Math.PI / 2;
+      ring.userData = { phase: i / 3, y: tipY };
+      group.add(ring);
+      radioParts.push(ring);
+    }
+    addLight(x, 1.5, cz + 0.8, 0xffcc4d, group, 3);
+    return { anchor: new THREE.Vector3(x, 2.5, cz) };
+  },
+};
+const radioParts = []; // antenna lights and signal rings, animated every frame
+
+function shapesBuilder(shapes) { // simple buildings described in buildings.json
+  return (x, z, group) => {
+    let top = 1;
+    for (const shape of shapes) {
+      const [a = 1, b = 1, c = 1] = shape.size ?? [];
+      const [px = 0, py = 0, pz = 0] = shape.pos ?? [];
+      const geometry = shape.type === 'cylinder' ? new THREE.CylinderGeometry(a, a, b, 24)
+        : shape.type === 'sphere' ? new THREE.SphereGeometry(a, 20, 14) : new THREE.BoxGeometry(a, b, c);
+      const color = new THREE.Color(shape.color ?? '#2a2f45').getHex();
+      put(geometry, shape.glow ? neon(color) : mat(color), x + px, py, z + pz, group);
+      top = Math.max(top, py + (shape.type === 'sphere' ? a : b / 2));
+    }
+    return { anchor: new THREE.Vector3(x, top + 0.8, z - 1.5) };
+  };
+}
+// 3D models you make yourself, in site/models/: .glb/.gltf (Blender etc.) or .obj (Roblox Studio: File > Export Selection).
+// Compressed .glb files (Blender's "Compression" option) work too, and any animations in them play on a loop.
+const gltfLoader = new GLTFLoader()
+  .setDRACOLoader(new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/gltf/'))
+  .setMeshoptDecoder(MeshoptDecoder);
+const animations = []; // { mixer, root } for every animated model on the roof
+function playAnimations(gltf) {
+  if (!gltf.animations.length) return;
+  const mixer = new THREE.AnimationMixer(gltf.scene);
+  for (const clip of gltf.animations) mixer.clipAction(clip).play();
+  animations.push({ mixer, root: gltf.scene });
+}
+function inScene(object) {
+  for (let o = object; o; o = o.parent) if (o === scene) return true;
+  return false;
+}
+function modelBuilder(building) {
+  return (x, z, group) => {
+    const info = { anchor: new THREE.Vector3(x, 3.4, z - 1.8) };
+    const place = (object) => {
+      object.traverse((o) => {
+        if (!o.isMesh) return;
+        o.castShadow = o.receiveShadow = true;
+        if (o.name.startsWith('LiveTicker')) o.material = tickerMaterial; // real prices scroll across it
+      });
+      if (building.autofit !== false) { // resize it to fill a lot, sitting on the roof just behind where Ember stands
+        const size = new THREE.Box3().setFromObject(object).getSize(new THREE.Vector3());
+        object.scale.multiplyScalar(3.2 / Math.max(size.x, size.z, 0.001));
+        const fitted = new THREE.Box3().setFromObject(object), centre = fitted.getCenter(new THREE.Vector3());
+        object.position.set(x - centre.x, -fitted.min.y, z - 1.8 - centre.z);
+      }
+      group.add(object);
+      info.anchor.y = new THREE.Box3().setFromObject(object).max.y + 0.6;
+    };
+    const failed = () => console.warn(`Couldn't load the model ${building.model}`);
+    if (/\.obj$/i.test(building.model)) {
+      const loadObj = (materials) => {
+        const loader = new OBJLoader();
+        if (materials) { materials.preload(); loader.setMaterials(materials); }
+        loader.load(building.model, place, undefined, failed);
+      };
+      if (building.mtl) new MTLLoader().load(building.mtl, loadObj, undefined, () => loadObj(null));
+      else loadObj(null);
+    } else {
+      gltfLoader.load(building.model, (gltf) => { place(gltf.scene); playAnimations(gltf); }, undefined, failed);
+    }
+    return info;
+  };
+}
+function placeholder(x, z, group) {
+  const box = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshBasicMaterial({ color: 0x3ff0ff, wireframe: true, transparent: true, opacity: 0.5 }));
+  box.position.set(x, 1, z - 1.6);
+  group.add(box);
+  return { anchor: new THREE.Vector3(x, 2.6, z - 1.6) };
+}
+function emptyLot([x, z], group) {
+  const corners = [[-2, -2], [2, -2], [2, 2], [-2, 2], [-2, -2]].map(([a, b]) => new THREE.Vector3(x + a, 0.03, z + b));
+  const outline = new THREE.Line(new THREE.BufferGeometry().setFromPoints(corners),
+    new THREE.LineDashedMaterial({ color: 0x7683ad, dashSize: 0.4, gapSize: 0.25 }));
+  outline.computeLineDistances();
+  group.add(outline);
+  addLabel('Empty lot', new THREE.Vector3(x, 0.3, z), 'place lot');
+}
+
+const overlay = $('overlay');
+const labels = [];
+function addLabel(text, anchor, className, group = null) { // anchor is relative to group, if given
+  const el = document.createElement('div');
+  el.className = className;
+  el.textContent = text;
+  overlay.prepend(el);
+  labels.push({ el, anchor, group });
+  return el;
+}
+
+// Floating hologram of Ember's latest drawing, next to wherever it makes things
+const artCanvas = document.createElement('canvas');
+artCanvas.width = artCanvas.height = 256;
+const artTexture = new THREE.CanvasTexture(artCanvas);
+artTexture.colorSpace = THREE.SRGBColorSpace;
+const svgUri = (svg) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+function paintArt(svg) {
+  artHolo.visible = Boolean(svg) && Boolean(artHolo.userData.placed);
+  if (!svg) return;
+  const image = new Image();
+  image.onload = () => {
+    const ctx = artCanvas.getContext('2d');
+    ctx.clearRect(0, 0, 256, 256);
+    ctx.drawImage(image, 0, 0, 256, 256);
+    artTexture.needsUpdate = true;
+  };
+  image.src = svgUri(svg);
+}
+const artHolo = new THREE.Group();
+artHolo.add(new THREE.Mesh(new THREE.PlaneGeometry(1.75, 1.75), new THREE.MeshBasicMaterial({ color: 0x3ff0ff, transparent: true, opacity: 0.22, side: THREE.DoubleSide })));
+const artPicture = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6), new THREE.MeshBasicMaterial({ map: artTexture, color: 0x8a8a8a, transparent: true, side: THREE.DoubleSide }));
+artPicture.position.z = 0.01;
+artHolo.add(artPicture);
+artHolo.visible = false;
+scene.add(artHolo);
+
+// Each building is its own group: placed at the spot where Ember stands, turned by "rotation" (degrees)
+// and resized by "scale". Builder mode drags these groups around.
+let worldGroup = null, worldKey = '', places = {}, researchAnchor = null;
+function lookBuilder(thing) { // a built-in piece, your own model, simple shapes, or a placeholder box
+  return /\.(glb|gltf|obj)$/i.test(thing.model ?? '') ? modelBuilder(thing)
+    : builders[thing.model] ?? (thing.shapes?.length ? shapesBuilder(thing.shapes) : placeholder);
+}
+function buildBuilding(building) {
+  const group = new THREE.Group();
+  group.userData.buildingId = building.id;
+  group.position.set(building.pos[0], 0, building.pos[1]);
+  group.rotation.y = THREE.MathUtils.degToRad(building.rotation ?? 0);
+  group.scale.setScalar(building.scale ?? 1);
+  worldGroup.add(group);
+  group.updateMatrixWorld();
+  const info = lookBuilder(building)(0, 0, group);
+  if (info.sleep) { // where Ember curls up, turned into roof coordinates
+    const spot = group.localToWorld(new THREE.Vector3(info.sleep.x, info.sleep.y, info.sleep.z));
+    info.sleep = { x: spot.x, z: spot.z, y: spot.y };
+  }
+  places[building.id] = { ...info, group, x: building.pos[0], z: building.pos[1], building };
+  addLabel(building.name, info.anchor, 'place', group);
+  return group;
+}
+
+function buildWorld(s, force = false) {
+  const key = JSON.stringify([s.buildings, s.empty_lots]);
+  if (key === worldKey && !force) return; // nothing changed in buildings.json
+  worldKey = key;
+  if (worldGroup) scene.remove(worldGroup);
+  for (const { el } of labels) el.remove();
+  labels.length = 0;
+  worldGroup = new THREE.Group();
+  scene.add(worldGroup);
+  places = {};
+  for (const building of s.buildings) buildBuilding(building);
+  for (const lot of s.empty_lots ?? []) emptyLot(lot, worldGroup);
+
+  const studio = Object.values(places).find((p) => p.building.actions?.includes('create'))
+    ?? Object.values(places).find((p) => p.building.actions?.includes('search'));
+  artHolo.userData.placed = Boolean(studio);
+  if (studio) artHolo.position.set(studio.x + 2.7, 2.6, studio.z - 1.2);
+  const lab = Object.values(places).find((p) => p.building.actions?.includes('search'));
+  researchAnchor = lab ? new THREE.Vector3(lab.x - 3, 3.4, lab.z - 1.2) : null;
+  const desk = Object.values(places).find((p) => p.building.actions?.includes('friend'));
+  vega = desk ? buildVega(desk, s.vega?.name ?? 'Vega') : null;
+}
+
+// ---------------------------------------------------------------------------
+// Ember: starts as a glowing orb, and picks its own shape and colour as it grows
+// ---------------------------------------------------------------------------
+const SHAPES = {
+  orb: () => new THREE.SphereGeometry(0.45, 32, 20),
+  cube: () => new THREE.BoxGeometry(0.65, 0.65, 0.65),
+  pyramid: () => new THREE.ConeGeometry(0.5, 0.8, 4),
+  ring: () => new THREE.TorusGeometry(0.38, 0.11, 16, 48),
+  crystal: () => new THREE.OctahedronGeometry(0.5),
+  knot: () => new THREE.TorusKnotGeometry(0.3, 0.09, 96, 12),
+  cluster: null, // built from several small spheres below
+};
+const avatar = new THREE.Group();
+avatar.scale.setScalar(1.5);
+scene.add(avatar);
+const avatarLight = new THREE.PointLight(0x3ff0ff, 2, 6, 2);
+avatar.add(avatarLight);
+const motes = new THREE.Group(); // little specks of light circling Ember
+avatar.add(motes);
+let avatarBody = null, shellMaterial = null, formKey = '';
+
+function setForm(form) {
+  const color = /^#[0-9a-f]{6}$/i.test(form?.color ?? '') ? form.color : '#3ff0ff';
+  const shape = form?.shape in SHAPES ? form.shape : 'orb';
+  if (`${shape}|${color}` === formKey) return;
+  formKey = `${shape}|${color}`;
+  if (avatarBody) avatar.remove(avatarBody);
+  const tint = new THREE.Color(color);
+  shellMaterial = new THREE.MeshStandardMaterial({ color: tint.clone().multiplyScalar(0.3), emissive: tint, emissiveIntensity: 0.7,
+    roughness: 0.3, metalness: 0.1, transparent: true, opacity: 0.8 });
+  avatarBody = new THREE.Group();
+  if (shape === 'cluster') {
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2;
+      put(new THREE.SphereGeometry(0.16, 16, 12), shellMaterial, Math.cos(a) * 0.32, Math.sin(i * 1.7) * 0.18, Math.sin(a) * 0.32, avatarBody);
+    }
+  } else {
+    put(SHAPES[shape](), shellMaterial, 0, 0, 0, avatarBody);
+  }
+  const heart = new THREE.MeshBasicMaterial({ color: tint.clone().lerp(new THREE.Color(0xffffff), 0.6) });
+  put(new THREE.SphereGeometry(0.11, 16, 12), heart, 0, 0, 0, avatarBody); // the bright heart in the middle
+  avatar.add(avatarBody);
+  avatarLight.color.copy(tint);
+  motes.clear();
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    put(new THREE.SphereGeometry(0.04, 8, 6), new THREE.MeshBasicMaterial({ color: tint }), Math.cos(a) * 0.75, (i - 1) * 0.12, Math.sin(a) * 0.75, motes);
+  }
+  $('name').style.color = color;
+  $('name').style.textShadow = `0 0 14px ${color}99`;
+}
+setForm(null);
+
+const goal = new THREE.Vector3(), homeSpot = new THREE.Vector3();
+let placed = false, asleep = false, floorY = 0, idleSince = 0, charge = 80;
+
+function moveTo(place) {
+  const spot = asleep && place.sleep ? place.sleep : { x: place.x, z: place.z, y: 0 };
+  floorY = spot.y;
+  if (!placed) {
+    avatar.position.set(spot.x, 1.15, spot.z);
+    goal.set(spot.x, 0, spot.z);
+    placed = true;
+  } else if (homeSpot.x !== spot.x || homeSpot.z !== spot.z) {
+    goal.set(spot.x, 0, spot.z);
+  }
+  homeSpot.set(spot.x, 0, spot.z);
+}
+
+// ---------------------------------------------------------------------------
+// Vega: Ember's friend, an old trading bot with an amber screen for a face (see friend.py)
+// ---------------------------------------------------------------------------
+const faceCanvas = document.createElement('canvas');
+faceCanvas.width = 128;
+faceCanvas.height = 96;
+const faceTexture = new THREE.CanvasTexture(faceCanvas);
+faceTexture.colorSpace = THREE.SRGBColorSpace;
+let vega = null; // { root, head, tip, arms, label, target, facing } while its building is on the roof
+let vegaMood = 'content', vegaAsleep = false, vegaFeeding = false, vegaTalkUntil = 0, vegaSaidAt = 0;
+const VEGA_SPOT = new THREE.Vector3(-1.45, 0, -0.2); // where it stands at a place: beside Ember's spot, in that building's space
+
+function vegaSpot(place) { // where Vega stands at a place on the roof, and which way it faces there
+  return { at: place.group.localToWorld(VEGA_SPOT.clone()), facing: place.group.rotation.y };
+}
+function simpleVega(root) { // a plain stand-in, shown until models/vega.glb arrives (or if it can't)
+  const group = new THREE.Group(), shell = mat(0x3a3f55, { metalness: 0.7, roughness: 0.35 });
+  put(new THREE.CylinderGeometry(0.26, 0.3, 0.14, 20), 0x161a2b, 0, 0.07, 0, group);
+  put(new THREE.BoxGeometry(0.5, 0.52, 0.36), shell, 0, 0.42, 0, group);
+  put(new THREE.CylinderGeometry(0.05, 0.06, 0.12, 8), 0x161a2b, 0, 0.74, 0, group);
+  const head = new THREE.Group();
+  head.position.y = 1.0;
+  put(new THREE.BoxGeometry(0.62, 0.46, 0.46), mat(0x4a4436, { metalness: 0.3, roughness: 0.6 }), 0, 0, 0, head);
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.36), new THREE.MeshBasicMaterial({ map: faceTexture }));
+  face.position.z = 0.232;
+  head.add(face);
+  const tip = put(new THREE.SphereGeometry(0.035, 8, 6), neon(0xff2040, 2), 0.18, 0.56, 0, head);
+  group.add(head);
+  root.add(group);
+  return { group, head, tip };
+}
+function buildVega(place, name) {
+  const root = new THREE.Group(), { at, facing } = vegaSpot(place);
+  root.position.copy(at);
+  root.rotation.y = facing;
+  const standIn = simpleVega(root);
+  const glow = new THREE.PointLight(0xffb02e, 1.6, 4, 2);
+  glow.position.set(0, 1, 0.5);
+  root.add(glow);
+  worldGroup.add(root);
+  const label = addLabel(name, new THREE.Vector3(0, 1.75, 0), 'place friend', root);
+  const v = { root, head: standIn.head, tip: standIn.tip, arms: [], label, target: at.clone(), facing, fresh: true };
+  gltfLoader.load('models/vega.glb', (gltf) => { // the proper lil guy, made in Blender (blender/vega.py)
+    const model = gltf.scene, part = (n) => model.getObjectByName(n);
+    model.traverse((o) => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
+    if (part('Face')) part('Face').material = new THREE.MeshBasicMaterial({ map: faceTexture });
+    if (part('Tip')) part('Tip').material = neon(0xff2040, 2);
+    root.remove(standIn.group);
+    root.add(model);
+    Object.assign(v, { head: part('Head') ?? v.head, tip: part('Tip') ?? v.tip, arms: [part('ArmL'), part('ArmR')].filter(Boolean) });
+  }, undefined, () => console.warn("Couldn't load Vega's model, so it's the plain one for now"));
+  return v;
+}
+
+const EYES = { // how Vega's eyes look in each mood (see MOODS in friend.py)
+  chipper: 'happy', excited: 'happy', content: 'open', grumpy: 'cross', restless: 'open', nervous: 'small', wistful: 'low', sleepy: 'low',
+};
+function drawFace(t) {
+  const ctx = faceCanvas.getContext('2d'), talking = Date.now() < vegaTalkUntil, eyes = vegaAsleep ? 'shut' : EYES[vegaMood] ?? 'open';
+  ctx.fillStyle = '#1a0d00';
+  ctx.fillRect(0, 0, 128, 96);
+  ctx.fillStyle = ctx.strokeStyle = vegaAsleep ? '#7a5416' : '#ffb02e'; // dimmed while powered down
+  ctx.lineWidth = 6;
+  const glance = vegaMood === 'restless' && !vegaAsleep ? Math.sin(t * 1.7) * 6 : 0; // eyes darting about
+  for (const [i, x] of [40, 88].entries()) {
+    const ex = x + glance;
+    if (eyes === 'shut' || (eyes !== 'low' && t % 4.2 < 0.12)) ctx.fillRect(ex - 10, 40, 20, 4); // shut, or a blink
+    else if (eyes === 'happy') { ctx.beginPath(); ctx.moveTo(ex - 11, 46); ctx.lineTo(ex, 33); ctx.lineTo(ex + 11, 46); ctx.stroke(); }
+    else if (eyes === 'low') ctx.fillRect(ex - 8, 38, 16, 9); // heavy-lidded
+    else if (eyes === 'small') ctx.fillRect(ex - 4, 34, 8, 10);
+    else {
+      ctx.fillRect(ex - 7, 28, 14, 20);
+      if (eyes === 'cross') { ctx.beginPath(); ctx.moveTo(ex - 12, i ? 18 : 24); ctx.lineTo(ex + 12, i ? 24 : 18); ctx.stroke(); } // brows
+    }
+  }
+  if (vegaAsleep) { ctx.font = '700 18px monospace'; ctx.fillText('z', 96 + Math.sin(t) * 3, 22 - (t % 2) * 4); }
+  else if (talking) ctx.fillRect(46, 68, 36, 4 + Math.abs(Math.sin(t * 13)) * 10);
+  else if (eyes === 'cross' || vegaMood === 'wistful') { ctx.beginPath(); ctx.moveTo(46, 76); ctx.quadraticCurveTo(64, 64, 82, 76); ctx.stroke(); }
+  else if (vegaMood === 'nervous') { ctx.beginPath(); ctx.moveTo(44, 72); for (let x = 44; x <= 84; x += 8) ctx.lineTo(x, 72 + ((x / 8) % 2 ? 4 : -4)); ctx.stroke(); }
+  else { ctx.beginPath(); ctx.moveTo(46, 66); ctx.quadraticCurveTo(64, eyes === 'happy' ? 84 : 78, 82, 66); ctx.stroke(); } // a smile
+  ctx.fillStyle = 'rgba(0, 0, 0, .3)';
+  for (let y = 0; y < 96; y += 3) ctx.fillRect(0, y, 128, 1); // scan lines
+  faceTexture.needsUpdate = true;
+}
+
+// The live ticker: any part of a model named "LiveTicker" shows the real prices on Vega's screens, and its account,
+// scrolling past. One unit of its U is 64 times its height, so the letters keep their shape (see blender/trading_floor.py).
+const tickerCanvas = document.createElement('canvas');
+tickerCanvas.height = 64;
+const tickerMaterial = new THREE.MeshBasicMaterial();
+let tickerTexture = null, tickerKey = '';
+function drawTicker(v) {
+  const key = JSON.stringify([v?.prices, v?.worth, document.fonts.status]);
+  if (key === tickerKey) return;
+  tickerKey = key;
+  const items = (v?.prices ?? []).map((q) => [`${q.symbol} ${dollars(q.price)}`, q.change]);
+  if (v) items.push([`${v.name.toUpperCase()}'S ACCOUNT ${dollars(v.worth)}`, (v.worth / v.start - 1) * 100]);
+  const ctx = tickerCanvas.getContext('2d'), font = '700 38px "JetBrains Mono", monospace';
+  ctx.font = font;
+  const parts = items.map(([label, change]) => [`${label}  `, `${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(2)}%`, change >= 0]);
+  const width = Math.ceil(parts.reduce((sum, [label, move]) => sum + ctx.measureText(label + move).width + 90, 30)) || 1024;
+  if (tickerCanvas.width !== width || !tickerTexture) { // a new size needs a new texture
+    tickerCanvas.width = width;
+    tickerTexture?.dispose();
+    tickerTexture = new THREE.CanvasTexture(tickerCanvas);
+    tickerTexture.colorSpace = THREE.SRGBColorSpace;
+    tickerTexture.wrapS = THREE.RepeatWrapping;
+    tickerTexture.repeat.x = 64 / (width / 64);
+    tickerMaterial.map = tickerTexture;
+    tickerMaterial.needsUpdate = true;
+  }
+  ctx.fillStyle = '#05060d';
+  ctx.fillRect(0, 0, width, 64);
+  ctx.font = font;
+  ctx.textBaseline = 'middle';
+  let x = 30;
+  for (const [label, move, up] of parts) {
+    ctx.fillStyle = '#ffcc4d';
+    ctx.fillText(label, x, 34);
+    x += ctx.measureText(label).width;
+    ctx.fillStyle = up ? '#5bf0a0' : '#ff5c7a';
+    ctx.fillText(move, x, 34);
+    x += ctx.measureText(move).width + 41;
+    ctx.fillStyle = '#3a4270';
+    ctx.fillRect(x, 29, 8, 8); // a dot between quotes
+    x += 49;
+  }
+  tickerTexture.needsUpdate = true;
+}
+
+// ---------------------------------------------------------------------------
+// The camera: drag to turn, right-drag to move, scroll to zoom towards the pointer, double-click to fly
+// somewhere, or let it follow Ember or Vega around (the buttons in the corner)
+// ---------------------------------------------------------------------------
+const HOME_VIEW = { camera: camera.position.clone(), target: controls.target.clone() };
+let follow = 'free', flight = null; // flight: a glide to somewhere new, in progress
+const followStep = new THREE.Vector3(), clampStep = new THREE.Vector3();
+function setFollow(mode) {
+  follow = mode;
+  document.querySelectorAll('#cam [data-follow]').forEach((b) => b.classList.toggle('on', b.dataset.follow === mode));
+  store.set('follow', mode);
+}
+function followed() { return follow === 'ember' ? avatar.position : follow === 'vega' && vega ? vega.root.position : null; }
+function flyTo(target, cameraAt) { // glide there; the camera keeps its angle unless told where to end up
+  const offset = camera.position.clone().sub(controls.target);
+  if (offset.length() > 11) offset.setLength(11);
+  flight = { target: [controls.target.clone(), target.clone()], camera: [camera.position.clone(), cameraAt ?? target.clone().add(offset)],
+    start: performance.now() };
+}
+function inside(object, root) {
+  for (let o = object; o; o = o.parent) if (o === root) return true;
+  return false;
+}
+const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
+renderer.domElement.addEventListener('dblclick', (event) => {
+  if (BUILDING) return;
+  const box = renderer.domElement.getBoundingClientRect();
+  pointer.set(((event.clientX - box.left) / box.width) * 2 - 1, -((event.clientY - box.top) / box.height) * 2 + 1);
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObjects([avatar, worldGroup, sceneryGroup].filter(Boolean), true)[0];
+  if (!hit) return;
+  const who = inside(hit.object, avatar) ? 'ember' : vega && inside(hit.object, vega.root) ? 'vega' : 'free';
+  setFollow(who); // double-clicking Ember or Vega follows them
+  flyTo(who === 'free' ? hit.point.clone().setY(Math.min(hit.point.y, 4)) : followed().clone().setY(1));
+});
+renderer.domElement.addEventListener('pointerdown', (event) => { // grabbing the camera takes over from the autopilot
+  flight = null;
+  if (event.button === 2 || event.shiftKey || event.ctrlKey || event.metaKey) setFollow('free'); // you're moving it yourself
+});
+function steerCamera(dt) {
+  if (flight) {
+    const k = Math.min(1, (performance.now() - flight.start) / 900), ease = k * k * (3 - 2 * k);
+    controls.target.lerpVectors(...flight.target, ease);
+    camera.position.lerpVectors(...flight.camera, ease);
+    if (k >= 1) flight = null;
+  } else if (followed()) { // move along with it, so you can still turn and zoom around it
+    followStep.copy(followed()).setY(1).sub(controls.target).multiplyScalar(Math.min(1, dt * 3));
+    controls.target.add(followStep);
+    camera.position.add(followStep);
+  }
+  const edge = ROOF + 6; // never wander off so far you lose the roof
+  clampStep.set(THREE.MathUtils.clamp(controls.target.x, -edge, edge), THREE.MathUtils.clamp(controls.target.y, 0, 8),
+    THREE.MathUtils.clamp(controls.target.z, -edge, edge)).sub(controls.target);
+  controls.target.add(clampStep);
+  camera.position.add(clampStep);
+}
+
+// ---------------------------------------------------------------------------
+// Pigeons: a little flock living on the roof. They peck about, flutter off when someone comes too close,
+// and crowd round Vega whenever it's feeding them.
+// ---------------------------------------------------------------------------
+const pigeons = [], pigeonSpot = new THREE.Vector3();
+for (let i = 0; i < 6; i++) {
+  const bird = new THREE.Group(), feathers = mat(0x6b6f7c, { roughness: 0.85, metalness: 0 });
+  put(new THREE.SphereGeometry(0.12, 10, 8), feathers, 0, 0.13, 0, bird).scale.set(0.9, 0.85, 1.4);
+  const head = put(new THREE.SphereGeometry(0.065, 8, 6), mat(0x4b5263, { roughness: 0.7, metalness: 0 }), 0, 0.26, 0.13, bird);
+  put(new THREE.ConeGeometry(0.018, 0.06, 6), 0xd9a05b, 0, 0, 0.07, head).rotation.x = Math.PI / 2; // beak
+  put(new THREE.BoxGeometry(0.1, 0.02, 0.14), feathers, 0, 0.14, -0.2, bird).rotation.x = -0.4; // tail
+  bird.position.set((Math.random() - 0.5) * 8, 0, 6 + Math.random() * 3);
+  bird.userData = { head, target: bird.position.clone(), flight: null, next: 0 };
+  scene.add(bird);
+  pigeons.push(bird);
+}
+function movePigeons(t, dt) {
+  const feeder = vega && !vegaAsleep && vegaFeeding ? vega.root.position : null;
+  for (const bird of pigeons) {
+    const p = bird.userData, at = bird.position;
+    if (p.flight) { // a fluttering hop in an arc to somewhere else on the roof
+      const k = Math.min(1, (t - p.flight.start) / 1.4);
+      at.lerpVectors(p.flight.from, p.flight.to, k);
+      at.y = Math.sin(k * Math.PI) * 1.6;
+      bird.scale.y = 1 + Math.sin(t * 40) * 0.15; // wings going
+      if (k >= 1) { p.flight = null; bird.scale.y = 1; p.target.copy(at); }
+      continue;
+    }
+    const scared = [avatar.position, vega && !feeder ? vega.root.position : null]
+      .some((who) => who && Math.hypot(who.x - at.x, who.z - at.z) < 1.3);
+    if (scared) {
+      const a = Math.random() * Math.PI * 2, r = 3 + Math.random() * 4;
+      pigeonSpot.set(THREE.MathUtils.clamp(at.x + Math.cos(a) * r, -ROOF + 0.6, ROOF - 0.6), 0,
+        THREE.MathUtils.clamp(at.z + Math.sin(a) * r, -ROOF + 0.6, ROOF - 0.6));
+      p.flight = { from: at.clone(), to: pigeonSpot.clone(), start: t };
+      bird.rotation.y = Math.atan2(pigeonSpot.x - at.x, pigeonSpot.z - at.z);
+      continue;
+    }
+    if (t > p.next) { // wander a little, or gather round Vega's crumbs
+      const around = feeder ?? at, r = feeder ? 0.6 + Math.random() * 0.5 : Math.random() * 1.2, a = Math.random() * Math.PI * 2;
+      p.target.set(THREE.MathUtils.clamp(around.x + Math.cos(a) * r, -ROOF + 0.6, ROOF - 0.6), 0,
+        THREE.MathUtils.clamp(around.z + Math.sin(a) * r, -ROOF + 0.6, ROOF - 0.6));
+      p.next = t + 2 + Math.random() * 6;
+    }
+    const dx = p.target.x - at.x, dz = p.target.z - at.z, dist = Math.hypot(dx, dz);
+    if (dist > 2.5) { p.flight = { from: at.clone(), to: p.target.clone(), start: t }; continue; } // too far to walk
+    if (dist > 0.03) {
+      at.x += (dx / dist) * Math.min(dist, 0.35 * dt);
+      at.z += (dz / dist) * Math.min(dist, 0.35 * dt);
+      bird.rotation.y = Math.atan2(dx, dz);
+      p.head.position.z = 0.13 + Math.sin(t * 12) * 0.03; // the head-bob walk
+    } else {
+      p.head.position.y = 0.26 - Math.max(0, Math.sin(t * 3 + at.x)) * 0.1; // pecking
+    }
+    at.y = 0;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Animation loop
+// ---------------------------------------------------------------------------
+const bubble = $('bubble'), researchHolo = $('research'), vegaBubble = $('vega-bubble');
+const vegaLook = new THREE.Vector3(), vegaAnchor = new THREE.Vector3();
+const projected = new THREE.Vector3(), bubbleAnchor = new THREE.Vector3(), labelSpot = new THREE.Vector3();
+function pinToScreen(el, worldPosition) {
+  projected.copy(worldPosition).project(camera);
+  const onScreen = projected.z < 1 && Math.abs(projected.x) < 1.1 && Math.abs(projected.y) < 1.1;
+  el.style.visibility = onScreen ? 'visible' : 'hidden';
+  el.style.left = `${(projected.x * 0.5 + 0.5) * worldEl.clientWidth}px`;
+  el.style.top = `${(-projected.y * 0.5 + 0.5) * worldEl.clientHeight}px`;
+}
+
+function resize() {
+  const w = worldEl.clientWidth, h = worldEl.clientHeight;
+  if (!w || !h) return; // hidden for a moment (e.g. while the window is opening)
+  renderer.setSize(w, h, false);
+  composer.setSize(w, h);
+  bloom.resolution.set(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(worldEl);
+resize();
+
+const timer = new THREE.Clock();
+let sinceFrame = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  sinceFrame += timer.getDelta();
+  if (IS_PHONE && sinceFrame < 1 / 30) return; // 30 frames a second is plenty on a phone, and saves battery
+  const dt = Math.min(sinceFrame, 0.1), t = timer.elapsedTime;
+  sinceFrame = 0;
+
+  const dx = goal.x - avatar.position.x, dz = goal.z - avatar.position.z, dist = Math.hypot(dx, dz);
+  const moving = placed && dist > 0.05;
+  const resting = asleep && !moving;
+  if (moving) {
+    const step = Math.min(dist, (dist > 1 ? 2.4 : 1.0) * dt);
+    avatar.position.x += (dx / dist) * step;
+    avatar.position.z += (dz / dist) * step;
+    idleSince = t;
+  } else if (!asleep && t - idleSince > 9) { // drift about a little near the current spot
+    goal.set(homeSpot.x + (Math.random() - 0.5) * 1.4, 0, homeSpot.z + (Math.random() - 0.5) * 1.2);
+    idleSince = t;
+  }
+  const hover = (resting ? floorY + 0.55 : 1.15) + Math.sin(t * 1.6) * (resting ? 0.03 : 0.12);
+  avatar.position.y += (hover - avatar.position.y) * Math.min(1, dt * 3);
+  avatarBody.rotation.y += dt * (moving ? 1.8 : resting ? 0.15 : 0.5);
+  avatarBody.rotation.x = Math.sin(t * 0.7) * 0.2;
+  avatarBody.scale.setScalar((resting ? 0.8 : 1) * (1 + Math.sin(t * (resting ? 1 : 2.4)) * 0.04));
+  shellMaterial.emissiveIntensity = resting ? 0.25 : 0.35 + (charge / 100) * 0.5; // dimmer when its charge is low
+  motes.rotation.y += dt * (resting ? 0.3 : 1.4);
+  avatarLight.intensity = resting ? 0.6 : 2;
+
+  for (const car of cars) {
+    const c = car.userData;
+    c.angle += c.speed * dt;
+    car.position.set(Math.cos(c.angle) * c.radius, c.height, Math.sin(c.angle) * c.radius);
+    car.rotation.y = c.speed > 0 ? -c.angle - Math.PI / 2 : -c.angle + Math.PI / 2;
+  }
+  for (const [i, blinker] of blinkers.entries()) blinker.visible = Math.sin(t * 2 + i) > -0.3;
+  for (let i = radioParts.length - 1; i >= 0; i--) {
+    const part = radioParts[i];
+    if (!inScene(part)) { radioParts.splice(i, 1); continue; } // that radio was moved or removed
+    if (part.userData.tip) { part.visible = Math.sin(t * 3) > -0.2; continue; }
+    const p = (t * 0.45 + part.userData.phase) % 1;
+    part.scale.setScalar(0.3 + p * 3);
+    part.position.y = part.userData.y + p * 0.6;
+    part.material.opacity = (1 - p) * 0.5;
+  }
+  if (stormy && t > nextFlash) { flashLeft = 0.12; nextFlash = t + 4 + Math.random() * 10; setTimeout(() => play('thunder'), 500 + Math.random() * 2500); }
+  flashLeft -= dt;
+  skyLight.intensity = flashLeft > 0 ? 7 : baseLight; // lightning
+  for (let i = 0; i < rainCount; i++) {
+    const o = i * 6, fall = rainSpeed * dt;
+    rainPositions[o + 1] -= fall;
+    rainPositions[o + 4] -= fall;
+    const overRoof = Math.abs(rainPositions[o]) < ROOF && Math.abs(rainPositions[o + 2]) < ROOF;
+    if (rainPositions[o + 4] < (overRoof ? 0 : -40)) resetDrop(i, false);
+  }
+  rainGeometry.attributes.position.needsUpdate = true;
+  artHolo.position.y = 2.6 + Math.sin(t * 1.3) * 0.08;
+  artHolo.rotation.y = Math.sin(t * 0.4) * 0.25;
+  for (let i = animations.length - 1; i >= 0; i--) { // models' own animations; forget ones that were removed
+    if (inScene(animations[i].root)) animations[i].mixer.update(dt);
+    else animations.splice(i, 1);
+  }
+  if (vega && inScene(vega.root)) { // Vega trundles from place to place, and turns its head to watch Ember when it's near
+    const at = vega.root.position, dx = vega.target.x - at.x, dz = vega.target.z - at.z, dist = Math.hypot(dx, dz);
+    const rolling = dist > 0.05;
+    if (rolling) {
+      const step = Math.min(dist, 1.8 * dt);
+      at.x += (dx / dist) * step;
+      at.z += (dz / dist) * step;
+    }
+    const heading = (rolling ? Math.atan2(dx, dz) : vega.facing) - vega.root.rotation.y;
+    vega.root.rotation.y += Math.atan2(Math.sin(heading), Math.cos(heading)) * Math.min(1, dt * 4); // the short way round
+    at.y = Math.abs(Math.sin(t * (rolling ? 10 : 2.2))) * (rolling ? 0.03 : 0.015);
+    vega.tip.visible = Math.sin(t * (vegaAsleep ? 0.8 : 2.5) + 1) > -0.3;
+    const near = vega.root.worldToLocal(vegaLook.copy(avatar.position));
+    const turn = rolling || vegaAsleep ? 0 : Math.hypot(near.x, near.z) < 7 ? Math.max(-0.9, Math.min(0.9, Math.atan2(near.x, near.z))) : Math.sin(t * 0.3) * 0.3;
+    vega.head.rotation.y += (turn - vega.head.rotation.y) * Math.min(1, dt * 2);
+    vega.head.rotation.x += ((vegaAsleep ? 0.3 : 0) - vega.head.rotation.x) * Math.min(1, dt * 2); // nods off when powered down
+    const talking = Date.now() < vegaTalkUntil;
+    vega.arms.forEach((arm, i) => { // swing as it rolls, a hand going while it talks, droop when powered down
+      const lift = vegaAsleep ? 0 : talking && i === 1 ? 0.9 + Math.sin(t * 7) * 0.35 : 0.08;
+      arm.rotation.z += ((i ? 1 : -1) * lift - arm.rotation.z) * Math.min(1, dt * 5);
+      arm.rotation.x = rolling ? Math.sin(t * 8 + i * Math.PI) * 0.35 : vegaAsleep ? 0.15 : Math.sin(t * 1.3 + i) * 0.05;
+    });
+    drawFace(t);
+  }
+  if (tickerTexture) tickerTexture.offset.x = (tickerTexture.offset.x + (dt * 150) / tickerCanvas.width) % 1;
+  movePigeons(t, dt);
+
+  steerCamera(dt);
+  controls.update();
+  if (worldEl.clientWidth && worldEl.clientHeight) composer.render();
+  for (const { el, anchor, group } of labels) pinToScreen(el, group ? group.localToWorld(labelSpot.copy(anchor)) : anchor);
+  bubbleAnchor.set(avatar.position.x, avatar.position.y + 1.3, avatar.position.z);
+  pinToScreen(bubble, bubbleAnchor);
+  if (vega) pinToScreen(vegaBubble, vega.root.localToWorld(vegaAnchor.set(0, 1.75, 0)));
+  let push = 0; // both talking at once: push the bubbles apart, just far enough that neither hides the other
+  if (vega && !vegaBubble.hidden && !bubble.hidden) {
+    const xv = parseFloat(vegaBubble.style.left), xe = parseFloat(bubble.style.left);
+    const yv = parseFloat(vegaBubble.style.top), ye = parseFloat(bubble.style.top);
+    const stacked = Math.min(yv, ye) > Math.max(yv - vegaBubble.offsetHeight, ye - bubble.offsetHeight);
+    const short = (vegaBubble.offsetWidth + bubble.offsetWidth) / 2 + 8 - Math.abs(xe - xv);
+    if (stacked && short > 0) push = (short / 2) * (xv <= xe ? 1 : -1);
+  }
+  vegaBubble.style.translate = push ? `${-push}px 0` : '';
+  bubble.style.translate = push ? `${push}px 0` : '';
+  if (researchAnchor) pinToScreen(researchHolo, researchAnchor);
+}
+animate();
+
+// ---------------------------------------------------------------------------
+// Synth: tunes are played with the Web Audio API, one oscillator per note
+// ---------------------------------------------------------------------------
+let audio = null;
+const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
+function noteFrequency(pitch) {
+  const match = /^([A-G])(#?)([2-6])$/.exec(pitch);
+  if (!match) return null; // "rest"
+  const semitone = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[match[1]] + (match[2] ? 1 : 0);
+  return { frequency: 440 * 2 ** (((Number(match[3]) + 1) * 12 + semitone - 69) / 12), octave: Number(match[3]) };
+}
+let noiseBuffer = null;
+function whiteNoise() { // half a second of hiss, shared by the drum machine and the ambient sound
+  noiseBuffer ??= (() => {
+    const buffer = audio.createBuffer(1, audio.sampleRate * 0.5, audio.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    return buffer;
+  })();
+  return noiseBuffer;
+}
+function noise(start, length, highpass) {
+  const source = audio.createBufferSource(), filter = audio.createBiquadFilter(), gain = audio.createGain();
+  source.buffer = whiteNoise();
+  filter.type = 'highpass';
+  filter.frequency.value = highpass;
+  gain.gain.setValueAtTime(0.35, start);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + length);
+  source.connect(filter).connect(gain).connect(audio.destination);
+  source.start(start);
+  source.stop(start + length + 0.02);
+}
+function playNote({ frequency, octave }, start, length, instrument) {
+  if (instrument === 'drum machine') { // low notes = kick, middle = snare, high = hi-hat
+    if (octave >= 5) return noise(start, 0.05, 7000);
+    if (octave === 4) return noise(start, 0.15, 1500);
+  }
+  const osc = audio.createOscillator(), filter = audio.createBiquadFilter(), gain = audio.createGain();
+  const kick = instrument === 'drum machine', bass = instrument === 'bass synth';
+  osc.type = kick ? 'sine' : bass ? 'square' : 'sawtooth';
+  osc.frequency.setValueAtTime(kick ? 150 : frequency, start);
+  if (kick) osc.frequency.exponentialRampToValueAtTime(45, start + 0.15);
+  filter.type = 'lowpass';
+  filter.frequency.value = bass ? 900 : 2600;
+  const ring = kick ? 0.25 : Math.max(0.08, length * 0.9);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(kick ? 0.7 : 0.16, start + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + ring);
+  osc.connect(filter).connect(gain).connect(audio.destination);
+  osc.start(start);
+  osc.stop(start + ring + 0.05);
+}
+function playTune(work, button) {
+  audio ??= new AudioContext();
+  audio.resume();
+  const beat = 60 / clamp(Number(work.tempo) || 110, 60, 180);
+  let t = audio.currentTime + 0.05;
+  for (const note of work.notes.slice(0, 64)) {
+    const length = clamp(Number(note.beats) || 1, 0.25, 4) * beat;
+    const pitch = noteFrequency(note.pitch);
+    if (pitch) playNote(pitch, t, length, work.instrument);
+    t += length;
+  }
+  const label = button.textContent;
+  button.disabled = true;
+  button.textContent = '♪ Playing…';
+  setTimeout(() => { button.disabled = false; button.textContent = label; }, (t - audio.currentTime) * 1000);
+}
+
+// ---------------------------------------------------------------------------
+// Ambient sound: the roof's soundscape, made on the fly with no audio files. Off until you switch it on (🔇/🔊).
+// ---------------------------------------------------------------------------
+let soundOn = false, ambience = null; // ambience: { master, wind, rain } once started
+function noiseLoop(type, frequency, level) { // endless filtered hiss: wind, rain
+  const source = audio.createBufferSource(), filter = audio.createBiquadFilter(), gain = audio.createGain();
+  source.buffer = whiteNoise();
+  source.loop = true;
+  filter.type = type;
+  filter.frequency.value = frequency;
+  gain.gain.value = level;
+  source.connect(filter).connect(gain).connect(ambience.master);
+  source.start();
+  return gain;
+}
+function startAmbience() {
+  audio ??= new AudioContext();
+  audio.resume();
+  if (!ambience) {
+    ambience = { master: audio.createGain() };
+    ambience.master.gain.value = 0;
+    ambience.master.connect(audio.destination);
+    ambience.wind = noiseLoop('lowpass', 380, 0.05);
+    ambience.rain = noiseLoop('bandpass', 2600, 0);
+    for (const [frequency, level] of [[55, 0.03], [110, 0.012]]) { // the city's low hum
+      const hum = audio.createOscillator(), gain = audio.createGain();
+      hum.frequency.value = frequency;
+      gain.gain.value = level;
+      hum.connect(gain).connect(ambience.master);
+      hum.start();
+    }
+  }
+  ambience.master.gain.setTargetAtTime(0.8, audio.currentTime, 0.6);
+}
+function blip(type, from, to, length, level, delay = 0) { // one short sound: a chirp, a beep, a coo
+  const start = audio.currentTime + delay, osc = audio.createOscillator(), gain = audio.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(from, start);
+  osc.frequency.exponentialRampToValueAtTime(to, start + length);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(level, start + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + length);
+  osc.connect(gain).connect(ambience.master);
+  osc.start(start);
+  osc.stop(start + length + 0.05);
+}
+function rumble(type, from, to, length, level) { // a swell of filtered hiss: traffic going by, thunder
+  const start = audio.currentTime, source = audio.createBufferSource(), filter = audio.createBiquadFilter(), gain = audio.createGain();
+  source.buffer = whiteNoise();
+  source.loop = true;
+  filter.type = type;
+  filter.frequency.setValueAtTime(from, start);
+  filter.frequency.exponentialRampToValueAtTime(to, start + length);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(level, start + length * 0.3);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + length);
+  source.connect(filter).connect(gain).connect(ambience.master);
+  source.start(start);
+  source.stop(start + length + 0.05);
+}
+const SOUNDS = {
+  chime: () => { blip('sine', 660, 660, 0.3, 0.05); blip('sine', 990, 990, 0.4, 0.04, 0.12); }, // Ember speaks
+  beeps: () => { for (let i = 0; i < 3; i++) blip('square', 500 + Math.random() * 600, 500 + Math.random() * 600, 0.07, 0.02, i * 0.09); }, // Vega
+  thunder: () => rumble('lowpass', 180, 60, 3.5, 0.3),
+  traffic: () => rumble('bandpass', 300, 900, 2.5, 0.05),
+  bird: () => { for (let i = 0; i < 2 + Math.random() * 3; i++) blip('sine', 2600 + Math.random() * 900, 3600, 0.08, 0.025, i * 0.13); },
+  coo: () => { blip('sine', 400, 330, 0.3, 0.04); blip('sine', 380, 320, 0.45, 0.04, 0.35); },
+};
+function play(name) { if (soundOn && ambience) SOUNDS[name](); }
+setInterval(() => { // the soundscape follows the real weather and the time of day
+  if (!soundOn || !ambience) return;
+  ambience.rain.gain.setTargetAtTime((rainCount / DROPS) * 0.12, audio.currentTime, 2);
+  ambience.wind.gain.setTargetAtTime(stormy ? 0.1 : 0.05, audio.currentTime, 2);
+  if (Math.random() < 1 / 12) play('traffic');
+  if (daylight > 0.5 && rainCount < 400 && Math.random() < 1 / 9) play('bird');
+  if (Math.random() < 1 / 25) play('coo');
+}, 1000);
+
+// ---------------------------------------------------------------------------
+// Side panel
+// ---------------------------------------------------------------------------
+function el(tag, className = '', text) {
+  const e = document.createElement(tag);
+  if (className) e.className = className;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function safeLink(url, text, className = '') {
+  const link = el('a', className, text);
+  if (/^https:\/\//.test(url)) link.href = url;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  return link;
+}
+
+const NEEDS = [['charge', '#3ff0ff'], ['curiosity', '#8b5bff'], ['joy', '#ffcc4d'], ['calm', '#5aa9ff'], ['connection', '#ff3fb4']];
+const needBars = NEEDS.map(([need, colour]) => {
+  const box = el('div', 'need', need), bar = el('div', 'bar'), fill = el('i');
+  fill.style.background = colour;
+  bar.append(fill);
+  box.append(bar);
+  $('needs').append(box);
+  return fill;
+});
+
+const ICONS = {
+  thought: '💭', say: '💬', search: '🔎', learned: '💡', hobby: '⭐', note: '📝', rest: '🔋', play: '🎮',
+  create: '🎨', learn: '📖', explore: '🧭', socialise: '📡', reflect: '🌀', levelup: '🏅', creation: '🖼️',
+  wish: '🌠', build: '🏗️', form: '✨', diary: '📓', self: '🪞', forgot: '🌫️', sleep: '💤', wake: '☀️',
+  goal: '🎯', weather: '🌦️', city: '📰', event: '🎆', missed: '🕳️', chapter: '📖', rut: '🔁', radio: '📻',
+  friend: '🤖', trade: '💹', together: '🤝', message: '📌',
+};
+const clock = (seconds) => new Date(seconds * 1000).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+const dayClock = (seconds) => new Date(seconds * 1000).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+
+function cityCards(s) {
+  if (!s.city?.length) return [el('p', 'empty', 'Nothing posted yet. New posters go up around the city every few days.')];
+  const nowSeconds = Date.now() / 1000;
+  const upcoming = s.city.filter((e) => e.status === 'upcoming').sort((a, b) => a.start - b.start);
+  const past = s.city.filter((e) => e.status !== 'upcoming').reverse();
+  const where = (e) => s.buildings.find((b) => b.id === e.where)?.name.toLowerCase() ?? 'somewhere';
+  return [...upcoming, ...past].map((event) => {
+    const live = event.status === 'upcoming' && event.start <= nowSeconds;
+    const card = el('div', `card${live ? ' live' : ''}${event.status !== 'upcoming' ? ' past' : ''}`);
+    const when = event.status === 'attended' ? `✓ ${s.name} watched it`
+      : event.status === 'missed' ? `✗ ${s.name} missed it`
+      : live ? `ON NOW until ${clock(event.end)} · watch from the ${where(event)}`
+      : `${dayClock(event.start)}–${clock(event.end)} · watch from the ${where(event)}`;
+    card.append(el('div', 'q', event.title), el('div', '', event.about), el('div', 'when', when));
+    return card;
+  });
+}
+const MEMORY_SECTIONS = [['places_and_things', 'Places & things', 'How it feels about places, things and anyone it meets.'],
+  ['facts', 'Facts', 'Things it read or worked out, kept because they connected to something.'],
+  ['moments', 'Moments', 'Things that happened that mattered enough to survive the night.']];
+
+function memoryPanel(s) {
+  const panel = el('div', 'mind');
+  panel.append(el('p', 'empty', `${s.name}'s memory is small: ${s.memory_slots} slots per section. A memory fades by half every three weeks unless something brings it back, and when a section is full a new memory has to beat the weakest one to get in. Memories are sorted out each night while it sleeps.`));
+  for (const [key, title, about] of MEMORY_SECTIONS) {
+    const shelf = s.memory_view?.[key] ?? [];
+    const heading = el('h3', '', `${title} `);
+    heading.append(el('span', 'slots', `${shelf.length} of ${s.memory_slots}`));
+    panel.append(heading, el('p', 'empty', about));
+    for (const memory of shelf) {
+      const item = el('div', 'memory-item'), bar = el('div', 'bar'), fill = el('i');
+      fill.style.width = `${Math.round(memory.strength * 100)}%`;
+      fill.style.background = '#8b5bff';
+      bar.append(fill);
+      const since = memory.times > 1 ? `came back ${memory.times - 1}×` : `since ${new Date(`${memory.first}T00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`;
+      item.append(el('div', '', memory.text), bar, el('small', '', since));
+      item.style.opacity = 0.45 + memory.strength * 0.55; // faded memories look faded
+      panel.append(item);
+    }
+  }
+  return [panel];
+}
+const SECTIONS = [['what_im_like', "What I'm like"], ['what_i_care_about', 'What I care about'],
+  ['what_scares_me', 'What scares me'], ['my_habits', 'My habits']];
+const longDate = (date) => new Date(`${date}T00:00`).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+
+function diaryCards(s) {
+  if (!s.days.length) return [el('p', 'empty', `No entries yet. ${s.name} writes up each day before it goes to sleep.`)];
+  return s.days.slice().reverse().map((day) => {
+    const card = el('div', 'card');
+    card.append(el('div', 'q', day.title), el('div', '', day.entry), el('time', '', longDate(day.date)));
+    return card;
+  });
+}
+
+const dayOfLife = (s) => Math.floor((new Date(`${s.today}T00:00`) - new Date(`${s.born || s.today}T00:00`)) / 86400000) + 1;
+function mindPanel(s) {
+  const panel = el('div', 'mind');
+  panel.append(el('p', 'empty', `Day ${dayOfLife(s)} of ${s.name}'s life. Lines tagged "grew" are ones it wrote about itself while falling asleep; it can only ever add to them.`));
+  const chapters = (s.chapters ?? []).slice().reverse();
+  panel.append(el('h3', '', 'Chapters of its life'));
+  if (!chapters.length) panel.append(el('p', 'empty', 'The first chapter gets written after its first week.'));
+  for (const chapter of chapters) {
+    const card = el('div', 'card');
+    card.append(el('div', 'q', chapter.title), el('div', '', chapter.text), el('time', '', longDate(chapter.date)));
+    panel.append(card);
+  }
+  for (const [key, title] of SECTIONS) {
+    panel.append(el('h3', '', title));
+    const lines = [...(s.personality?.[key] ?? []).map((text) => [text, false]), ...(s.self?.[key] ?? []).map((text) => [text, true])];
+    if (!lines.length) panel.append(el('p', 'empty', 'Nothing yet.'));
+    for (const [text, grown] of lines) {
+      const row = el('div', `line${grown ? ' grown' : ''}`);
+      row.append(el('span', 'tag', grown ? 'grew' : 'given'), el('span', '', text));
+      panel.append(row);
+    }
+  }
+  panel.append(el('h3', '', 'What keeps coming back'));
+  if (!s.fascinations?.length) panel.append(el('p', 'empty', 'Nothing yet. Words that keep turning up in what it reads online show up here.'));
+  else {
+    const words = el('div', 'words');
+    for (const f of s.fascinations) words.append(el('span', 'word', `${f.word} ×${f.score}`));
+    panel.append(words);
+  }
+  panel.append(el('h3', '', 'What experience has taught it'));
+  if (!s.beliefs.length) panel.append(el('p', 'empty', 'Nothing yet. A lesson appears once something has happened a few times.'));
+  for (const belief of s.beliefs) {
+    const row = el('div', 'line');
+    row.append(el('span', '', belief.text), el('span', 'count', `×${belief.count}`));
+    panel.append(row);
+  }
+  return [panel];
+}
+function when(entry, today) {
+  if (!entry.date || entry.date === today) return entry.time;
+  const day = new Date(`${entry.date}T00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  return `${day} ${entry.time}`;
+}
+
+let galleryItems = [], galleryKey = null;
+const WORK_TYPES = { drawing: 'Drawing', poem: 'Poem', tune: 'Tune' };
+function galleryCards(s) {
+  if (!galleryItems.length) return [el('p', 'empty', `Nothing yet. If ${s.name} ever makes something, it lands here.`)];
+  return galleryItems.slice().reverse().map((work) => {
+    const card = el('div', 'card work');
+    card.append(el('div', 'q', work.title));
+    if (work.type === 'drawing') {
+      const image = el('img'); // shown as an <img>, so nothing inside the SVG can run
+      image.alt = work.title;
+      image.src = svgUri(work.svg);
+      card.append(image);
+    } else if (work.type === 'poem') {
+      card.append(el('p', 'poem', work.text));
+    } else if (work.type === 'tune') {
+      const button = el('button', 'play', `▶ Play (${work.instrument})`);
+      button.addEventListener('click', () => playTune(work, button));
+      card.append(button);
+    }
+    const skill = work.hobby ? `${work.hobby} lv ${work.level}` : 'beginner';
+    card.append(el('time', '', `${WORK_TYPES[work.type] ?? work.type} · ${skill} · ${when(work, s.today)}`));
+    return card;
+  });
+}
+
+// Research notes are a headline and a few "- " points. Older ones were one paragraph, sometimes numbered "1. 2. 3."
+const BULLET = /^(?:[-•*]|\d+[.)])\s+/;
+function noteParts(raw) {
+  const text = raw.replace(/^Learned:\s*/, '').replace(/\*\*/g, '').trim();
+  const lines = text.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  let headline = '', points = [];
+  if (lines.slice(1).some((line) => BULLET.test(line))) {
+    for (const line of lines) {
+      if (BULLET.test(line)) points.push(line.replace(BULLET, ''));
+      else if (points.length) points[points.length - 1] += ` ${line}`;
+      else headline = headline ? `${headline} ${line}` : line;
+    }
+  } else {
+    const numbered = text.split(/(?:^|\s)[1-9][.)]\s+/).map((part) => part.trim());
+    if (numbered.length < 3) return { headline: '', points: [], paragraph: text };
+    [headline, ...points] = numbered;
+  }
+  if (/:$/.test(headline) && /\b(found|here|points?)\b/i.test(headline)) headline = ''; // "Here's what I found:" says nothing
+  return { headline: headline.replace(/:$/, ''), points: points.filter(Boolean), paragraph: '' };
+}
+function pointEl(point) {
+  const item = el('li'), colon = point.indexOf(': ');
+  if (colon > 2 && colon < 60) item.append(el('b', '', point.slice(0, colon + 1)), point.slice(colon + 1)); // "Phone calls help: ..."
+  else item.textContent = point;
+  return item;
+}
+const hostOf = (url) => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } };
+const opened = new Set(); // long notes you've opened stay open when new things arrive
+function noteCard(entry, footer = '') {
+  const { headline, points, paragraph } = noteParts(entry.text);
+  const id = `${entry.date} ${entry.time} ${entry.query ?? ''}`;
+  const card = el('div', 'note-card'), body = el('div', 'note-body');
+  if (entry.query) {
+    const looked = el('div', 'looked', '🔎 Looked up ');
+    looked.append(el('b', '', entry.query));
+    card.append(looked);
+  }
+  if (headline) body.append(el('h4', '', headline));
+  if (points.length) body.append(el('ul'));
+  for (const point of points) body.lastChild.append(pointEl(point));
+  if (paragraph) body.append(el('p', '', paragraph));
+  card.append(body);
+  const long = (headline + points.join('') + paragraph).length > 240;
+  card.classList.toggle('open', !long || opened.has(id));
+  if (long) {
+    const more = el('button', 'more', card.classList.contains('open') ? 'Show less' : 'Show more');
+    more.addEventListener('click', () => {
+      const open = card.classList.toggle('open');
+      if (open) opened.add(id); else opened.delete(id);
+      more.textContent = open ? 'Show less' : 'Show more';
+    });
+    card.append(more);
+  }
+  if (entry.sources?.length) {
+    const sources = el('div', 'sources');
+    for (const source of entry.sources) {
+      const link = safeLink(source.url, hostOf(source.url));
+      link.title = source.title || source.url;
+      sources.append(link);
+    }
+    card.append(sources);
+  }
+  if (footer) card.append(el('time', '', footer));
+  return card;
+}
+
+// Today: the log grouped into moments, each one a thought and whatever it led to
+const ACTIVITY_KINDS = new Set(['rest', 'play', 'create', 'learn', 'explore', 'socialise', 'reflect']);
+const BIG_KINDS = new Set(['levelup', 'hobby', 'goal', 'wish', 'form', 'build', 'creation', 'self', 'diary', 'chapter', 'together', 'message']);
+const SOFT_KINDS = new Set(['weather', 'city', 'sleep', 'wake', 'missed', 'rut', 'forgot', 'search', 'event']);
+const minuteOf = (e) => { const [h, m] = e.time.split(':').map(Number); return h * 60 + m; };
+const stampOf = (e) => `${e.date ?? ''} ${e.time}`;
+function moments(events) {
+  const list = [];
+  let current = null;
+  for (const e of events) {
+    if (e.kind === 'thought' || !current || current.date !== e.date || minuteOf(e) - current.minute > 3) {
+      current = { date: e.date, time: e.time, minute: minuteOf(e), thought: '', items: [] };
+      list.push(current);
+    }
+    if (e.kind === 'thought') current.thought = e.text;
+    else current.items.push(e);
+  }
+  return list;
+}
+function lineEl(e) {
+  if (e.kind === 'say') return el('div', 'say', e.text.replace(/^Said:\s*/, ''));
+  const [, station, heard] = (e.kind === 'radio' && /^On the radio \((.+?)\): ([\s\S]+)$/.exec(e.text)) || [];
+  if (heard) {
+    const box = el('div', 'radio');
+    box.append(el('b', '', `📻 ${station}`), heard);
+    return box;
+  }
+  const [, who, how, words] = (e.kind === 'friend' && /^(\S+?)(?: \((.+?)\))?: "([\s\S]*)"$/.exec(e.text)) || [];
+  if (words) { // Vega talking
+    const box = el('div', 'say vega');
+    box.append(el('b', '', `🤖 ${who}${how ? ` · ${how}` : ''}`), words);
+    return box;
+  }
+  const watched = e.kind === 'event' && /^Watched /.test(e.text);
+  const look = e.kind === 'note' ? 'jot' : BIG_KINDS.has(e.kind) || watched ? 'big' : SOFT_KINDS.has(e.kind) ? 'soft' : '';
+  const row = el('div', `line ${look}`), text = el('span');
+  if (ACTIVITY_KINDS.has(e.kind)) text.append(el('span', 'kind', e.kind));
+  text.append(e.text.replace(/^Made a note:\s*/, ''));
+  row.append(el('span', 'ic', watched ? '🎆' : e.kind === 'event' ? '→' : ICONS[e.kind] ?? '›'), text);
+  return row;
+}
+function momentEl(m, s, fresh) {
+  const box = el('div', `moment${m.thought ? ' has-thought' : ''}${fresh ? ' fresh' : ''}`);
+  box.append(el('div', 'stamp', m.time));
+  if (m.thought) box.append(el('div', 'thought', m.thought));
+  m.items.forEach((e, i) => {
+    if (e.kind === 'search' && m.items[i + 1]?.kind === 'learned') return; // shown on the note it led to
+    if (e.kind !== 'learned') return box.append(lineEl(e));
+    const entry = s.learned.find((l) => l.date === e.date && l.time === e.time && e.text === `Learned: ${l.text}`);
+    const query = m.items[i - 1]?.kind === 'search' ? m.items[i - 1].text.match(/"(.*)"/)?.[1] : '';
+    box.append(noteCard(entry ?? { date: e.date, time: e.time, text: e.text, query }));
+  });
+  return box;
+}
+function dayLabel(date, today) {
+  if (!date || date === today) return 'Today';
+  const yesterday = new Date(`${today}T12:00`);
+  yesterday.setDate(yesterday.getDate() - 1);
+  return date === yesterday.toISOString().slice(0, 10) ? 'Yesterday' : longDate(date);
+}
+
+// Vega's tab: its pretend account, what's on its screens, and what it knows about Ember
+const dollars = (n, sign = false) => { // coins worth under a dollar get four decimals
+  const digits = Math.abs(n) > 0 && Math.abs(n) < 1 ? 4 : 2;
+  return `${n < 0 ? '-' : sign ? '+' : ''}$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
+};
+const percent = (n) => el('span', n >= 0 ? 'gain' : 'loss', `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`);
+const quantity = (n) => (n >= 100 ? n.toFixed(1) : String(+n.toFixed(4)));
+function qrow(...cells) {
+  const row = el('div', 'qrow');
+  row.append(...cells);
+  return row;
+}
+const CHIPS = ['#ffb02e', '#3ff0ff', '#ff3fb4', '#8b5bff', '#5bf0a0', '#ffcc4d', '#9fb4ff', '#ff5c7a']; // a colour per holding
+function sparkline(values, base = values[0], className = 'spark') { // a line through values: green if it ended above base
+  const ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('class', className);
+  svg.setAttribute('viewBox', '0 0 300 56');
+  svg.setAttribute('preserveAspectRatio', 'none');
+  if (values.length < 2) return svg;
+  const low = Math.min(...values, base), high = Math.max(...values, base), y = (v) => 52 - ((v - low) / (high - low || 1)) * 48;
+  const colour = values.at(-1) >= base ? '#5bf0a0' : '#ff5c7a';
+  const points = values.map((v, i) => `${(i / (values.length - 1)) * 300},${y(v)}`).join(' ');
+  const shape = (tag, attributes) => {
+    const node = document.createElementNS(ns, tag);
+    for (const [key, value] of Object.entries({ fill: 'none', 'vector-effect': 'non-scaling-stroke', ...attributes })) node.setAttribute(key, value);
+    svg.append(node);
+  };
+  shape('polygon', { points: `0,56 ${points} 300,56`, fill: colour, opacity: 0.1 });
+  shape('line', { x1: 0, x2: 300, y1: y(base), y2: y(base), stroke: '#7683ad', 'stroke-dasharray': '3 4' });
+  shape('polyline', { points, stroke: colour, 'stroke-width': 2 });
+  return svg;
+}
+function allocation(v) { // a bar split between cash and each holding, with a key underneath
+  const bar = el('div', 'alloc'), key = el('div', 'legend');
+  const parts = [['Cash', v.cash, '#3a4270'], ...v.holdings.map((h, i) => [h.symbol, h.worth, CHIPS[i % CHIPS.length]])];
+  for (const [label, amount, colour] of parts) {
+    if (amount <= 0) continue;
+    const share = (amount / v.worth) * 100, part = el('i'), chip = el('span', '', `${label} ${share.toFixed(share < 10 ? 1 : 0)}%`);
+    part.style.width = `${share}%`;
+    part.style.background = colour;
+    part.title = `${label}: ${dollars(amount)}`;
+    chip.style.setProperty('--chip', colour);
+    bar.append(part);
+    key.append(chip);
+  }
+  return [bar, key];
+}
+// Vega's header: who it is, where it is, what it's up to, and its account at a glance
+const isVegaEvent = (e, name) => e.kind === 'trade' || e.kind === 'friend' || (e.kind === 'build' && e.text.includes(name));
+const placeName = (s, id) => s.buildings.find((b) => b.id === id)?.name.toLowerCase() ?? 'roof';
+function nextSession(v) {
+  if (!v.session_hours?.length) return 'trades a few times a day';
+  const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: v.timezone, hour: 'numeric', hourCycle: 'h23' }).format(new Date()));
+  const next = v.session_hours.find((h) => h > hour) ?? v.session_hours[0];
+  return `next trading session at ${String(next).padStart(2, '0')}:00`;
+}
+const MOOD_FACES = { chipper: '😄', content: '🙂', wistful: '🌧️', grumpy: '😤', restless: '🌀', excited: '🤩', nervous: '😬', sleepy: '😴' };
+let vegaHeadKey = '';
+function renderVega(s) {
+  const v = s.vega, away = v.location !== v.home;
+  const where = away ? `out at the ${placeName(s, v.location)}` : `at its desk in the ${placeName(s, v.home)}`;
+  const battery = typeof v.battery === 'number' ? `🔋 ${v.battery}% · ` : '';
+  $('v-status').textContent = `${battery}${v.asleep ? `Powered down ${where}` : `${where[0].toUpperCase()}${where.slice(1)} · ${nextSession(v)}`}`;
+  const key = JSON.stringify([v.name, v.say, v.thought, v.mood, v.asleep, v.goals, v.wishes, v.doing, v.location, v.since, v.worth,
+    v.cash, v.holdings, v.history.length, s.today]);
+  if (key === vegaHeadKey) return;
+  vegaHeadKey = key;
+  $('v-name').textContent = v.name;
+  $('v-pill').className = `pill ${v.asleep ? 'asleep' : away ? 'out' : 'desk'}`;
+  $('v-pill').textContent = v.asleep ? 'Powered down' : away ? 'Out and about' : 'At its desk';
+  const mood = v.mood ? ` · ${v.mood} ${MOOD_FACES[v.mood] ?? ''}` : '';
+  $('v-identity').textContent = `trading bot · day ${v.since ? dayOfLife({ today: s.today, born: v.since }) : 1}${mood}`;
+  const said = v.thought || v.say;
+  $('v-about').textContent = said ? `"${said}"` : `An old trading bot who runs the ${placeName(s, v.home)}. Real prices, pretend money.`;
+  $('v-activity').textContent = v.doing ? v.doing[0].toUpperCase() + v.doing.slice(1) : '';
+  $('v-worth').replaceChildren(dollars(v.worth), percent((v.worth / v.start - 1) * 100));
+  $('v-mini').replaceChildren(sparkline(v.history.map((point) => point.v), v.start, 'spark mini'));
+  $('v-alloc').replaceChildren(...allocation(v));
+  const goals = (v.goals ?? []).map((goal) => { // its own little goals
+    const row = el('div', 'wish goal');
+    row.append(el('span', 'tag', 'goal'), el('span', '', goal.text));
+    return row;
+  });
+  $('v-goals').replaceChildren(...(goals.length ? [el('h2', '', 'Up to'), ...goals] : []));
+  $('v-wishes').replaceChildren(...wishRows(v.wishes, v.name));
+}
+
+// Vega's tabs
+const OWN_ICONS = { move: '🛞', power: '💤', goal: '🎯', notebook: '📓', doing: '·', together: '🤝', note: '📌' };
+function vegaLine(e) {
+  if (e.kind === 'own-thought') return el('div', 'thought', `${e.time} · “${e.text}”`);
+  if (e.kind === 'own-said') return el('div', 'mutter', `${e.time} · ${e.text}`);
+  if (e.kind.startsWith('own-')) { // the rest of its own day: pottering, wandering, powering down, goals
+    const own = e.kind.slice(4), row = el('div', `line ${['goal', 'notebook', 'together', 'note'].includes(own) ? 'big' : 'soft'}`), text = el('span', '', `${e.text} `);
+    text.append(el('span', 'stamp', e.time));
+    row.append(el('span', 'ic', OWN_ICONS[own] ?? '·'), text);
+    return row;
+  }
+  if (e.kind === 'ember-said') {
+    const box = el('div', 'say');
+    box.append(el('b', '', `✦ Ember · ${e.time}`), e.text);
+    return box;
+  }
+  const [, who, how, words] = /^(\S+?)(?: \((.+?)\))?: "([\s\S]*)"$/.exec(e.text) || [];
+  if (words && e.kind === 'friend') {
+    const box = el('div', 'say vega');
+    box.append(el('b', '', `🤖 ${who}${how ? ` · ${how}` : ''} · ${e.time}`), words);
+    return box;
+  }
+  if (words) return el('div', 'mutter', `${e.time} · “${words}”`); // muttered at the screens
+  const row = el('div', `line ${e.kind === 'build' ? 'big' : e.kind === 'trade' ? '' : 'soft'}`), text = el('span', '', `${e.text} `);
+  text.append(el('span', 'stamp', e.time));
+  row.append(el('span', 'ic', e.kind === 'trade' ? ICONS.trade : ICONS.friend), text);
+  return row;
+}
+function vegaToday(s) { // its own day: what it thought and got up to, what it said and heard, its trades
+  const v = s.vega;
+  const heard = (v.chat ?? []).filter((c) => c.who === 'ember').map((c) => ({ date: c.date, time: c.time, kind: 'ember-said', text: c.text }));
+  const own = (v.log ?? []).map((e) => ({ ...e, kind: `own-${e.kind}` }));
+  const shared = s.events.filter((e) => isVegaEvent(e, v.name) && (e.kind !== 'friend' || /^\S+(?: \(.+?\))?: "/.test(e.text))); // its moves are in its own log
+  const items = [...heard, ...own, ...shared].sort((a, b) => stampOf(a).localeCompare(stampOf(b)));
+  if (!items.length) return [el('p', 'empty', `Nothing yet. ${v.name}'s day lands here: what it says, what it trades, where it goes.`)];
+  const out = [];
+  let day = null;
+  for (const e of items.slice(-80).reverse()) {
+    if (e.date !== day) { day = e.date; out.push(el('div', 'day', dayLabel(e.date, s.today))); }
+    out.push(vegaLine(e));
+  }
+  return out;
+}
+function ticket(t, priceNow) { // one trade in the journal: what, why, and how it's gone since
+  const card = el('div', `ticket ${t.side}`), top = el('div', 'tk-top'), foot = el('div', 'tk-foot');
+  top.append(el('span', `tag ${t.side}`, t.side === 'buy' ? 'BUY' : 'SELL'), el('b', '', t.symbol),
+    el('span', 'nm', `${quantity(t.qty)} @ ${dollars(t.price)}`), el('span', 'tk-size', dollars(t.dollars)));
+  card.append(top);
+  if (t.why) card.append(el('div', 'tk-why', `“${t.why}”`));
+  foot.append(el('span', 'stamp', `${t.time}${t.source === 'chat' ? ' · while chatting with Ember' : ''}`));
+  if (t.side === 'sell' && typeof t.gain === 'number') foot.append(el('span', t.gain >= 0 ? 'gain' : 'loss', `banked ${dollars(t.gain, true)}`));
+  else if (t.side === 'buy' && priceNow) {
+    const since = el('span', '', 'since then ');
+    since.append(percent((priceNow / t.price - 1) * 100));
+    foot.append(since);
+  }
+  card.append(foot);
+  return card;
+}
+function vegaJournal(s) {
+  const v = s.vega, trades = v.trades ?? [], now = Object.fromEntries(v.prices.map((q) => [q.symbol, q.price]));
+  const sales = trades.filter((t) => t.side === 'sell' && typeof t.gain === 'number');
+  const best = sales.reduce((top, t) => (top && top.gain >= t.gain ? top : t), null);
+  const stats = el('div', 'stats');
+  for (const [label, value, tone] of [['Trades', String(trades.length)],
+    ['Win rate', sales.length ? `${Math.round((sales.filter((t) => t.gain > 0).length / sales.length) * 100)}%` : '—'],
+    ['Banked', dollars(v.realised, true), v.realised >= 0 ? 'gain' : 'loss'],
+    ['Best sale', best ? dollars(best.gain, true) : '—', best && best.gain >= 0 ? 'gain' : '']]) {
+    const tile = el('div', 'stat');
+    tile.append(el('small', '', label), el('b', tone ?? '', value));
+    stats.append(tile);
+  }
+  const out = [stats];
+  let day = null;
+  for (const t of trades.slice().reverse()) {
+    if (t.date !== day) { day = t.date; out.push(el('div', 'day', dayLabel(t.date, s.today))); }
+    out.push(ticket(t, now[t.symbol]));
+  }
+  const sessions = v.session_hours?.length ? `at ${v.session_hours.map((h) => `${h}:00`).join(', ')}` : 'a few times a day';
+  if (!trades.length) out.push(el('p', 'empty', `No trades yet. ${v.name} sits down at the screens ${sessions}, and writes down why for every trade.`));
+  out.push(el('p', 'fine', 'Pretend money, real prices: a game, not financial advice.'));
+  return out;
+}
+function vegaPortfolio(s) {
+  const v = s.vega, panel = el('div', 'mind vega-panel'), worth = el('div', 'worth', dollars(v.worth));
+  worth.append(percent((v.worth / v.start - 1) * 100));
+  panel.append(el('h3', '', "What it's worth"), worth, sparkline(v.history.map((point) => point.v), v.start, 'spark tall'),
+    el('p', 'empty', `Hour by hour, against the ${dollars(v.start)} it started with (the dashed line).`));
+  panel.append(el('h3', '', 'Where the money is'), ...allocation(v));
+  for (const h of v.holdings) {
+    panel.append(qrow(el('span', 'sym', h.symbol), el('span', 'nm', `${quantity(h.qty)} @ ${dollars(h.paid / h.qty)}`),
+      el('span', '', dollars(h.worth)), percent((h.worth / h.paid - 1) * 100)));
+  }
+  panel.append(qrow(el('span', 'sym', 'CASH'), el('span', 'nm', 'ready to spend'), el('span', '', dollars(v.cash)), el('span')));
+  panel.append(el('p', 'fine', `Banked from selling so far: ${dollars(v.realised, true)}. Pretend money, real prices: a game, not financial advice.`));
+  return [panel];
+}
+function vegaMarket(s) {
+  const v = s.vega, status = el('div', 'mkt-status'), cards = el('div', 'mcards');
+  const stocksOpen = v.prices.some((q) => q.kind === 'stock' && q.open);
+  status.append(el('span', 'live', '● Crypto · never closes'), el('span', stocksOpen ? 'live' : '', `${stocksOpen ? '●' : '○'} New York · ${stocksOpen ? 'open' : 'closed'}`));
+  for (const q of v.prices) {
+    const card = el('div', `mcard${q.open ? '' : ' shut'}`), top = el('div', 'mtop'), chart = q.chart ?? [];
+    top.append(el('span', 'sym', q.symbol), percent(q.change));
+    card.append(top, el('span', 'nm', q.name), el('div', 'px', dollars(q.price)), sparkline(chart, chart[0]));
+    cards.append(card);
+  }
+  if (!v.prices.length) cards.append(el('p', 'empty', 'The screens are dark: no prices yet.'));
+  return [status, cards, el('p', 'fine', `Real prices from CoinGecko and Yahoo Finance, checked at ${clock(v.checked)}. `
+    + "The little charts show the last day or so. Faded ones can't be traded right now.")];
+}
+function vegaNotebook(s) {
+  const v = s.vega, days = v.days ?? [];
+  if (!days.length) return [el('p', 'empty', `Nothing yet. ${v.name} writes in it at midnight, while ${s.name} dreams.`)];
+  return days.slice().reverse().map((day) => {
+    const card = el('div', 'card');
+    card.append(el('div', 'q', day.title), el('div', '', day.entry), el('time', '', longDate(day.date)));
+    return card;
+  });
+}
+function vegaEmber(s) { // what Vega knows about Ember, and what they've said to each other
+  const v = s.vega, panel = el('div', 'mind vega-panel'), chat = el('div', 'chat');
+  panel.append(el('h3', '', `What ${v.name} knows about ${s.name}`));
+  for (const note of v.notes) panel.append(qrow(el('span', 'sym', '›'), el('span', '', note)));
+  if (!v.notes.length) panel.append(el('p', 'empty', `Nothing yet. ${v.name} picks things up when they talk.`));
+  panel.append(el('h3', '', "What they've said lately"));
+  for (const c of v.chat ?? []) {
+    const line = el('div', c.who === 'ember' ? 'say' : 'say vega');
+    line.append(el('b', '', `${c.who === 'ember' ? `✦ ${s.name}` : `🤖 ${v.name}`} · ${when(c, s.today)}`), c.text);
+    chat.append(line);
+  }
+  if (!v.chat?.length) chat.append(el('p', 'empty', "They haven't really talked yet."));
+  panel.append(chat);
+  return [panel];
+}
+const VEGA_PANELS = { 'v-today': vegaToday, 'v-journal': vegaJournal, 'v-portfolio': vegaPortfolio, 'v-market': vegaMarket,
+  'v-notebook': vegaNotebook, 'v-ember': vegaEmber };
+
+// Remembered in this browser only, so each visit can show what's new since the last one
+const store = {
+  get(key, fallback) { try { return JSON.parse(localStorage.getItem(`ember.${key}`)) ?? fallback; } catch { return fallback; } },
+  set(key, value) { try { localStorage.setItem(`ember.${key}`, JSON.stringify(value)); } catch { /* private window: forget */ } },
+};
+let seenBefore = store.get('lastSeen', ''), lastSeen = seenBefore; // the newest thing you'd seen on your last visit
+function markSeen(s) {
+  const newest = s.events.at(-1);
+  if (!newest || document.hidden || stampOf(newest) === lastSeen) return;
+  lastSeen = stampOf(newest);
+  store.set('lastSeen', lastSeen);
+}
+function todayItems(s) {
+  const list = moments(s.events.slice(-150)).reverse().slice(0, 40);
+  if (!list.length) return [el('p', 'empty', 'Nothing has happened yet.')];
+  const items = [];
+  let day = null, anyFresh = false, marked = false;
+  for (const m of list) {
+    const fresh = Boolean(seenBefore) && stampOf(m) > seenBefore;
+    if (!fresh && anyFresh && !marked) { items.push(el('div', 'new-mark', 'new since you last looked ▲')); marked = true; }
+    anyFresh ||= fresh;
+    if (m.date !== day) { day = m.date; items.push(el('div', 'day', dayLabel(m.date, s.today))); }
+    items.push(momentEl(m, s, fresh));
+  }
+  return items;
+}
+
+const TAB_KEYS = { // a dot on a tab when it has something you haven't seen
+  diary: (s) => `${s.days.length}|${s.days.at(-1)?.date}`,
+  mind: (s) => `${s.chapters?.length ?? 0}|${Object.values(s.self ?? {}).flat().length}|${s.beliefs.length}`,
+  city: (s) => (s.city ?? []).filter((e) => e.status === 'upcoming').map((e) => e.title).join('|'),
+  gallery: () => String(galleryKey),
+  research: (s) => { const last = s.learned.filter((m) => m.query).at(-1); return last ? stampOf(last) : ''; },
+  'v-journal': (s) => { const last = s.vega?.trades.at(-1); return last ? stampOf(last) : ''; },
+  'v-notebook': (s) => String(s.vega?.days?.length ?? 0),
+  'v-ember': (s) => String(s.vega?.notes.length ?? 0),
+};
+let seenTabs = store.get('seenTabs', null);
+function updateDots(s) {
+  const keys = Object.fromEntries(Object.entries(TAB_KEYS).map(([name, key]) => [name, key(s)]));
+  const before = JSON.stringify(seenTabs);
+  seenTabs ??= { ...keys }; // first visit: nothing counts as new
+  if (tab in keys && !document.hidden) seenTabs[tab] = keys[tab];
+  if (JSON.stringify(seenTabs) !== before) store.set('seenTabs', seenTabs);
+  document.querySelectorAll('.tabs .dot').forEach((dot) => {
+    const name = dot.parentElement.dataset.tab;
+    dot.hidden = seenTabs[name] === keys[name];
+  });
+  for (const side of ['ember', 'vega']) { // a dot on the other character's switch when its tabs have news
+    document.querySelector(`#switch [data-who="${side}"] .dot`).hidden =
+      side === who || ![...document.querySelectorAll(`#${side}-tabs .dot`)].some((dot) => !dot.hidden);
+  }
+}
+
+let tab = 'today', feedKey = '';
+let who = 'ember', whoRestored = false; // whose side of the panel you're looking at: Ember's or Vega's
+const lastTab = { ember: 'today', vega: 'v-today' };
+function renderFeed(s) {
+  updateDots(s);
+  if (tab === 'today') markSeen(s);
+  const last = s.events.at(-1), lastLearned = s.learned.at(-1);
+  const key = {
+    today: () => `t|${s.events.length}|${last?.date}|${last?.time}|${last?.text}|${seenBefore}`,
+    diary: () => `d|${s.days.length}|${s.days.at(-1)?.date}`,
+    mind: () => `m|${s.today}|${JSON.stringify([s.personality, s.self, s.beliefs, s.fascinations, s.chapters])}`,
+    memory: () => `y|${s.today}|${JSON.stringify(s.memory_view)}`,
+    city: () => `c|${Math.floor(Date.now() / 60000)}|${JSON.stringify(s.city)}`,
+    gallery: () => `g|${galleryKey}`,
+    research: () => `r|${s.learned.length}|${lastLearned?.time}|${lastLearned?.text}`,
+    'v-today': () => `vt|${s.today}|${s.events.length}|${last?.time}|${last?.text}|${JSON.stringify([s.vega?.chat?.at(-1), s.vega?.log?.at(-1)])}`,
+    'v-journal': () => `vj|${s.today}|${JSON.stringify([s.vega?.trades, s.vega?.prices.map((q) => q.price)])}`,
+    'v-portfolio': () => `vp|${JSON.stringify([s.vega?.worth, s.vega?.cash, s.vega?.holdings, s.vega?.history.length])}`,
+    'v-market': () => `vm|${s.vega?.checked}|${JSON.stringify(s.vega?.prices.map((q) => q.open))}`,
+    'v-notebook': () => `vn|${s.vega?.days?.length}`,
+    'v-ember': () => `ve|${s.today}|${JSON.stringify([s.vega?.notes, s.vega?.chat])}`,
+  }[tab]();
+  if (key === feedKey) return;
+  feedKey = key;
+  let items;
+  if (tab === 'diary') {
+    items = diaryCards(s);
+  } else if (tab === 'mind') {
+    items = mindPanel(s);
+  } else if (tab === 'memory') {
+    items = memoryPanel(s);
+  } else if (tab === 'city') {
+    items = cityCards(s);
+  } else if (tab === 'today') {
+    items = todayItems(s);
+  } else if (tab === 'gallery') {
+    items = galleryCards(s);
+  } else if (tab.startsWith('v-')) {
+    items = s.vega ? VEGA_PANELS[tab](s) : [el('p', 'empty', 'Nobody works up here yet.')];
+  } else {
+    items = s.learned.slice().reverse().map((m) => {
+      if (m.query) return noteCard(m, when(m, s.today));
+      const row = el('div', 'line jot'), text = el('span', '', `${m.text} `);
+      text.append(el('span', 'stamp', when(m, s.today)));
+      row.append(el('span', 'ic', ICONS.note), text);
+      return row;
+    });
+    if (!items.length) items = [el('p', 'empty', `Nothing yet. What ${s.name} finds on the internet, or decides to remember, shows up here.`)];
+  }
+  $('feed').replaceChildren(...items);
+}
+
+function wishRows(wishes = [], name) { // a wishlist: what's still wished for, what got built, and its GitHub issue
+  if (!wishes.length) return [el('p', 'empty', `Nothing yet. When ${name} wishes for something to be built, it shows up here (and as an issue on GitHub).`)];
+  return wishes.slice(-5).reverse().map((wish) => {
+    const row = el('div', `wish${wish.granted ? ' granted' : ''}`);
+    row.append(el('span', 'tag', wish.granted ? 'built' : 'wish'), el('span', '', wish.text));
+    if (wish.issue_url) row.append(safeLink(wish.issue_url, 'issue'));
+    return row;
+  });
+}
+
+let lastActivity = '', emberSaidAt = 0;
+function render(s) {
+  document.title = `${s.name} · live`;
+  $('name').textContent = s.name;
+  $('activity').textContent = s.activity;
+  if (s.activity !== lastActivity) { drawCode(`> ${s.activity.toLowerCase()}`); lastActivity = s.activity; }
+
+  const status = [];
+  if (s.asleep && s.sleep) {
+    const minutes = Math.max(10, Math.round((s.sleep.ticks_left * s.tick_seconds) / 60));
+    status.push(`Asleep since ${s.sleep.since} · wakes in about ${minutes < 90 ? `${minutes} min` : `${Math.round(minutes / 60)} h`}`);
+  } else if (s.status) status.push(s.status);
+  else if (!s.asleep && s.next_think_at) {
+    const left = Math.round(s.next_think_at - Date.now() / 1000);
+    status.push(left <= 0 ? 'Next thought: any moment now'
+      : left < 120 ? `Next thought in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`
+      : `Next thought in ~${Math.round(left / 60)} min`);
+  }
+  $('status').textContent = status.join(' · ');
+  const nextBar = $('next-bar');
+  nextBar.hidden = s.asleep || Boolean(s.status) || !s.next_think_at;
+  nextBar.firstChild.style.width = `${Math.round(clamp(1 - (s.next_think_at - Date.now() / 1000) / (s.tick_seconds || 600), 0, 1) * 100)}%`;
+  $('pill').className = `pill ${s.asleep ? 'asleep' : 'awake'}`;
+  $('pill').textContent = s.asleep ? 'Asleep' : 'Awake';
+
+  if (s.sky_at) Object.assign(SKY_AT, s.sky_at);
+  applyDaylight(s.weather?.code);
+  $('cam-vega').hidden = !vega;
+
+  NEEDS.forEach(([need], i) => {
+    needBars[i].style.width = `${s.needs[need]}%`;
+    needBars[i].parentElement.parentElement.title = `${need}: ${s.needs[need]}/100`;
+  });
+  $('now-need').textContent = s.asleep ? '' : s.pressing;
+  $('now-thought').replaceChildren(...(s.thought ? [el('span', '', `"${s.thought}"`), el('time', '', s.thought_time)] : []));
+  const goals = s.goals ?? [];
+  const activeGoals = goals.filter((g) => g.status === 'active');
+  $('now-weather').textContent = s.weather ? `${weatherIcon(s.weather.code)} ${s.weather.place} · ${s.weather.temp}°C · ${s.weather.description}` : '';
+  setWeather(s.weather);
+  const finishedGoals = goals.filter((g) => g.status === 'done').slice(-2).reverse();
+  $('goals').replaceChildren(...(activeGoals.length || finishedGoals.length ? [
+    ...activeGoals.map((goal) => {
+      const row = el('div', 'wish goal');
+      const steps = goal.progress.length;
+      row.append(el('span', 'tag', steps ? `${steps} step${steps === 1 ? '' : 's'}` : 'new'), el('span', '', goal.text));
+      return row;
+    }),
+    ...finishedGoals.map((goal) => {
+      const row = el('div', 'wish goal done');
+      row.append(el('span', 'tag', 'done'), el('span', '', goal.text));
+      return row;
+    }),
+  ] : []));
+
+  $('skills').replaceChildren(...s.skills.map((skill) => {
+    const row = el('div', 'skill'), name = el('span', '', skill.name);
+    if (skill.inspired) {
+      const spark = el('span', '', ' ✨');
+      spark.title = 'Inspired by its research: the next practice counts double';
+      name.append(spark);
+    }
+    const bar = el('div', 'bar'), fill = el('i');
+    fill.style.width = `${Math.round(skill.progress * 100)}%`;
+    fill.style.background = 'var(--magenta)';
+    bar.append(fill);
+    row.append(name, el('span', 'lv', `LV ${skill.level}`), bar);
+    return row;
+  }));
+
+  $('wishes').replaceChildren(...wishRows(s.wishes, s.name));
+  $('sec-skills').hidden = !s.skills.length;
+  $('sec-goals').hidden = !activeGoals.length && !finishedGoals.length;
+  $('glance-empty').hidden = !(s.skills.length + activeGoals.length + finishedGoals.length === 0);
+
+  const usd = s.costs?.usd ?? 0;
+  $('cost').textContent = `Running cost: $${usd.toFixed(usd < 1 ? 3 : 2)} this month`;
+  const support = $('support');
+  support.hidden = !/^https:\/\//.test(s.support_url ?? '');
+  if (!support.hidden) { support.href = s.support_url; support.textContent = s.support_text || 'Support'; }
+
+  renderFeed(s);
+
+  // Bubble: only for things said out loud during the latest thought (thoughts live in the "right now" card)
+  const speaking = Boolean(s.say) && !s.asleep && s.said_at >= s.tick_started_at - 1;
+  bubble.className = speaking ? 'bubble speech' : 'bubble';
+  bubble.textContent = s.asleep ? 'Zzz…' : speaking ? s.say : '';
+  bubble.hidden = !bubble.textContent;
+
+  const v = s.vega; // Vega's bubble works the same way, and its face mouths the words for a few seconds
+  vegaMood = v?.mood ?? 'content';
+  vegaAsleep = Boolean(v?.asleep);
+  vegaFeeding = /pigeon|feed|crumb|bird/i.test(v?.doing ?? ''); // the pigeons come running
+  const vegaSpeaking = Boolean(vega && v?.say) && !vegaAsleep && v.said_at >= s.tick_started_at - 1;
+  vegaBubble.hidden = !vega || (!vegaSpeaking && !vegaAsleep);
+  if (v) { vegaBubble.dataset.name = v.name; vegaBubble.textContent = vegaAsleep ? 'Zzz… (powered down)' : vegaSpeaking ? v.say : ''; }
+  if (vegaSpeaking && v.said_at !== vegaSaidAt) { vegaSaidAt = v.said_at; vegaTalkUntil = Date.now() + Math.min(8000, 1500 + v.say.length * 60); play('beeps'); }
+  if (speaking && s.said_at !== emberSaidAt) { emberSaidAt = s.said_at; play('chime'); }
+  if (vega) vega.label.hidden = !vegaBubble.hidden;
+  const vegaPlace = v && (places[v.location] ?? places[v.home]);
+  if (vega && vegaPlace) { // off it trundles, wherever it's gone (straight there when the page first opens)
+    const { at, facing } = vegaSpot(vegaPlace);
+    vega.target.copy(at);
+    vega.facing = facing;
+    if (vega.fresh) { vega.root.position.copy(at); vega.root.rotation.y = facing; vega.fresh = false; }
+  }
+  drawTicker(v);
+  $('switch').hidden = !v;
+  $('switch-ember').textContent = s.name;
+  if (v) renderVega(s);
+  if (!whoRestored) { whoRestored = true; setWho(store.get('who', 'ember')); } // the side you were last looking at
+  else if (!v && who === 'vega') setWho('ember');
+
+  const research = s.learned.filter((m) => m.query).at(-1);
+  researchHolo.hidden = !research || !researchAnchor;
+  if (research) {
+    const { headline, points, paragraph } = noteParts(research.text);
+    const gist = headline || points[0] || paragraph;
+    const summary = gist.length > 150 ? `${gist.slice(0, 147)}…` : gist;
+    researchHolo.replaceChildren(el('b', '', `LAST SEARCH: ${research.query.toUpperCase()}`), el('span', '', summary));
+  }
+
+  asleep = s.asleep;
+  charge = s.needs.charge;
+  setForm(s.form);
+  const avatar = $('avatar');
+  avatar.dataset.shape = s.form?.shape ?? 'orb';
+  $('panel').style.setProperty('--form', s.form?.color ?? '#3ff0ff');
+  avatar.classList.toggle('asleep', s.asleep);
+  $('identity').textContent = `${s.form?.shape ?? 'orb'} · day ${dayOfLife(s)}`;
+  $('about').textContent = s.form?.about ? `"${s.form.about}"` : '';
+  if (places[s.location]) moveTo(places[s.location]);
+}
+
+// ---------------------------------------------------------------------------
+// Reading Ember's state (written by run_local.py, or by GitHub Actions online)
+// ---------------------------------------------------------------------------
+let scenery = withDefaults();
+buildScenery(scenery);
+const sceneryReady = fetch(`scenery.json?t=${Date.now()}`, { cache: 'no-store' })
+  .then((response) => (response.ok ? response.json() : null))
+  .then((loaded) => { if (loaded) { scenery = withDefaults(loaded); buildScenery(scenery); } })
+  .catch(() => {});
+
+let latest = null;
+async function refresh() {
+  try {
+    const response = await fetch(`data/state.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error('no state yet');
+    const s = await response.json();
+    if (!BUILDING) buildWorld(s); // in builder mode, the world shows your unsaved draft instead
+    if (s.gallery_key !== galleryKey) { // something new was made: fetch the gallery
+      const galleryResponse = await fetch(`data/gallery.json?t=${Date.now()}`, { cache: 'no-store' });
+      galleryItems = galleryResponse.ok ? await galleryResponse.json() : [];
+      galleryKey = s.gallery_key;
+      paintArt(galleryItems.findLast((work) => work.type === 'drawing')?.svg);
+    }
+    latest = s;
+    render(s);
+  } catch {
+    $('status').textContent = IS_LOCAL ? "Can't reach Ember. Is run_local.py still running?" : 'Waiting for the first thought…';
+  }
+}
+async function pollForever() {
+  await refresh();
+  setTimeout(pollForever, POLL_MS);
+}
+pollForever();
+let hiddenAt = 0;
+document.addEventListener('visibilitychange', () => { // catch up as soon as you open it again
+  if (document.hidden) { hiddenAt = Date.now(); return; }
+  if (Date.now() - hiddenAt > 120000) { seenBefore = lastSeen; feedKey = ''; } // away a while: show what's new since
+  refresh();
+});
+setInterval(() => { if (latest) render(latest); }, 1000); // keeps the countdown ticking between polls
+
+if (BUILDING) { // builder mode lives in its own file, so the public page stays light
+  import('./builder.js').then(({ startBuilder }) => startBuilder({
+    THREE, scene, camera, renderer, controls, buildWorld, buildScenery, withDefaults,
+    loadScenery: () => sceneryReady.then(() => scenery),
+    getWorldGroup: () => worldGroup, getPlaces: () => places, getState: () => latest,
+    getSceneryGroup: () => sceneryGroup, getSceneryParts: () => sceneryParts,
+    builtInLooks: Object.keys(builders),
+  }));
+}
+
+function selectTab(name) {
+  tab = name;
+  lastTab[name.startsWith('v-') ? 'vega' : 'ember'] = name;
+  document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
+  feedKey = '';
+  if (latest) renderFeed(latest);
+}
+document.querySelectorAll('.tabs button').forEach((button) => button.addEventListener('click', () => selectTab(button.dataset.tab)));
+
+// Ember or Vega: each has its own header and tabs, and Vega's side is amber like its screens
+function setWho(side) {
+  who = side === 'vega' && latest?.vega ? 'vega' : 'ember';
+  for (const id of ['ember-head', 'ember-glance', 'ember-tabs']) $(id).hidden = who === 'vega';
+  for (const id of ['vega-head', 'vega-glance', 'vega-tabs']) $(id).hidden = who !== 'vega';
+  $('panel').classList.toggle('vega', who === 'vega');
+  document.querySelectorAll('#switch button').forEach((b) => b.classList.toggle('on', b.dataset.who === who));
+  store.set('who', who);
+  selectTab(lastTab[who]);
+}
+document.querySelectorAll('#switch button').forEach((button) => button.addEventListener('click', () => setWho(button.dataset.who)));
+// Notes are written here and sent as a GitHub issue on this site's own repository (see tick_once.py): GitHub opens
+// with the note filled in, so posting it needs your login there, not one stored in this page.
+const NEW_ISSUE = location.hostname.endsWith('.github.io')
+  ? `https://github.com/${location.hostname.split('.')[0]}/${location.pathname.split('/')[1]}/issues/new` : '';
+let noteFor = 'Ember';
+function openNote(name) {
+  noteFor = name;
+  document.querySelectorAll('#note-box [data-for]').forEach((b) => b.classList.toggle('on', b.dataset.for === name));
+  $('note-box').hidden = false;
+  $('note-text').focus();
+}
+document.querySelectorAll('#note-box [data-for]').forEach((b) => b.addEventListener('click', () => openNote(b.dataset.for)));
+$('note-cancel').addEventListener('click', () => { $('note-box').hidden = true; });
+$('note-pin').addEventListener('click', () => {
+  const text = $('note-text').value.trim();
+  if (!text) return $('note-text').focus();
+  window.open(`${NEW_ISSUE}?title=${encodeURIComponent(`Note for ${noteFor}`)}&body=${encodeURIComponent(text)}`, '_blank', 'noopener');
+  $('note-text').value = '';
+  $('note-box').hidden = true;
+});
+$('cam-note').addEventListener('click', () => openNote(who === 'vega' ? 'Vega' : 'Ember'));
+if (NEW_ISSUE) {
+  $('cam-note').hidden = false;
+  for (const [id, name] of [['e-note', 'Ember'], ['v-note', 'Vega']]) {
+    $(id).href = `${NEW_ISSUE}?title=${encodeURIComponent(`Note for ${name}: `)}`; // without the page's script, straight to GitHub
+    $(id).hidden = false;
+    $(id).addEventListener('click', (event) => { event.preventDefault(); openNote(name); });
+  }
+}
+
+// The camera bar: follow Ember or Vega (or not), back to the whole roof, and real sky or night all the time
+document.querySelectorAll('#cam [data-follow]').forEach((button) => button.addEventListener('click', () => {
+  setFollow(button.dataset.follow);
+  if (followed()) flyTo(followed().clone().setY(1));
+}));
+$('cam-reset').addEventListener('click', () => { setFollow('free'); flyTo(HOME_VIEW.target, HOME_VIEW.camera); });
+function setSky(mode) {
+  skyMode = mode;
+  const button = $('cam-sky');
+  button.textContent = mode === 'night' ? '🌙' : '☀';
+  button.title = mode === 'night' ? 'Always night. Click for the real sky over London'
+    : 'The sky follows the real sun over London. Click for night all the time';
+  store.set('sky', mode);
+  applyDaylight(latest?.weather?.code);
+}
+$('cam-sky').addEventListener('click', () => setSky(skyMode === 'night' ? 'live' : 'night'));
+function setSound(on) {
+  soundOn = on;
+  $('cam-sound').textContent = on ? '🔊' : '🔇';
+  $('cam-sound').title = `Ambient sound (${on ? 'on' : 'off'})`;
+  $('cam-sound').classList.toggle('on', on);
+  store.set('sound', on);
+  if (on) startAmbience();
+  else if (ambience) ambience.master.gain.setTargetAtTime(0, audio.currentTime, 0.3);
+}
+$('cam-sound').addEventListener('click', () => setSound(!soundOn));
+if (store.get('sound', false)) setSound(true); // it was on last time: browsers let it start once you tap the page
+document.addEventListener('pointerdown', () => audio?.resume(), { once: true });
+setFollow(store.get('follow', 'free'));
+setSky(store.get('sky', 'live'));
+</script>
+</body>
+</html>
