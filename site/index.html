@@ -2743,7 +2743,8 @@ async function refresh() {
     latest = s;
     applyLive(s);
     render(s);
-  } catch {
+  } catch (error) {
+    console.error(error);
     $('status').textContent = IS_LOCAL ? "Can't reach Ember. Is run_local.py still running?" : 'Waiting for the first thought…';
   }
 }
