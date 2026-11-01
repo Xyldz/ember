@@ -124,6 +124,7 @@ def make_materials():
     M["steel"] = material("Steel", (0.3, 0.32, 0.36), metallic=0.85, roughness=0.32)
     M["chrome"] = material("Chrome", (0.8, 0.82, 0.86), metallic=1, roughness=0.12)
     M["white"] = material("White paint", (0.55, 0.57, 0.62), roughness=0.55)
+    M["leaves"] = material("Leaves", (0.05, 0.22, 0.12), roughness=0.8, emission=(0.02, 0.12, 0.06), strength=0.3)
     M["rubber"] = material("Rubber", (0.02, 0.02, 0.025), roughness=0.85)
     M["concrete"] = material("Concrete", (0.16, 0.16, 0.17), roughness=0.9)
     M["paint"] = material("Painted metal", (0.2, 0.24, 0.3), metallic=0.3, roughness=0.55)
@@ -517,7 +518,53 @@ def roof_stairs():
     box("Neon tag", (0.5, 0.02, 0.05), (-0.6, -0.91, 1.55), M["cyan"], rotation=(0, -0.2, 0))
 
 
-BUILDINGS = {"terminal": terminal, "pod": pod, "railing": railing, "radio": radio}
+def bench():
+    """A bench for two, for sitting together and talking: Ember floats in front of the right-hand end (the origin) and
+    Vega parks at the left (1.45 along), both looking out. A street lamp, string lights, two mugs on a crate, a potted
+    tree. When Ember sleeps here it curls up on the seat (0.47 up, 0.7 back)."""
+    left, right = -2.15, 0.75
+    for k in range(5):  # seat slats
+        box("Seat slat", (right - left, 0.085, 0.045), ((left + right) / 2, 0.5 + k * 0.1, 0.45), M["wood"], bevel=0.01)
+    for k in range(3):  # backrest, leaning back
+        box("Back slat", (right - left, 0.045, 0.1), ((left + right) / 2, 0.99 + k * 0.035, 0.6 + k * 0.14), M["wood"],
+            rotation=(math.radians(-14), 0, 0), bevel=0.01)
+    for x in (left + 0.08, (left + right) / 2, right - 0.08):  # cast-iron ends and a middle support
+        rod("Front leg", 0.035, (x, 0.52, 0), (x, 0.52, 0.43), M["dark"])
+        rod("Back leg", 0.035, (x, 0.95, 0), (x, 1.02, 0.9), M["dark"])
+        rod("Seat rail", 0.03, (x, 0.48, 0.42), (x, 0.97, 0.42), M["dark"])
+    for x in (left + 0.08, right - 0.08):
+        rod("Armrest", 0.035, (x, 0.45, 0.68), (x, 0.98, 0.7), M["dark"])
+        rod("Arm post", 0.03, (x, 0.47, 0.43), (x, 0.47, 0.68), M["dark"])
+        sphere("Arm knob", 0.045, (x, 0.44, 0.68), M["dark"])
+    # A street lamp with a warm glow
+    lamp = Vector((1.25, 1.05, 0))
+    cylinder("Lamp base", 0.14, 0.12, lamp + Vector((0, 0, 0.06)), (0, 0, 1), M["dark"], segments=12)
+    rod("Lamp post", 0.05, lamp, lamp + Vector((0, 0, 2.7)), M["dark"])
+    rod("Lamp arm", 0.03, lamp + Vector((0, 0, 2.6)), lamp + Vector((-0.35, 0, 2.7)), M["dark"])
+    cylinder("Lamp hood", 0.2, 0.14, lamp + Vector((-0.38, 0, 2.62)), (0, 0, 1), M["dark"], segments=16, tip=0.06)
+    sphere("Lamp bulb", 0.1, lamp + Vector((-0.38, 0, 2.5)), M["amber"])
+    # String lights from the lamp to a pole by the tree, sagging, with warm bulbs
+    pole = Vector((-2.85, 1.05, 0))
+    rod("Light pole", 0.03, pole, pole + Vector((0, 0, 2.2)), M["dark"])
+    a, b = lamp + Vector((0, 0, 2.3)), pole + Vector((0, 0, 2.15))
+    points = [a.lerp(b, t) - Vector((0, 0, 0.35 * 4 * t * (1 - t))) for t in np.linspace(0, 1, 13)]
+    cable("String", points, 0.008, M["rubber"])
+    for p in points[1:-1]:
+        sphere("Bulb", 0.035, p - Vector((0, 0, 0.05)), M["amber"], segments=8, rings=6)
+    # A crate for a table, with two mugs: cyan for Ember, amber for Vega
+    box("Crate table", (0.42, 0.42, 0.42), (1.1, 0.45, 0.21), M["wood"], rotation=(0, 0, 0.15), bevel=0.015)
+    for dx, colour in ((-0.08, "cyan"), (0.09, "amber")):
+        cylinder("Mug", 0.045, 0.09, (1.1 + dx, 0.42, 0.465), (0, 0, 1), M["white"], segments=14)
+        torus("Mug band", 0.046, 0.008, (1.1 + dx, 0.42, 0.47), M[colour], segments=16, sides=4)
+    # A potted tree at the far end
+    t = Vector((-2.7, 0.7, 0))
+    cylinder("Pot", 0.24, 0.42, t + Vector((0, 0, 0.21)), (0, 0, 1), M["concrete"], segments=16, tip=0.19)
+    rod("Trunk", 0.04, t + Vector((0, 0, 0.4)), t + Vector((0.05, 0, 1.25)), M["rust"])
+    for offset, r in (((0, 0, 1.45), 0.42), ((0.25, 0.1, 1.3), 0.3), ((-0.22, -0.05, 1.32), 0.3), ((0.05, 0.05, 1.7), 0.28)):
+        sphere("Leaves", r, t + Vector(offset), M["leaves"], segments=12, rings=8)
+
+
+BUILDINGS = {"terminal": terminal, "pod": pod, "railing": railing, "radio": radio, "bench": bench}
 PROPS = {"roof_ac": roof_ac, "roof_tank": roof_tank, "roof_dish": roof_dish, "roof_vents": roof_vents,
          "roof_crates": roof_crates, "roof_pipes": roof_pipes, "roof_stairs": roof_stairs}
 PIECES = {**BUILDINGS, **PROPS}

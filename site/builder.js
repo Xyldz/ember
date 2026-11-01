@@ -16,7 +16,7 @@ const UNLOCKS = [['search', 'Internet access (Ember can search here)'], ['rest',
   ['board', 'A bulletin board (notes you leave Ember and Vega get pinned here)'],
   ['telescope', 'A telescope (Ember sees the real sky up close here)']];
 const LOOK_NAMES = { terminal: 'Built-in: data terminal', pod: 'Built-in: charging pod', railing: 'Built-in: railing',
-  radio: 'Built-in: old radio', shapes: 'Simple shapes', model: 'My 3D model (.glb / .obj)', placeholder: 'Placeholder box' };
+  radio: 'Built-in: old radio', bench: 'Built-in: bench', shapes: 'Simple shapes', model: 'My 3D model (.glb / .obj)', placeholder: 'Placeholder box' };
 const MODEL_FILE = /\.(glb|gltf|obj)$/i;
 const EDGE_NAMES = ['front edge', 'back edge', 'right edge', 'left edge'];
 

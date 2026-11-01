@@ -5,7 +5,7 @@
     "about: what it is, written to Ember. Describe the place, not what Ember should do there.",
     "actions: what it unlocks. 'search' = use the internet, 'rest' = recharge faster, 'radio' = hear what's on the city's radio, 'friend' = Vega, Ember's friend, works here, 'board' = notes you leave them (GitHub issues) get pinned here, 'telescope' = the real sky up close.",
     "boosts: optional. Needs it helps when Ember does something there, e.g. {\"calm\": 6}. Needs: charge, curiosity, joy, calm, connection.",
-    "model: a built-in look ('terminal', 'pod', 'railing', 'radio'), OR a .glb file you put in site/models/ (e.g. 'models/library.glb'),",
+    "model: a built-in look ('terminal', 'pod', 'railing', 'radio', 'bench'), OR a .glb file you put in site/models/ (e.g. 'models/library.glb'),",
     "       OR leave it out and add 'shapes' (boxes/cylinders/spheres, see the example in the README).",
     "grants_wish: optional. Words from one of Ember's wishes; that wish is marked as come true when the building appears.",
     "empty_lots: glowing squares where new buildings could go. Remove one when you build on it."
@@ -125,6 +125,21 @@
       "boosts": {
         "curiosity": 4,
         "calm": 3
+      }
+    },
+    {
+      "id": "bench",
+      "name": "Bench",
+      "pos": [
+        1.5,
+        4
+      ],
+      "model": "bench",
+      "about": "A wooden bench for two under a warm old street lamp, looking out over the city. String lights sag from the lamp to a little potted tree, and an upturned crate beside it holds two mugs, one with a cyan band and one with an amber one.",
+      "actions": [],
+      "boosts": {
+        "calm": 4,
+        "connection": 3
       }
     }
   ],
