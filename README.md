@@ -71,7 +71,9 @@ If a repository has no activity for 60 days GitHub pauses the schedule; just cli
 - **Drag** to turn the camera, **right-drag** (two fingers on a phone) to move around the roof, **scroll** (or pinch)
   to zoom towards whatever's under the pointer. **Double-click** anywhere to fly there; double-click Ember or Vega to follow them.
 - The buttons in the corner: **Free** camera, follow **Ember**, follow **Vega**, **⟲** back to the whole roof, and
-  **☀ / 🌙**: the real sky, or night all the time. The page remembers your choices.
+  **☀ / 🌙**: the real sky, or night all the time, **🔇 / 🔊**: ambient sound (wind, rain, the city hum, traffic, birds
+  by day, thunder with the lightning, a chime when Ember speaks and beeps when Vega does), and **📌**: pin a note.
+  The page remembers your choices.
 - **Day and night**: the sky follows the real sun over the place in `config.json` (London): sunrise colours, a hazy blue
   day, golden sunsets, and the neon taking over at night. Cloudy days are greyer. Add `?hour=13` to the address to see
   another time of day. Builder mode always shows the night, which is what `site/scenery.json` describes.
@@ -123,7 +125,7 @@ It has its own fixed character (written in `brain.py`), and it remembers things 
   talks to itself and the pigeons, sets itself little goals, and powers down when its battery runs flat (waking for its
   trading sessions). Its own day stays on its side of the panel; Ember can see where it is and how it seems.
 - **Notes on the bulletin board**: open a GitHub issue titled `Note for Ember: ...` or `Note for Vega: ...` (or tap
-  "Pin a note" under either's wishlist). It gets pinned on the bulletin board; they're told there's a note for them, read
+  📌 on the page: write it there and GitHub opens with it filled in, so you only press Submit). It gets pinned on the bulletin board; they're told there's a note for them, read
   it whenever they go over, and decide for themselves what to make of it. Their answer is posted on the issue, which then
   closes. Only issues opened by the repository's owner count. (`blender/bulletin_board.py` makes the board.)
 - **Wishes**: Vega can wish for things to be built too (at most one a day). Like Ember's, they're filed as GitHub issues
