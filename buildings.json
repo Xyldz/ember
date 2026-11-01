@@ -109,6 +109,21 @@
       "boosts": {
         "curiosity": 3
       }
+    },
+    {
+      "id": "telescope",
+      "name": "Telescope",
+      "pos": [
+        7.5,
+        -5
+      ],
+      "model": "models/telescope.glb",
+      "about": "A white telescope with brass bands on a steel tripod, standing on a little round deck in the corner of the roof and pointed up past the city glow. Beside it: a camp stool by the eyepiece, a crate with a red lamp and a flask on it, a star chart leaning against the crate, and a neon sign on a post that says LOOK UP.",
+      "actions": [],
+      "boosts": {
+        "curiosity": 4,
+        "calm": 3
+      }
     }
   ],
   "empty_lots": []
