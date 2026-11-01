@@ -347,6 +347,10 @@
   .acct .worth { font-size: 21px; }
   .worth span { margin-left: 8px; font-size: 13px; }
   .gain { color: var(--good); }
+  .worth.up { animation: tick-up 1.6s ease-out; }
+  .worth.down { animation: tick-down 1.6s ease-out; }
+  @keyframes tick-up { from { color: var(--good); text-shadow: 0 0 16px color-mix(in srgb, var(--good) 60%, transparent); } }
+  @keyframes tick-down { from { color: var(--bad); text-shadow: 0 0 16px color-mix(in srgb, var(--bad) 60%, transparent); } }
   .loss { color: var(--bad); }
   .spark { display: block; width: 100%; height: 56px; margin: 6px 0 2px; overflow: visible; }
   .spark.mini { height: 40px; margin: 0; }
@@ -2174,13 +2178,22 @@ function qrow(...cells) {
   return row;
 }
 const CHIPS = ['#ffb02e', '#3ff0ff', '#ff3fb4', '#8b5bff', '#5bf0a0', '#ffcc4d', '#9fb4ff', '#ff5c7a']; // a colour per holding
+const shownWorth = {}; // what Vega's account showed last time, so a change can flash
+function flash(element, now, before) {
+  if (before === undefined || now === before) return;
+  element.classList.remove('up', 'down');
+  void element.offsetWidth; // start the animation again
+  element.classList.add(now > before ? 'up' : 'down');
+}
 function sparkline(values, base = values[0], className = 'spark') { // a line through values: green if it ended above base
   const ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg');
   svg.setAttribute('class', className);
   svg.setAttribute('viewBox', '0 0 300 56');
   svg.setAttribute('preserveAspectRatio', 'none');
   if (values.length < 2) return svg;
-  const low = Math.min(...values, base), high = Math.max(...values, base), y = (v) => 52 - ((v - low) / (high - low || 1)) * 48;
+  const top = Math.max(...values, base), bottom = Math.min(...values, base), middle = (top + bottom) / 2;
+  const span = Math.max(top - bottom, Math.abs(base) * 0.004) || 1; // at least 0.4% tall: small moves show, but stay small
+  const y = (v) => 52 - ((v - (middle - span / 2)) / span) * 48;
   const colour = values.at(-1) >= base ? '#5bf0a0' : '#ff5c7a';
   const points = values.map((v, i) => `${(i / (values.length - 1)) * 300},${y(v)}`).join(' ');
   const shape = (tag, attributes) => {
@@ -2237,6 +2250,8 @@ function renderVega(s) {
   $('v-about').textContent = said ? `"${said}"` : `An old trading bot who runs the ${placeName(s, v.home)}. Real prices, pretend money.`;
   $('v-activity').textContent = v.doing ? v.doing[0].toUpperCase() + v.doing.slice(1) : '';
   $('v-worth').replaceChildren(dollars(v.worth), percent((v.worth / v.start - 1) * 100));
+  flash($('v-worth'), v.worth, shownWorth.glance);
+  shownWorth.glance = v.worth;
   $('v-mini').replaceChildren(sparkline(v.history.map((point) => point.v), v.start, 'spark mini'));
   $('v-alloc').replaceChildren(...allocation(v));
   const goals = (v.goals ?? []).map((goal) => { // its own little goals
@@ -2333,9 +2348,11 @@ function vegaJournal(s) {
 }
 function vegaPortfolio(s) {
   const v = s.vega, panel = el('div', 'mind vega-panel'), worth = el('div', 'worth', dollars(v.worth));
+  flash(worth, v.worth, shownWorth.portfolio);
+  shownWorth.portfolio = v.worth;
   worth.append(percent((v.worth / v.start - 1) * 100));
   panel.append(el('h3', '', "What it's worth"), worth, sparkline(v.history.map((point) => point.v), v.start, 'spark tall'),
-    el('p', 'empty', `Hour by hour, against the ${dollars(v.start)} it started with (the dashed line).`));
+    el('p', 'empty', `Every ten minutes, live at the end, against the ${dollars(v.start)} it started with (the dashed line).`));
   panel.append(el('h3', '', 'Where the money is'), ...allocation(v));
   for (const h of v.holdings) {
     panel.append(qrow(el('span', 'sym', h.symbol), el('span', 'nm', `${quantity(h.qty)} @ ${dollars(h.paid / h.qty)}`),
@@ -2356,7 +2373,7 @@ function vegaMarket(s) {
     cards.append(card);
   }
   if (!v.prices.length) cards.append(el('p', 'empty', 'The screens are dark: no prices yet.'));
-  return [status, cards, el('p', 'fine', `Real prices from CoinGecko and Yahoo Finance, checked at ${clock(v.checked)}. `
+  return [status, cards, el('p', 'fine', `Real prices from CoinGecko and Yahoo Finance, checked at ${clock(v.checked)}${v.liveAt ? `, crypto live as of ${clock(v.liveAt)}` : ''}. `
     + "The little charts show the last day or so. Faded ones can't be traded right now.")];
 }
 function vegaNotebook(s) {
@@ -2458,7 +2475,7 @@ function renderFeed(s) {
     'v-today': () => `vt|${s.today}|${s.events.length}|${last?.time}|${last?.text}|${JSON.stringify([s.vega?.chat?.at(-1), s.vega?.log?.at(-1)])}`,
     'v-journal': () => `vj|${s.today}|${JSON.stringify([s.vega?.trades, s.vega?.prices.map((q) => q.price)])}`,
     'v-portfolio': () => `vp|${JSON.stringify([s.vega?.worth, s.vega?.cash, s.vega?.holdings, s.vega?.history.length])}`,
-    'v-market': () => `vm|${s.vega?.checked}|${JSON.stringify(s.vega?.prices.map((q) => q.open))}`,
+    'v-market': () => `vm|${s.vega?.checked}|${JSON.stringify(s.vega?.prices.map((q) => [q.open, q.price]))}`,
     'v-notebook': () => `vn|${s.vega?.days?.length}`,
     'v-ember': () => `ve|${s.today}|${JSON.stringify([s.vega?.notes, s.vega?.chat])}`,
   }[tab]();
@@ -2659,11 +2676,40 @@ async function refresh() {
       paintArt(galleryItems.findLast((work) => work.type === 'drawing')?.svg);
     }
     latest = s;
+    applyLive(s);
     render(s);
   } catch {
     $('status').textContent = IS_LOCAL ? "Can't reach Ember. Is run_local.py still running?" : 'Waiting for the first thought…';
   }
 }
+// Live crypto prices, from the same feed Vega uses, every 20 seconds: its account moves between its own checks
+const LIVE_COINS = { BTC: 'bitcoin', ETH: 'ethereum', SOL: 'solana', DOGE: 'dogecoin' };
+const live = { prices: {}, at: 0 };
+function applyLive(s) {
+  const v = s?.vega;
+  if (!v || live.at <= v.checked * 1000) return; // Vega's own check is newer
+  for (const quote of v.prices) {
+    const fresh = live.prices[quote.symbol];
+    if (fresh) Object.assign(quote, fresh, { chart: [...(quote.savedChart ??= quote.chart), fresh.price] });
+  }
+  for (const h of v.holdings) if (live.prices[h.symbol]) h.worth = h.qty * live.prices[h.symbol].price;
+  v.worth = v.cash + v.holdings.reduce((sum, h) => sum + h.worth, 0);
+  v.history = [...(v.savedHistory ??= v.history), { t: live.at / 1000, v: v.worth }];
+  v.liveAt = live.at / 1000;
+}
+async function refreshPrices() {
+  if (!latest?.vega || document.hidden) return;
+  try {
+    const data = await (await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${Object.values(LIVE_COINS)}&vs_currencies=usd&include_24hr_change=true`)).json();
+    for (const [symbol, coin] of Object.entries(LIVE_COINS)) {
+      if (data[coin]?.usd) live.prices[symbol] = { price: data[coin].usd, change: Math.round((data[coin].usd_24h_change ?? 0) * 100) / 100 };
+    }
+    live.at = Date.now();
+    applyLive(latest);
+    render(latest);
+  } catch { /* the feed is busy or down: the last prices stay */ }
+}
+setInterval(refreshPrices, 20000);
 async function pollForever() {
   await refresh();
   setTimeout(pollForever, POLL_MS);

@@ -228,9 +228,9 @@ def trade(order: dict, source: str = "session") -> None:
 
 
 def note_worth() -> None:
-    """An hourly record of what the account is worth, for the chart on the page."""
+    """What the account is worth at each check (about every ten minutes), for the chart on the page."""
     friend = me()
-    if not friend["history"] or time.time() - friend["history"][-1]["t"] >= 3600:
+    if not friend["history"] or time.time() - friend["history"][-1]["t"] >= 9 * 60:
         friend["history"] = (friend["history"] + [{"t": int(time.time()), "v": round(worth(), 2)}])[-240:]
 
 
