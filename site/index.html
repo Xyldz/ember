@@ -1712,8 +1712,11 @@ function animate() {
     const short = (vegaBubble.offsetWidth + bubble.offsetWidth) / 2 + 8 - Math.abs(xe - xv);
     if (stacked && short > 0) push = (short / 2) * (xv <= xe ? 1 : -1);
   }
-  vegaBubble.style.translate = push ? `${-push}px 0` : '';
-  bubble.style.translate = push ? `${push}px 0` : '';
+  for (const [el, nudge] of [[vegaBubble, -push], [bubble, push]]) { // and keep each one on screen (a phone is narrow)
+    const x = parseFloat(el.style.left) + nudge, half = el.offsetWidth / 2, edge = worldEl.clientWidth - half - 8;
+    const shift = nudge + (half ? Math.min(Math.max(x, half + 8), Math.max(edge, half + 8)) - x : 0);
+    el.style.translate = shift ? `${shift}px 0` : '';
+  }
   if (researchAnchor) pinToScreen(researchHolo, researchAnchor);
 }
 animate();
