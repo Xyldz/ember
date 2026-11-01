@@ -108,6 +108,7 @@ def new_state() -> dict:
         "activity": "Flickering into existence", "thought": "", "thought_time": "", "say": "", "said_at": 0,
         "form": {"shape": "orb", "color": "#3ff0ff", "about": "A small glowing orb of light, newly awake."},
         "hobbies": [], "learned": [], "events": [], "wishes": [], "known_buildings": [],
+        "wondering": "",   # the question Ember's last read left open
         "self": {section: [] for section in SELF_SECTIONS},  # what Ember has written about itself
         "experience": {},  # what each activity, at each place, has done to Ember's needs
         "beliefs": [],     # lessons worked out from that experience
@@ -775,10 +776,9 @@ def describe_situation() -> str:
     wishes = "\n".join(f'- {w["text"]} ({"came true!" if w["granted"] else "still waiting"})'
                        for w in state["wishes"][-6:]) or "- none yet"
     long_term = "\n".join(f"- {m['text']}" for m in strongest_memories(10)) or "- nothing yet"
-    notes = "\n".join(
-        f"- {m['text'][:220]}" + (f" (looked up: {m['query']})" if m.get("query") else "")
-        for m in state["learned"][-8:]
-    ) or "- nothing yet"
+    read = "\n".join(f"- {m['text'][:220]} (looked up: {m['query']})"
+                     for m in [m for m in state["learned"] if m.get("query")][-5:]) or "- nothing yet"
+    notes = "\n".join(f"- {m['text'][:220]}" for m in [m for m in state["learned"] if not m.get("query")][-4:]) or "- nothing yet"
     keeps_coming_up = ", ".join(f["word"] for f in fascinations()) or "nothing yet"
     yesterday = state["days"][-1] if state["days"] else None
     hidden = {"thought"} if state["location"] == friend.home() else {"thought", "trade"}  # Vega's trades: only seen up close
@@ -828,6 +828,7 @@ Places on your rooftop:
 There are also {len(empty_lots)} empty lots where new things could be built one day.
 
 Internet searches left today: {searches_left}
+{f'Your last read left you wondering: {state["wondering"]}' if state["wondering"] else ''}
 
 Your interests:
 {hobbies}
@@ -841,7 +842,9 @@ Your wishes:
 Your strongest memories:
 {long_term}
 
-Notes and things you've read lately (newest last):
+Things you've read lately (newest last):
+{read}
+Notes you've made yourself lately:
 {notes}
 Words that keep coming up in what you read: {keeps_coming_up}
 {f'Your last diary entry ({yesterday["date"]}): {yesterday["entry"]}' if yesterday else ''}
@@ -885,8 +888,7 @@ def apply_decision(decision: dict, brain) -> None:
     change_form(decision["new_form"], decision["form_color"], decision["who_i_am"].strip())
     handle_goal(decision["goal_action"], decision["goal_id"], decision["goal_text"].strip())
     if decision["remember"].strip():
-        state["learned"] = (state["learned"] + [{"date": now().strftime("%Y-%m-%d"), "time": now().strftime("%H:%M"),
-                                                 "text": decision["remember"].strip()}])[-40:]
+        add_learned({"date": now().strftime("%Y-%m-%d"), "time": now().strftime("%H:%M"), "text": decision["remember"].strip()})
         log_event(f"Made a note: {decision['remember'].strip()}", "note")
 
     action = decision["action"]
@@ -927,6 +929,15 @@ def apply_decision(decision: dict, brain) -> None:
     friend.after_ember_thinks(brain, decision, came_from=here)
 
 
+def add_learned(entry: dict) -> None:
+    """Ember makes a note of its own nearly every thought, so notes get fewer slots and never push out what it has read."""
+    everything = state["learned"] + [entry]
+    read = [m for m in everything if m.get("query")][-40:]
+    own = [m for m in everything if not m.get("query")][-15:]
+    keep = {id(m) for m in read + own}
+    state["learned"] = [m for m in everything if id(m) in keep]
+
+
 def research(brain, query: str, hobby: dict | None) -> None:
     state["activity"] = f'Searching the internet for "{query}"'
     log_event(f'Searched the internet for "{query}".', "search")
@@ -937,12 +948,15 @@ def research(brain, query: str, hobby: dict | None) -> None:
         state["status"] = f"Search failed: {getattr(error, 'message', error)}"
         log_event("The terminal's connection dropped.")
         return
-    state["learned"] = (state["learned"] + [{
+    add_learned({
         "date": now().strftime("%Y-%m-%d"), "time": now().strftime("%H:%M"),
         "text": result["summary"], "query": query, "sources": result["sources"],
-    }])[-40:]
+    })
     state["activity"] = f'Reading about "{query}"'
     log_event(f"Learned: {result['summary']}", "learned")
+    if result["wondering"]:
+        state["wondering"] = result["wondering"]
+        log_event(f"Now wondering: {state['wondering']}", "note")
     live_through("search")
     if hobby:
         add_xp(hobby, RESEARCH_XP)

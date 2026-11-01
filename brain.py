@@ -462,7 +462,8 @@ class Brain:
             f"Search the web for: {query}\n"
             f"Then write up the most interesting things you found as short notes for {self.name}, in plain text "
             "with no markdown and no introduction or sign-off: one line with a short headline, then 2-3 lines "
-            'that each start with "- " and hold one short, simple sentence.',
+            'that each start with "- " and hold one short, simple sentence. Last, one line that starts with "? " '
+            f"and asks one question this left open, something {self.name} could look up next.",
         }
         messages = [question]
         for _ in range(3):
@@ -486,8 +487,10 @@ class Brain:
             # A failed search puts an error object here instead of a list of results
             if block.type == "web_search_tool_result" and isinstance(block.content, list):
                 sources += [{"title": r.title, "url": r.url} for r in block.content[:3]]
-        summary = "".join(b.text for b in response.content if b.type == "text").strip()
-        return {"summary": summary or "Found nothing useful.", "sources": sources[:4]}
+        lines = "".join(b.text for b in response.content if b.type == "text").strip().splitlines()
+        wondering = next((line[2:].strip() for line in lines if line.startswith("? ")), "")
+        summary = "\n".join(line for line in lines if not line.startswith("? ")).strip()
+        return {"summary": summary or "Found nothing useful.", "sources": sources[:4], "wondering": wondering}
 
     def create(self, kind: str, activity: str, hobby: str, level: int, learned: list[str], previous: list[dict]) -> dict:
         if hobby:
@@ -649,7 +652,8 @@ class DemoBrain:
 
     def search(self, query: str) -> dict:
         return {"summary": f"(Demo mode: no real search for '{query}'.)\n- Nothing was really looked up.\n"
-                           "- Run it with an API key to search for real.", "sources": []}
+                           "- Run it with an API key to search for real.", "sources": [],
+                "wondering": f"What else is there to know about {query}?"}
 
     def create(self, kind: str, activity: str, hobby: str, level: int, learned: list[str], previous: list[dict]) -> dict:
         if kind == "drawing":

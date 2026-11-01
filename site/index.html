@@ -543,6 +543,7 @@
     <div id="ember-glance" class="glance">
       <div id="sec-skills" class="section" hidden><h2>Interests</h2><div id="skills"></div></div>
       <div id="sec-goals" class="section" hidden><h2>Goals</h2><div id="goals"></div></div>
+      <div id="sec-wondering" class="section" hidden><h2>Wondering</h2><div class="wish goal"><span class="tag">next</span><span id="wondering"></span></div></div>
       <p id="glance-empty" class="empty" hidden>No interests or goals yet. It's still finding its feet.</p>
       <div id="sec-wishes" class="section"><h2>Wishlist</h2><div id="wishes"></div></div>
       <a id="e-note" class="note-link" target="_blank" rel="noopener noreferrer" hidden>📌 Pin a note for Ember on the bulletin board</a>
@@ -2609,6 +2610,8 @@ function render(s) {
   $('wishes').replaceChildren(...wishRows(s.wishes, s.name));
   $('sec-skills').hidden = !s.skills.length;
   $('sec-goals').hidden = !activeGoals.length && !finishedGoals.length;
+  $('wondering').textContent = s.wondering ?? '';
+  $('sec-wondering').hidden = !s.wondering;
   $('glance-empty').hidden = !(s.skills.length + activeGoals.length + finishedGoals.length === 0);
 
   const usd = s.costs?.usd ?? 0;
