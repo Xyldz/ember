@@ -3,7 +3,7 @@
     "Everything you see around Ember that isn't a building. Edit it in builder mode (World tab) or by hand.",
     "roof: the platform Ember lives on. size is its width (the roof spans -size/2 to size/2).",
     "tower: the skyscraper under the roof. city: the towers all around (change seed for a different city).",
-    "signs and props: free-standing neon signs and decorations. pos is [x, height, z]; they can float.",
+    "signs and props: free-standing neon signs and decorations. pos is [x, height, z]; they can float. The roof clutter is made in Blender (blender/rooftop.py); \"autofit\": false keeps a model at its real size.",
     "sky: background, fog, light, glow (bloom) and exposure (overall brightness)."
   ],
   "roof": {
@@ -54,5 +54,110 @@
     "exposure": 0.85
   },
   "signs": [],
-  "props": []
+  "props": [
+    {
+      "id": "ac_1",
+      "name": "Air conditioner",
+      "model": "models/roof_ac.glb",
+      "autofit": false,
+      "pos": [
+        10.6,
+        0,
+        -0.5
+      ],
+      "rotation": 90,
+      "scale": 1
+    },
+    {
+      "id": "ac_2",
+      "name": "Air conditioner",
+      "model": "models/roof_ac.glb",
+      "autofit": false,
+      "pos": [
+        10.6,
+        0,
+        4.8
+      ],
+      "rotation": 90,
+      "scale": 1
+    },
+    {
+      "id": "tank",
+      "name": "Water tank",
+      "model": "models/roof_tank.glb",
+      "autofit": false,
+      "pos": [
+        -10.2,
+        0,
+        -3.5
+      ],
+      "rotation": 0,
+      "scale": 1
+    },
+    {
+      "id": "dish",
+      "name": "Satellite dish",
+      "model": "models/roof_dish.glb",
+      "autofit": false,
+      "pos": [
+        10.4,
+        0,
+        -10.4
+      ],
+      "rotation": -135,
+      "scale": 1
+    },
+    {
+      "id": "vents",
+      "name": "Vent stacks",
+      "model": "models/roof_vents.glb",
+      "autofit": false,
+      "pos": [
+        -10.2,
+        0,
+        9.8
+      ],
+      "rotation": 20,
+      "scale": 1
+    },
+    {
+      "id": "crates",
+      "name": "Crates and barrels",
+      "model": "models/roof_crates.glb",
+      "autofit": false,
+      "pos": [
+        9.8,
+        0,
+        9.6
+      ],
+      "rotation": -20,
+      "scale": 1
+    },
+    {
+      "id": "pipes",
+      "name": "Pipe run",
+      "model": "models/roof_pipes.glb",
+      "autofit": false,
+      "pos": [
+        -11.4,
+        0,
+        3.0
+      ],
+      "rotation": 0,
+      "scale": 1
+    },
+    {
+      "id": "stairs",
+      "name": "Stairwell",
+      "model": "models/roof_stairs.glb",
+      "autofit": false,
+      "pos": [
+        -10.4,
+        0,
+        -10.2
+      ],
+      "rotation": 45,
+      "scale": 1
+    }
+  ]
 }

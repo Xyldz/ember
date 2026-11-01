@@ -80,6 +80,11 @@ If a repository has no activity for 60 days GitHub pauses the schedule; just cli
 - **Day and night**: the sky follows the real sun over the place in `config.json` (London): sunrise colours, a hazy blue
   day, golden sunsets, and the neon taking over at night. Cloudy days are greyer. Add `?hour=13` to the address to see
   another time of day. Builder mode always shows the night, which is what `site/scenery.json` describes.
+- **Made in Blender**: everything on the roof is modelled from code in `blender/`. `rooftop.py` makes the data
+  terminal, charging pod, lookout railing and old radio (to the same measurements as the plain boxes they replaced) and
+  the roof clutter: air conditioners, a water tank, a dish, vents, crates, pipes and a stairwell, which are props in
+  `site/scenery.json` you can move in builder mode. Run `blender -b -P rooftop.py -- --render --export` after changing
+  it; it also saves `rooftop.blend`, the whole roof laid out, to open and look around.
 - **The real sky**: Ember and Vega know what's really overhead: how dark it is, the moon's phase and where it is,
   and the planets bright enough to shine through the city's glow. At the telescope they see the faint planets too,
   and which constellation each is in. Cloud and rain hide it all, as they would outside (worked out with

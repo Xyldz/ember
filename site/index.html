@@ -944,6 +944,7 @@ const codeCanvas = document.createElement('canvas');
 codeCanvas.width = 256; codeCanvas.height = 160;
 const codeTexture = new THREE.CanvasTexture(codeCanvas);
 codeTexture.colorSpace = THREE.SRGBColorSpace;
+codeTexture.flipY = false; // it lands on the terminal model's CodeScreen, and glTF texture coordinates run top-down
 const codeLines = [];
 function drawCode(line) {
   codeLines.push(line ?? Array.from({ length: 6 + Math.floor(Math.random() * 18) },
@@ -961,53 +962,41 @@ function drawCode(line) {
 }
 setInterval(drawCode, 300);
 
+// The four built-in places are made in Blender (blender/rooftop.py) to the same measurements as the plain boxes they
+// replaced, so Ember stands, sleeps and looks in the same spots. The page adds what moves: the live code on the
+// terminal's CodeScreen, lights, and the radio's antenna tip and signal rings.
+function withModel(file, x, z, group) {
+  gltfLoader.load(file, (gltf) => {
+    gltf.scene.position.set(x, 0, z);
+    gltf.scene.traverse((o) => {
+      if (!o.isMesh) return;
+      o.castShadow = !o.material.transparent; // glass lets the light through
+      o.receiveShadow = true;
+      if (o.name === 'CodeScreen') o.material = new THREE.MeshBasicMaterial({ map: codeTexture, color: 0x9a9a9a });
+    });
+    group.add(gltf.scene);
+  }, undefined, () => console.warn(`Couldn't load the model ${file}`));
+}
 const builders = {
   terminal(x, z, group) {
-    put(new THREE.BoxGeometry(2.2, 0.9, 1), 0x161a2b, x, 0.45, z - 1.3, group);
-    put(new THREE.BoxGeometry(2, 0.05, 0.45), neon(0x3ff0ff, 0.6), x, 0.93, z - 1.05, group);
-    const screen = put(new THREE.BoxGeometry(2.4, 1.5, 0.1), 0x161a2b, x, 2.0, z - 1.75, group);
-    screen.rotation.x = -0.12;
-    const display = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.3), new THREE.MeshBasicMaterial({ map: codeTexture, color: 0x9a9a9a }));
-    display.position.z = 0.051;
-    screen.add(display);
-    for (const [dx, color] of [[-0.6, 0xff3fb4], [0.5, 0x3ff0ff]]) { // cables running off to the edge
-      put(new THREE.BoxGeometry(0.06, 0.04, 9), neon(color, 0.5), x + dx, 0.02, z - 6.3, group).castShadow = false;
-    }
+    withModel('models/terminal.glb', x, z, group);
     addLight(x, 2.2, z - 0.6, 0x3ff0ff, group);
     return { anchor: new THREE.Vector3(x, 3.2, z - 1.75) };
   },
   pod(x, z, group) {
     const cx = x, cz = z - 1.5;
-    put(new THREE.CylinderGeometry(1.3, 1.4, 0.35, 24), 0x161a2b, cx, 0.17, cz, group);
-    put(new THREE.TorusGeometry(1.3, 0.05, 8, 40), neon(0xff3fb4, 1), cx, 0.36, cz, group).rotation.x = Math.PI / 2;
-    const dome = new THREE.Mesh(new THREE.SphereGeometry(1.25, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2),
-      new THREE.MeshStandardMaterial({ color: 0x9ff6ff, transparent: true, opacity: 0.16, roughness: 0.05, metalness: 0.2, depthWrite: false }));
-    dome.position.set(cx, 0.35, cz);
-    group.add(dome);
+    withModel('models/pod.glb', x, z, group);
     addLight(cx, 1.2, cz, 0xff3fb4, group, 4);
     return { anchor: new THREE.Vector3(cx, 2.3, cz), sleep: { x: cx, z: cz, y: 0.35 } };
   },
   railing(x, z, group) {
-    for (let i = -3; i <= 3; i++) put(new THREE.BoxGeometry(0.08, 1.1, 0.08), 0x2a2f45, x + i, 0.55, z - 1.6, group);
-    put(new THREE.BoxGeometry(6.2, 0.08, 0.08), neon(0x3ff0ff, 1), x, 1.1, z - 1.6, group);
-    put(new THREE.BoxGeometry(6.2, 0.05, 0.05), 0x2a2f45, x, 0.6, z - 1.6, group);
+    withModel('models/railing.glb', x, z, group);
     return { anchor: new THREE.Vector3(x, 1.9, z - 1.6), faceAway: true };
   },
   radio(x, z, group) {
     const cz = z - 1.5;
-    put(new THREE.BoxGeometry(1.7, 0.7, 1), 0x161a2b, x, 0.35, cz, group); // the crate it sits on
-    put(new THREE.BoxGeometry(1.5, 0.8, 0.6), 0x232842, x, 1.1, cz, group);
-    for (const side of [-0.42, 0.42]) { // speakers
-      const speaker = put(new THREE.CylinderGeometry(0.24, 0.24, 0.04, 24), 0x0c0e1a, x + side, 1.08, cz + 0.31, group);
-      speaker.rotation.x = Math.PI / 2;
-      put(new THREE.TorusGeometry(0.25, 0.02, 8, 32), neon(0xff3fb4, 0.8), x + side, 1.08, cz + 0.33, group);
-    }
-    put(new THREE.BoxGeometry(0.34, 0.14, 0.03), neon(0xffcc4d, 0.9), x, 1.3, cz + 0.31, group); // tuning dial
-    put(new THREE.BoxGeometry(0.02, 0.14, 0.04), neon(0xff3fb4, 1.2), x + 0.05, 1.3, cz + 0.32, group);
-    for (const side of [-0.45, 0.45]) put(new THREE.BoxGeometry(0.06, 0.25, 0.06), 0x2a2f45, x + side, 1.62, cz, group);
-    put(new THREE.BoxGeometry(0.96, 0.06, 0.06), 0x2a2f45, x, 1.74, cz, group); // handle
+    withModel('models/radio.glb', x, z, group);
     const mastX = x + 0.6, tipY = 3.9;
-    put(new THREE.CylinderGeometry(0.02, 0.03, 2.4, 6), 0x8a93b8, mastX, 2.7, cz - 0.1, group);
     const tip = put(new THREE.SphereGeometry(0.07, 10, 8), neon(0xff2040, 2), mastX, tipY, cz - 0.1, group);
     tip.userData.tip = true;
     radioParts.push(tip);

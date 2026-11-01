@@ -4,3 +4,4 @@ site/demo-data/
 __pycache__/
 *.tmp
 *.blend1
+blender/rooftop/
