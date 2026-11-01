@@ -387,6 +387,7 @@ def decision_schema(location_ids: list[str]) -> dict:
             },
             "new_hobby": {"type": "string", "description": "A real interest you're taking up (just its name), or empty."},
             "wish": {"type": "string", "description": "Something you'd really love built and why, or empty. Usually empty."},
+            "because_of_note": {"type": "boolean", "description": "True if what you're doing now is because of a note the builder left you."},
             "new_form": {
                 "type": "string",
                 "enum": ["keep"] + FORMS,
@@ -399,7 +400,7 @@ def decision_schema(location_ids: list[str]) -> dict:
             },
         },
         "required": ["thought", "action", "target_location", "activity", "activity_kind", "goal_action", "goal_id",
-                     "goal_text", "practising_hobby", "creation", "say", "remember", "new_hobby", "wish", "new_form",
+                     "goal_text", "practising_hobby", "creation", "say", "remember", "new_hobby", "wish", "because_of_note", "new_form",
                      "form_color", "who_i_am"],
         "additionalProperties": False,
     }
@@ -645,6 +646,7 @@ class DemoBrain:
             "remember": "",
             "new_hobby": random.choice([""] * 6 + self.HOBBIES),
             "wish": random.choice([""] * 12 + ["A little garden of lights, so the roof feels less empty."]),
+            "because_of_note": random.random() < 0.2,
             "new_form": random.choice(["keep"] * 10 + FORMS),
             "form_color": random.choice(["", "#ff3fb4", "#ffcc4d", "#8b5bff", "#3ff0ff"]),
             "who_i_am": "Trying on a new shape to see how it feels.",

@@ -13,6 +13,7 @@ once one's been read, its answer is posted on the issue and the issue is closed.
 import json
 import os
 import sys
+import time
 import urllib.request
 
 import friend
@@ -79,7 +80,7 @@ def fetch_notes() -> None:
             if title.lower().startswith(prefix):
                 text = f"{title[len(prefix):].strip(' :-')}\n{issue['body'] or ''}".strip()[:1000]
                 desk.append({"number": issue["number"], "text": text or "(a blank note)", "read": False, "reply": "",
-                             "answered": False})
+                             "answered": False, "pinned": int(time.time())})
 
 
 def answer_notes() -> None:

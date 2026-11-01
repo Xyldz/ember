@@ -864,8 +864,10 @@ def apply_decision(decision: dict, brain) -> None:
     state["thought"], state["thought_time"] = decision["thought"].strip(), now().strftime("%H:%M")
     log_event(state["thought"], "thought")
     note, screen = message_waiting()
+    if note:
+        note.setdefault("told", int(time.time()))  # for the page: when Ember first knew the note was there
     if note and screen in (None, here):  # it was in front of Ember as it thought: its reaction goes back to the builder
-        note.update(read=True, reply=decision["say"].strip() or state["thought"])
+        note.update(read=True, read_at=int(time.time()), reply=decision["say"].strip() or state["thought"])
         log_event(f'Read a note from the builder: "{note["text"][:160]}"', "message")
 
     if decision["say"].strip():
@@ -926,6 +928,10 @@ def apply_decision(decision: dict, brain) -> None:
             state["searches_today"] += 1
             research(brain, query, hobby)
 
+    last_read = next((n for n in reversed(state["desk"]) if n["read"]), None)
+    if decision["because_of_note"] and last_read:  # Ember says this was because of the builder's note
+        done = state["activity"] + (f'. Wished for: {decision["wish"].strip()}' if decision["wish"].strip() else "")
+        last_read["followed"] = (last_read.get("followed", []) + [{"t": int(time.time()), "text": done}])[-8:]
     friend.after_ember_thinks(brain, decision, came_from=here)
 
 
