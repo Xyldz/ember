@@ -3,7 +3,7 @@
     "Add an entry to 'buildings'. Ember notices new buildings on its next thought.",
     "id: short unique name. pos: [x, z] where Ember stands (the roof spans about -11 to 11).",
     "about: what it is, written to Ember. Describe the place, not what Ember should do there.",
-    "actions: what it unlocks. 'search' = use the internet, 'rest' = recharge faster, 'radio' = hear what's on the city's radio, 'friend' = Vega, Ember's friend, works here, 'board' = notes you leave them (GitHub issues) get pinned here.",
+    "actions: what it unlocks. 'search' = use the internet, 'rest' = recharge faster, 'radio' = hear what's on the city's radio, 'friend' = Vega, Ember's friend, works here, 'board' = notes you leave them (GitHub issues) get pinned here, 'telescope' = the real sky up close.",
     "boosts: optional. Needs it helps when Ember does something there, e.g. {\"calm\": 6}. Needs: charge, curiosity, joy, calm, connection.",
     "model: a built-in look ('terminal', 'pod', 'railing', 'radio'), OR a .glb file you put in site/models/ (e.g. 'models/library.glb'),",
     "       OR leave it out and add 'shapes' (boxes/cylinders/spheres, see the example in the README).",
@@ -119,7 +119,9 @@
       ],
       "model": "models/telescope.glb",
       "about": "A white telescope with brass bands on a steel tripod, standing on a little round deck in the corner of the roof and pointed up past the city glow. Beside it: a camp stool by the eyepiece, a crate with a red lamp and a flask on it, a star chart leaning against the crate, and a neon sign on a post that says LOOK UP.",
-      "actions": [],
+      "actions": [
+        "telescope"
+      ],
       "boosts": {
         "curiosity": 4,
         "calm": 3

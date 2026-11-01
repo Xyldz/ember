@@ -15,11 +15,12 @@ import re
 import time
 import urllib.request
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import anthropic
+import astronomy
 
 import friend
 from brain import MEMORY_SECTIONS, SELF_SECTIONS, BrainError
@@ -59,7 +60,8 @@ SECTION_TITLES = {"what_im_like": "What I'm like", "what_i_care_about": "What I 
                   "what_scares_me": "What scares me", "my_habits": "My habits"}
 ACTION_WORDS = {"search": "search the internet", "rest": "recharge faster", "radio": "hear what's on the radio",
                 "friend": "talk with the old trading bot who runs the place",
-                "board": "read any notes the builder pins up for you"}
+                "board": "read any notes the builder pins up for you",
+                "telescope": "see the real night sky up close, fainter planets too"}
 MAX_RADIO_PER_DAY = 30  # after that, only static (each broadcast is a small Haiku call)
 PRACTICE_XP = 10  # doubled if Ember looked something up about it first
 RESEARCH_XP = 5
@@ -542,20 +544,77 @@ def handle_goal(action: str, goal_id: str, text: str) -> None:
 def check_weather() -> None:
     place = CONFIG["weather"]
     url = (f"https://api.open-meteo.com/v1/forecast?latitude={place['latitude']}&longitude={place['longitude']}"
-           "&current=temperature_2m,precipitation,weather_code,wind_speed_10m")
+           "&current=temperature_2m,precipitation,weather_code,wind_speed_10m,cloud_cover")
     try:
         with urllib.request.urlopen(url, timeout=10) as response:
             current = json.load(response)["current"]
         code = int(current["weather_code"])
         weather = {"place": place["place"], "code": code, "description": WEATHER_CODES.get(code, "unsettled"),
                    "temp": round(current["temperature_2m"]), "wind": round(current["wind_speed_10m"]),
-                   "precip": current["precipitation"]}
+                   "precip": current["precipitation"], "clouds": current["cloud_cover"]}
     except (OSError, ValueError, KeyError, TypeError):
         return  # keep the last known weather
     previous = state["weather"]
     state["weather"] = weather
     if previous and previous["description"] != weather["description"]:
         log_event(f"The weather turned: {weather['description']}, {weather['temp']}°C.", "weather")
+
+
+# ---------------------------------------------------------------------------
+# The real sky over the same place: how dark it is, the moon and the planets (astronomy-engine, worked out here)
+# ---------------------------------------------------------------------------
+
+PLANETS = ["Mercury", "Venus", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune"]
+COMPASS = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"]
+MOON_PHASES = [(10, "new moon"), (80, "waxing crescent moon"), (100, "first quarter moon"), (170, "waxing gibbous moon"),
+               (190, "full moon"), (260, "waning gibbous moon"), (280, "last quarter moon"), (350, "waning crescent moon"),
+               (361, "new moon")]  # (up to this many degrees past new, its name)
+NAKED_EYE = 3.0  # the faintest planet (magnitude) that shows through the city's glow; a telescope shows them all
+
+
+def sky(close_up: bool = False) -> str:
+    """What's up there right now, in words. close_up: through a telescope."""
+    place, t = CONFIG["weather"], now().astimezone(timezone.utc)
+    t = astronomy.Time.Make(t.year, t.month, t.day, t.hour, t.minute, t.second)
+    observer = astronomy.Observer(place["latitude"], place["longitude"], 0)
+
+    def look(name: str) -> tuple[float, str, str]:  # how high it is, where, and in which constellation
+        body = astronomy.Body[name]
+        of_date = astronomy.Equator(body, t, observer, True, True)
+        up = astronomy.Horizon(t, observer, of_date.ra, of_date.dec, astronomy.Refraction.Normal)
+        j2000 = astronomy.Equator(body, t, observer, False, True)  # constellations are charted in J2000
+        height = "low in the" if up.altitude < 20 else "high in the" if up.altitude > 55 else "in the"
+        return up.altitude, f"{height} {COMPASS[round(up.azimuth / 45) % 8]}", astronomy.Constellation(j2000.ra, j2000.dec).name
+
+    sun = look("Sun")[0]
+    light = ("Daytime" if sun > 0 else ("Dawn" if now().hour < 12 else "Dusk") if sun > -6
+             else "Nearly dark" if sun > -12 else "Dark")
+    weather = state["weather"] or {}
+    clouds = weather.get("clouds", {0: 5, 1: 20, 2: 50}.get(weather.get("code", 0), 100))
+    if clouds >= 85 or weather.get("code", 0) >= 45:
+        return f"{light}, but the {weather.get('description', 'cloud')} hides the sky: no moon or stars to see."
+
+    words = [f"{light}."]
+    moon_up, moon_at, moon_in = look("Moon")
+    if moon_up > 0:
+        phase = next(name for limit, name in MOON_PHASES if astronomy.MoonPhase(t) < limit)
+        lit = round(astronomy.Illumination(astronomy.Body.Moon, t).phase_fraction * 100)
+        words.append(f"The moon is up: a {phase}, {lit}% lit, {moon_at}" + (f" in {moon_in}." if close_up else "."))
+    elif sun < 0:
+        words.append("No moon right now.")
+    planets = []
+    for name in PLANETS:
+        up, at, constellation = look(name)
+        if up > 5 and sun < -5 and (close_up or astronomy.Illumination(astronomy.Body[name], t).mag < NAKED_EYE):
+            planets.append(f"{name} {at}" + (f" in {constellation}" if close_up else ""))
+    if planets:
+        words.append(("Through the telescope: " if close_up else "Planets you can see: ") + ", ".join(planets) + ".")
+    if sun < -5:
+        words.append("The telescope cuts through the city's glow: faint stars everywhere." if close_up
+                     else "Only the brightest stars get through the city's glow.")
+    if clouds >= 40:
+        words.append("Clouds drift across it.")
+    return " ".join(words)
 
 
 def feel_weather() -> None:
@@ -726,7 +785,7 @@ def describe_situation() -> str:
     recent = "\n".join(f"- {e['time']} {e['text']}" for e in state["events"][-14:] if e["kind"] not in hidden) or "- nothing yet"
     searches_left = max(0, CONFIG["max_searches_per_day"] - state["searches_today"])
     weather = state["weather"]
-    sky = (f"{weather['description']}, {weather['temp']}°C, wind {weather['wind']} km/h" if weather else "unknown")
+    outside = (f"{weather['description']}, {weather['temp']}°C, wind {weather['wind']} km/h" if weather else "unknown")
     goals = "\n".join(
         f"- {g['id']}: {g['text']} (since {g['started']}"
         + (f"; last step: {g['progress'][-1]['text']}" if g["progress"] else "; no progress yet") + ")"
@@ -743,7 +802,8 @@ def describe_situation() -> str:
     else:
         message = ""
 
-    return f"""It is {t:%A %d %B, %H:%M} ({part_of_day}). The weather: {sky}.
+    return f"""It is {t:%A %d %B, %H:%M} ({part_of_day}). The weather: {outside}.
+The sky over the roof: {sky(close_up=can(state["location"], "telescope"))}
 You are at: {here['name']} ({state['location']}). {here['about']} {friend.presence() or friend.whereabouts()}
 {message}
 Your form: shape {state['form']['shape']}, colour {state['form']['color']}. In your words: {state['form']['about']}

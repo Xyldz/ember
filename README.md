@@ -77,6 +77,10 @@ If a repository has no activity for 60 days GitHub pauses the schedule; just cli
 - **Day and night**: the sky follows the real sun over the place in `config.json` (London): sunrise colours, a hazy blue
   day, golden sunsets, and the neon taking over at night. Cloudy days are greyer. Add `?hour=13` to the address to see
   another time of day. Builder mode always shows the night, which is what `site/scenery.json` describes.
+- **The real sky**: Ember and Vega know what's really overhead: how dark it is, the moon's phase and where it is,
+  and the planets bright enough to shine through the city's glow. At the telescope they see the faint planets too,
+  and which constellation each is in. Cloud and rain hide it all, as they would outside (worked out with
+  astronomy-engine; no key needed).
 
 ## On your phone
 

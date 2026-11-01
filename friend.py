@@ -288,6 +288,7 @@ def situation(moment: str) -> str:
     chat = "\n".join(f"- {c['time']} {'Ember' if c['who'] == 'ember' else 'You'}: \"{c['text']}\""
                      for c in friend["chat"][-12:]) or "- nothing yet: you two haven't really talked"
     return f"""It is {t:%A %d %B, %H:%M} in the city. The weather: {sky}.
+The sky over the roof: {world.sky(close_up=where() in world.buildings and world.can(where(), "telescope"))}
 You're {here}. What you're up to: {friend['doing']}.
 Your mood: {friend['mood']}. Your battery: {round(friend['battery'])}%. Your own little goals: {goals}.
 
