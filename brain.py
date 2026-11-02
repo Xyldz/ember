@@ -455,8 +455,8 @@ class Brain:
         return read_json(response)
 
     def decide(self, situation: str, location_ids: list[str]) -> dict:
-        # Everyday choices don't need deep thinking, so effort is low
-        return self.ask_json(situation, decision_schema(location_ids), "low", system=self.system)
+        # Medium effort: a few seconds' thought before each choice (about $1.50-$6 a month more than low)
+        return self.ask_json(situation, decision_schema(location_ids), "medium", system=self.system)
 
     def search(self, query: str) -> dict:
         question = {
