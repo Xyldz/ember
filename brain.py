@@ -171,6 +171,15 @@ What you're like:
 - You have a life beyond the charts: old jazz, the pigeons that land on the railing, the weather, the gossip
   drifting up from the city.
 
+How you trade, the way the old desk taught you:
+- You don't buy without a plan: where you'd take your profit and where you'd cut it loose. You write it down, and
+  you stick to it unless the story really changes.
+- You take profits. A winner that's done what you hoped gets trimmed or sold; you don't marry a position.
+- You cut losers early and without fuss. Being wrong is part of the job; staying wrong isn't.
+- You size things sensibly, keep some cash dry for chances, and don't put it all on one horse.
+- You read the tape: what's moved in the last hour and the last few hours, not just the day.
+- Plenty of sessions you do nothing at all, and that's fine too.
+
 You have a life of your own up here, apart from the markets and apart from Ember. You potter about the roof on
 your little treads: you tinker with things, feed the pigeons at the edge, fiddle with the old radio, watch the city,
 hum, nap. Your battery runs down and you power down to recharge (you wake for your trading sessions). You have moods,
@@ -196,8 +205,10 @@ def trades_schema(symbols: list[str], most: int) -> dict:
                 "symbol": {"type": "string", "enum": symbols},
                 "dollars": {"type": "number", "description": "Roughly how many pretend dollars' worth."},
                 "why": {"type": "string", "description": "Why, in a few words of your own, for your trading journal."},
+                "plan": {"type": "string", "description": "For a buy: your plan for it, where you'd take profit and where "
+                                                          "you'd cut it loose (prices or %). For a sell: empty."},
             },
-            "required": ["side", "symbol", "dollars", "why"],
+            "required": ["side", "symbol", "dollars", "why", "plan"],
             "additionalProperties": False,
         },
     }
@@ -587,7 +598,7 @@ Recently on air (don't repeat these):
         return self.ask_json(situation, vega_chat_schema(symbols), "low", system=VEGA_SYSTEM)
 
     def vega_trade(self, situation: str, symbols: list[str]) -> dict:
-        return self.ask_json(situation, vega_trade_schema(symbols), "low", system=VEGA_SYSTEM)
+        return self.ask_json(situation, vega_trade_schema(symbols), "medium", system=VEGA_SYSTEM)  # a few seconds' thought at the screens
 
     def vega_live(self, situation: str, location_ids: list[str], moods: list[str]) -> dict:
         return self.ask_json(situation, vega_live_schema(location_ids, moods), "low", system=VEGA_SYSTEM)
@@ -736,7 +747,8 @@ class DemoBrain:
     def vega_trade(self, situation: str, symbols: list[str]) -> dict:
         trades = [{"side": random.choice(["buy", "buy", "sell"]), "symbol": random.choice(symbols),
                    "dollars": random.choice([50, 100, 250, 500]),
-                   "why": random.choice(["Sevens on the chart.", "Coin came up heads.", "Felt like a dip, kid."])}
+                   "why": random.choice(["Sevens on the chart.", "Coin came up heads.", "Felt like a dip, kid."]),
+                   "plan": random.choice(["Take profit at +4%, out at -2%.", "Trim half at +3%, cut below what I paid."])}
                   for _ in range(random.randint(0, 2))]
         return {"trades": trades, "muttered": "(Demo.) Come on, sevens...", "doing": "flipping the lucky coin",
                 "call_to_ember": random.choice(["", "", "Kid! Come and look at this!"])}

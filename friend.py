@@ -26,7 +26,7 @@ CRYPTO = {"BTC": ("bitcoin", "Bitcoin"), "ETH": ("ethereum", "Ether"), "SOL": ("
           "DOGE": ("dogecoin", "Dogecoin")}
 STOCKS = {"SPY": "S&P 500 fund", "AAPL": "Apple", "NVDA": "Nvidia", "TSLA": "Tesla"}
 SYMBOLS = list(CRYPTO) + list(STOCKS)
-SESSION_HOURS = (9, 13, 15, 18, 21)  # London time. New York trades about 14:30-21:00; crypto never stops
+SESSION_HOURS = (9, 11, 13, 15, 17, 19, 21, 23)  # London time. New York trades about 14:30-21:00; crypto never stops
 MAX_TRADES_PER_SESSION = 3
 MIN_TRADE = 25.0  # dollars
 MAX_REPLIES_PER_DAY = 60  # times Vega answers Ember (each a tiny Haiku call)
@@ -199,7 +199,8 @@ def trade(order: dict, source: str = "session") -> None:
         if dollars < MIN_TRADE:
             return
         qty = dollars / price
-        holding = friend["holdings"].setdefault(symbol, {"qty": 0.0, "cost": 0.0})
+        holding = friend["holdings"].setdefault(symbol, {"qty": 0.0, "cost": 0.0, "since": int(time.time())})
+        holding["plan"] = order.get("plan", "").strip() or holding.get("plan", "")  # when it'd sell: shown back to it each session
         holding["qty"] += qty
         holding["cost"] += dollars
         friend["cash"] -= dollars
@@ -238,6 +239,20 @@ def note_worth() -> None:
 # What Vega knows, written as plain text for its brain
 # ---------------------------------------------------------------------------
 
+def moves(symbol: str) -> str:
+    """How a price has moved lately, from what Vega has seen: the last hour, the last six, and the day's range."""
+    points = world.state["market"].get("history", {}).get(symbol, [])
+    if len(points) < 2:
+        return ""
+    now, latest = points[-1]
+
+    def since(hours: float) -> str:
+        then = next((price for t, price in reversed(points) if now - t >= hours * 3600), None)
+        return f"{(latest / then - 1) * 100:+.2f}%" if then else "not seen yet"
+    day = [price for t, price in points if now - t <= 86400]
+    return f"; last hour {since(1)}, last 6 hours {since(6)}, today's range {price_text(min(day))} to {price_text(max(day))}"
+
+
 def prices_text() -> str:
     prices = world.state["market"]["prices"]
     lines = []
@@ -245,7 +260,8 @@ def prices_text() -> str:
         if symbol in prices:
             q = prices[symbol]
             note = "" if q["open"] else " (market closed)" if q["fresh"] else " (no fresh price)"
-            lines.append(f"- {symbol} ({q['name']}): {price_text(q['price'])}, {q['change']:+.2f}% over the last day{note}")
+            lines.append(f"- {symbol} ({q['name']}): {price_text(q['price'])}, {q['change']:+.2f}% over the last day"
+                         f"{moves(symbol)}{note}")
     return "\n".join(lines) or "- the screens are dark: no prices are coming through"
 
 
@@ -254,8 +270,12 @@ def account_text() -> str:
     lines = [f"- Cash: {money(friend['cash'])}"]
     for symbol, h in friend["holdings"].items():
         now_worth = h["qty"] * price_of(symbol)
-        lines.append(f"- {symbol}: {amount(h['qty'])}, worth {money(now_worth)} "
-                     f"(you paid {money(h['cost'])}: {(now_worth / h['cost'] - 1) * 100:+.1f}%)")
+        hours = (time.time() - h["since"]) / 3600 if h.get("since") else None
+        held = "" if hours is None else f", held {hours:.0f} hours" if hours < 48 else f", held {hours / 24:.0f} days"
+        plan = h.get("plan") or "none written down (you bought it before you kept plans)"
+        lines.append(f"- {symbol}: {amount(h['qty'])}, worth {money(now_worth)} (you paid {money(h['cost'])}, "
+                     f"{price_text(h['cost'] / h['qty'])} each: {(now_worth / h['cost'] - 1) * 100:+.1f}%{held}). "
+                     f"Your plan for it: {plan}")
     total = worth()
     lines.append(f"Worth {money(total)} in all: {(total / START_CASH - 1) * 100:+.1f}% since you started with "
                  f"{money(START_CASH)}. Banked from selling so far: {money(friend['realised'], sign=True)}.")
@@ -502,8 +522,9 @@ def trading_session(brain) -> bool:
         log_own("Sat down to trade, but the screens were dark.", "doing")
         return True
     can_call = not s["asleep"] and s["location"] != home() and friend["calls_today"] < MAX_CALLS_PER_DAY
-    moment = ("It's one of your trading sessions. Look over the screens and decide what, if anything, to buy or sell, "
-              "and say why for each trade: it goes in your trading journal. "
+    moment = ("It's one of your trading sessions. Check what you hold against your plan for it, look over the screens, "
+              "and decide what, if anything, to buy or sell. Say why for each trade (it goes in your trading journal), "
+              "and give every buy a plan. "
               + ("Ember isn't here, but if something's really worth sharing you can call across the roof to it."
                  if can_call else "Leave call_to_ember empty this time."))
     try:
