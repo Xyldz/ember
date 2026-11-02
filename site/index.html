@@ -674,9 +674,10 @@ const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
 camera.position.set(10, 8.5, 13);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(-0.5, 0.8, -1.5);
-if (innerWidth < innerHeight) { // a phone held upright: a wider lens, from higher up, so the roof fits the narrow screen
-  camera.fov = 58;
-  camera.position.set(11, 20, 17);
+if (innerWidth < innerHeight) { // a phone held upright: a wider lens, from higher up and straight down the roof's length
+  camera.fov = 68; // (across the diagonal, its widest, only the middle fits the narrow screen)
+  camera.position.set(1.5, 22, 15.5);
+  controls.target.set(-0.5, 0, -2.5);
 }
 controls.enableDamping = true;
 controls.screenSpacePanning = false; // right-drag slides you across the roof, not up into the sky
@@ -1387,6 +1388,86 @@ function buildBuilding(building) {
   return group;
 }
 
+// Circuit traces on the floor, from the terminal (the roof's hub) out to every place, a light pad under each spot, and
+// pulses of light running along them: more of them along the way Ember is heading
+let traces = [], pulseTarget = null; // pulseTarget: where Ember's heading, set as the state comes in
+const pulseCount = IS_PHONE ? 6 : 12;
+const pulseGeometry = new THREE.BufferGeometry();
+pulseGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pulseCount * 3).fill(-50), 3));
+const pulseDot = document.createElement('canvas');
+pulseDot.width = pulseDot.height = 32;
+{
+  const g = pulseDot.getContext('2d'), glow = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+  glow.addColorStop(0, 'rgba(255, 255, 255, 1)');
+  glow.addColorStop(0.35, 'rgba(160, 250, 255, 0.8)');
+  glow.addColorStop(1, 'rgba(60, 240, 255, 0)');
+  g.fillStyle = glow;
+  g.fillRect(0, 0, 32, 32);
+}
+const pulsePoints = new THREE.Points(pulseGeometry, new THREE.PointsMaterial({ map: new THREE.CanvasTexture(pulseDot), size: 0.6,
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+pulsePoints.frustumCulled = false;
+scene.add(pulsePoints);
+const pulses = Array.from({ length: pulseCount }, () => ({ path: null, at: 0, wait: Math.random() * 4 }));
+function tracePath(from, to) { // along z, a 45° corner, then along x, like a circuit board
+  const dx = to.x - from.x, dz = to.z - from.z, c = Math.min(1.2, Math.abs(dx), Math.abs(dz));
+  return [[from.x, from.z], [from.x, to.z - Math.sign(dz) * c], [from.x + Math.sign(dx) * c, to.z], [to.x, to.z]]
+    .map(([x, z]) => new THREE.Vector3(x, 0.025, z));
+}
+function buildTraces() {
+  const all = Object.values(places), hub = all.find((p) => p.building.actions?.includes('search')) ?? all[0];
+  traces = [];
+  if (!hub) return;
+  const strips = [], pads = [];
+  for (const p of all) {
+    pads.push(new THREE.RingGeometry(0.72, 0.8, 40).rotateX(-Math.PI / 2).translate(p.x, 0.02, p.z));
+    if (p === hub) continue;
+    const path = tracePath(hub, p);
+    traces.push({ id: p.building.id, path });
+    for (let i = 1; i < path.length; i++) {
+      const a = path[i - 1], b = path[i], length = a.distanceTo(b);
+      if (length < 0.01) continue;
+      strips.push(new THREE.BoxGeometry(0.06, 0.012, length).rotateY(Math.atan2(b.x - a.x, b.z - a.z))
+        .translate((a.x + b.x) / 2, 0.02, (a.z + b.z) / 2));
+    }
+  }
+  const glow = (geometries, color, strength) => {
+    const mesh = new THREE.Mesh(mergeGeometries(geometries), neon(color, strength));
+    mesh.receiveShadow = true;
+    worldGroup.add(mesh);
+  };
+  if (strips.length) glow(strips, 0x3ff0ff, 0.55);
+  glow(pads, 0xff3fb4, 0.8);
+}
+function stepPulses(dt) {
+  const positions = pulseGeometry.attributes.position;
+  pulses.forEach((pulse, i) => {
+    if (!pulse.path) {
+      pulse.wait -= dt;
+      if (pulse.wait > 0 || !traces.length) return;
+      const heading = traces.find((trace) => trace.id === pulseTarget);
+      const trace = heading && Math.random() < 0.6 ? heading : traces[Math.floor(Math.random() * traces.length)];
+      pulse.path = heading === trace || Math.random() < 0.5 ? trace.path : [...trace.path].reverse();
+      pulse.at = 0;
+    }
+    let along = (pulse.at += dt * 3.2), k = 1; // metres travelled: find which stretch that's on
+    for (; k < pulse.path.length; k++) {
+      const length = pulse.path[k - 1].distanceTo(pulse.path[k]);
+      if (along <= length) break;
+      along -= length;
+    }
+    if (k >= pulse.path.length) {
+      pulse.path = null;
+      pulse.wait = 0.4 + Math.random() * 3;
+      positions.setXYZ(i, 0, -50, 0);
+      return;
+    }
+    const a = pulse.path[k - 1], b = pulse.path[k], length = a.distanceTo(b) || 1;
+    positions.setXYZ(i, a.x + ((b.x - a.x) * along) / length, 0.09, a.z + ((b.z - a.z) * along) / length);
+  });
+  positions.needsUpdate = true;
+}
+
 function buildWorld(s, force = false) {
   const key = JSON.stringify([s.buildings, s.empty_lots]);
   if (key === worldKey && !force) return; // nothing changed in buildings.json
@@ -1398,6 +1479,7 @@ function buildWorld(s, force = false) {
   scene.add(worldGroup);
   places = {};
   for (const building of s.buildings) buildBuilding(building);
+  buildTraces();
   for (const lot of s.empty_lots ?? []) emptyLot(lot, worldGroup);
 
   const studio = Object.values(places).find((p) => p.building.actions?.includes('create'))
@@ -1773,6 +1855,7 @@ function animate() {
   if (IS_PHONE && sinceFrame < 1 / 30) return; // 30 frames a second is plenty on a phone, and saves battery
   const dt = Math.min(sinceFrame, 0.1), t = timer.elapsedTime;
   sinceFrame = 0;
+  stepPulses(dt);
 
   const dx = goal.x - avatar.position.x, dz = goal.z - avatar.position.z, dist = Math.hypot(dx, dz);
   const moving = placed && dist > 0.05;
@@ -2876,6 +2959,7 @@ function render(s) {
   $('wishes').replaceChildren(...wishRows(s.wishes, s.name));
   $('sec-skills').hidden = !s.skills.length;
   $('sec-goals').hidden = !activeGoals.length && !finishedGoals.length;
+  pulseTarget = s.activity.startsWith('Heading') ? s.location : null;
   showNotes('', s.desk, s, { name: s.name, location: s.location, activity: s.activity });
   if (s.vega) showNotes('v-', s.vega.desk, s, { name: s.vega.name, location: s.vega.location, activity: s.vega.doing });
   if (!$('place-card').hidden) showPlace(shownPlace, s);

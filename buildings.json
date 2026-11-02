@@ -16,7 +16,7 @@
       "name": "Data terminal",
       "pos": [
         0,
-        -1
+        -1.5
       ],
       "model": "terminal",
       "about": "A big humming terminal wired into the real internet.",
@@ -33,8 +33,8 @@
       "id": "pod",
       "name": "Charging pod",
       "pos": [
-        -5.5,
-        1.5
+        5.2,
+        5.6
       ],
       "model": "pod",
       "about": "A padded capsule that glows softly and hums with power.",
@@ -51,8 +51,8 @@
       "id": "edge",
       "name": "Rooftop edge",
       "pos": [
-        3,
-        -9.3
+        3.2,
+        -9.4
       ],
       "model": "railing",
       "about": "The edge of the roof. Below: the endless neon city, flying cars, rain and a million lit windows.",
@@ -60,14 +60,15 @@
       "boosts": {
         "calm": 6,
         "curiosity": 3
-      }
+      },
+      "rotation": 0
     },
     {
       "id": "radio",
       "name": "Old radio",
       "pos": [
-        7,
-        2.5
+        -6,
+        9.4
       ],
       "model": "radio",
       "about": "A battered old radio on a crate, its long antenna pulling in voices from all over the city: stations, late-night talk shows, callers, music.",
@@ -77,14 +78,15 @@
       "boosts": {
         "connection": 3,
         "joy": 2
-      }
+      },
+      "rotation": 0
     },
     {
       "id": "trading",
       "name": "Trading floor",
       "pos": [
-        -6.5,
-        -6
+        -6.8,
+        -6.6
       ],
       "model": "models/trading_floor.glb",
       "about": "A little glass-fronted trading floor: rows of desks covered in glowing chart screens, a big candlestick screen upstairs and a stock ticker running round the building. A sign over the door says PAPER TRADES ONLY. Vega, an old trading bot with an amber screen for a face, runs it.",
@@ -94,14 +96,15 @@
       "boosts": {
         "connection": 6,
         "curiosity": 3
-      }
+      },
+      "rotation": 0
     },
     {
       "id": "board",
       "name": "Bulletin board",
       "pos": [
-        0,
-        9.5
+        -1.2,
+        9.4
       ],
       "model": "models/bulletin_board.glb",
       "about": "A cork bulletin board on two steel posts under a little lit awning, a neon NOTICES sign on top, pinned all over with notes. Now and then the builder pins up a new one.",
@@ -118,8 +121,8 @@
       "id": "telescope",
       "name": "Telescope",
       "pos": [
-        7.5,
-        -5
+        8,
+        -6.5
       ],
       "model": "models/telescope.glb",
       "about": "A white telescope with brass bands on a steel tripod, standing on a little round deck in the corner of the roof and pointed up past the city glow. Beside it: a camp stool by the eyepiece, a crate with a red lamp and a flask on it, a star chart leaning against the crate, and a neon sign on a post that says LOOK UP.",
@@ -129,14 +132,15 @@
       "boosts": {
         "curiosity": 4,
         "calm": 3
-      }
+      },
+      "rotation": -20
     },
     {
       "id": "bench",
       "name": "Bench",
       "pos": [
         -10.5,
-        6
+        6.2
       ],
       "model": "bench",
       "about": "A wooden bench for two under a warm old street lamp, looking out over the city. String lights sag from the lamp to a little potted tree, and an upturned crate beside it holds two mugs, one with a cyan band and one with an amber one.",
@@ -152,8 +156,8 @@
       "id": "art_wall",
       "name": "Art wall",
       "pos": [
-        5.5,
-        9
+        -9.4,
+        1.2
       ],
       "model": "art_wall",
       "about": "A long concrete wall with four frames under little brass picture lights, where the newest things you make get hung: drawings in the frames, poems on cards, tunes written out as sheet music. A pink neon ART sign glows on top, and a paint-spattered table at one end holds pots of neon paint and a jar of brushes.",
@@ -163,7 +167,8 @@
       "boosts": {
         "joy": 4,
         "calm": 3
-      }
+      },
+      "rotation": 55
     }
   ],
   "empty_lots": []

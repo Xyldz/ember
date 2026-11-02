@@ -70,6 +70,9 @@ If a repository has no activity for 60 days GitHub pauses the schedule; just cli
 
 - **Drag** to turn the camera, **right-drag** (two fingers on a phone) to move around the roof, **scroll** (or pinch)
   to zoom towards whatever's under the pointer. **Double-click** anywhere to fly there; double-click Ember or Vega to follow them.
+- Circuit traces run across the roof from the terminal to every place, with a pad under each spot; pulses of light run
+  along them, more of them along the way Ember's heading. They follow `buildings.json`, so they rewire themselves
+  when you move things in builder mode.
 - **Click a place** (or its label) to see who's there and what they're up to: what Ember's reading at the terminal,
   Vega's account at the trading floor, your notes at the board, the art on the art wall. Click Ember or Vega for the
   place they're at. The card stays live while it's open.
