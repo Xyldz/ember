@@ -698,13 +698,13 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x06050f);
 scene.fog = new THREE.FogExp2(0x0b0820, 0.011);
 const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 400);
-camera.position.set(10, 8.5, 13);
+camera.position.set(17, 27, 27);
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(-0.5, 0.8, -1.5);
+controls.target.set(-2, 0.8, -4.5);
 if (innerWidth < innerHeight) { // a phone held upright: a wider lens, from higher up and straight down the roof's length
   camera.fov = 68; // (across the diagonal, its widest, only the middle fits the narrow screen)
-  camera.position.set(1.5, 22, 15.5);
-  controls.target.set(-0.5, 0, -2.5);
+  camera.position.set(2, 44, 31);
+  controls.target.set(0, 0, -3);
 }
 controls.enableDamping = true;
 controls.screenSpacePanning = false; // right-drag slides you across the roof, not up into the sky
@@ -1131,11 +1131,16 @@ setInterval(drawCode, 300);
 function castsShadow(material) { // glass lets the light through, and glowing parts (neon, screens, LEDs) are lights
   return !material.transparent && !(material.emissive?.getHex() && material.emissiveIntensity > 0);
 }
+const roofParts = []; // the houses' roofs: the page hides them while you watch from above, so you can see inside
 function withModel(file, x, z, group) {
   gltfLoader.load(file, (gltf) => {
     gltf.scene.position.set(x, 0, z);
     gltf.scene.traverse((o) => {
       if (!o.isMesh) return;
+      if (o.name.startsWith('Roof')) {
+        roofParts.push(o);
+        o.visible = follow === 'walk';
+      }
       o.castShadow = castsShadow(o.material);
       o.receiveShadow = true;
       if (o.name === 'CodeScreen') o.material = new THREE.MeshBasicMaterial({ map: codeTexture, color: 0x9a9a9a });
@@ -1149,18 +1154,18 @@ const builders = {
   terminal(x, z, group) {
     withModel('models/terminal.glb', x, z, group);
     addLight(x, 2.2, z - 0.6, 0x3ff0ff, group);
-    return { anchor: new THREE.Vector3(x, 3.2, z - 1.75) };
+    return { anchor: new THREE.Vector3(x, 5.3, z - 0.5) };
   },
   pod(x, z, group) {
     const cx = x, cz = z - 1.5;
     withModel('models/pod.glb', x, z, group);
     addLight(cx, 1.2, cz, 0xff3fb4, group, 4);
-    return { anchor: new THREE.Vector3(cx, 2.3, cz), sleep: { x: cx, z: cz, y: 0.35 } };
+    return { anchor: new THREE.Vector3(x, 4.1, z - 0.5), sleep: { x: cx, z: cz, y: 0.35 } };
   },
   art_wall(x, z, group) { // Ember's four newest works hang in the frames (see paintWall)
     withModel('models/art_wall.glb', x, z, group);
     addLight(x, 2.4, z - 0.4, 0xffd9a8, group, 4);
-    return { anchor: new THREE.Vector3(x, 3.95, z - 1.35) };
+    return { anchor: new THREE.Vector3(x, 4.7, z - 0.8) };
   },
   bench(x, z, group) { // a bench for two: Ember floats at the right-hand end, Vega parks at the left; asleep, Ember curls up on it
     withModel('models/bench.glb', x, z, group);
@@ -1188,7 +1193,7 @@ const builders = {
       radioParts.push(ring);
     }
     addLight(x, 1.5, cz + 0.8, 0xffcc4d, group, 3);
-    return { anchor: new THREE.Vector3(x, 2.5, cz) };
+    return { anchor: new THREE.Vector3(x - 0.8, 4.0, cz + 1) };
   },
 };
 const radioParts = []; // antenna lights and signal rings, animated every frame
@@ -1234,11 +1239,11 @@ function modelBuilder(building) {
         o.receiveShadow = true;
         if (o.name.startsWith('LiveTicker')) o.material = tickerMaterial; // real prices scroll across it
       });
-      if (building.autofit !== false) { // resize it to fill a lot, sitting on the roof just behind where Ember stands
-        const size = new THREE.Box3().setFromObject(object).getSize(new THREE.Vector3());
-        object.scale.multiplyScalar(3.2 / Math.max(size.x, size.z, 0.001));
+      if (building.autofit !== false) { // resize it to fill a lot ("size" metres, 3.2 unless set), just behind where Ember stands
+        const fit = building.size ?? 3.2, size = new THREE.Box3().setFromObject(object).getSize(new THREE.Vector3());
+        object.scale.multiplyScalar(fit / Math.max(size.x, size.z, 0.001));
         const fitted = new THREE.Box3().setFromObject(object), centre = fitted.getCenter(new THREE.Vector3());
-        object.position.set(x - centre.x, -fitted.min.y, z - 1.8 - centre.z);
+        object.position.set(x - centre.x, -fitted.min.y, z - fit * 0.56 - centre.z);
       }
       group.add(object);
       info.anchor.y = new THREE.Box3().setFromObject(object).max.y + 0.6;
@@ -1448,7 +1453,7 @@ function buildTraces() {
   if (!hub) return;
   const strips = [], pads = [];
   for (const p of all) {
-    pads.push(new THREE.RingGeometry(0.72, 0.8, 40).rotateX(-Math.PI / 2).translate(p.x, 0.02, p.z));
+    pads.push(new THREE.RingGeometry(0.72, 0.8, 40).rotateX(-Math.PI / 2).translate(p.x, 0.06, p.z)); // above the houses' floors
     if (p === hub) continue;
     const path = tracePath(hub, p);
     traces.push({ id: p.building.id, path });
@@ -1503,6 +1508,7 @@ function buildWorld(s, force = false) {
   if (worldGroup) scene.remove(worldGroup);
   for (const { el } of labels) el.remove();
   labels.length = 0;
+  roofParts.length = 0;
   worldGroup = new THREE.Group();
   scene.add(worldGroup);
   places = {};
@@ -1891,17 +1897,18 @@ let sinceFrame = 0;
 // (the pigeons do hop out of your way).
 // ---------------------------------------------------------------------------
 const walker = new THREE.Object3D(); // where your feet are; the camera is your eyes
-const EYE_HEIGHT = 1.05; // metres: about Ember's height, so the roof's things look their proper size
+const EYE_HEIGHT = 1.6; // metres
 const walkKeys = new Set(), stick = { x: 0, y: 0 }, look = { yaw: 0, pitch: 0, drag: null };
 const WALK_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift']);
 let nearPlace = null, walkHelpUntil = 0, overviewFov = camera.fov, solids = [], solidsAt = -1, unlockedAt = 0;
 const solidBox = new THREE.Box3();
 function startWalk() {
-  walker.position.set(2.5, 0, 8.5); // by the front edge, looking into the roof
+  walker.position.set(1.5, 0, 13); // in the square, looking up the street to the net café
   look.yaw = 0;
   look.pitch = -0.05;
   flight = null;
   controls.enabled = false;
+  for (const roof of roofParts) roof.visible = true;
   overviewFov = camera.fov;
   camera.fov = innerWidth < innerHeight ? 80 : 70; // a phone held upright needs it wider to see much either side
   camera.updateProjectionMatrix();
@@ -1917,6 +1924,7 @@ function stopWalk() {
   if (document.pointerLockElement) document.exitPointerLock();
   controls.target.copy(camera.position).add(new THREE.Vector3(0, 0, -4).applyEuler(camera.rotation)); // so the glide back starts where you're looking
   controls.enabled = true;
+  for (const roof of roofParts) roof.visible = false;
   camera.fov = overviewFov;
   camera.updateProjectionMatrix();
   walkKeys.clear();
@@ -1991,17 +1999,28 @@ function showNames() {
   const all = performance.now() < namesUntil || BUILDING;
   for (const [id, place] of Object.entries(places)) place.label?.classList.toggle('show', all || id === pointedAt || (follow === 'walk' && id === nearPlace));
 }
-function refreshSolids(t) { // what you can't walk through: each building and prop's box (flat things like decks don't count)
+const corner = new THREE.Vector3();
+function refreshSolids(t) { // what you can't walk through: a house's walls and furniture (its Colliders), or else a box round it
   if (t - solidsAt < 1) return;
   solidsAt = t;
   solids = [];
   for (const group of [...Object.values(places).map((place) => place.group), ...Object.values(sceneryParts.props)]) {
-    const box = new THREE.Box3();
+    let walls = null;
+    group.traverse((o) => { if (o.userData.rects) walls = o; });
+    if (walls) {
+      for (const [x0, z0, x1, z1] of JSON.parse(walls.userData.rects)) {
+        const box = new THREE.Box3();
+        for (const [x, z] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) box.expandByPoint(corner.set(x, 0, z).applyMatrix4(walls.matrixWorld));
+        solids.push(box);
+      }
+      continue;
+    }
+    const box = new THREE.Box3(); // flat things like decks don't count
     group.traverse((o) => { if (o.isMesh && solidBox.setFromObject(o).max.y > 0.4) box.union(solidBox); });
     if (!box.isEmpty()) solids.push(box);
   }
 }
-const blocked = (x, z) => solids.some((b) => x > b.min.x - 0.25 && x < b.max.x + 0.25 && z > b.min.z - 0.25 && z < b.max.z + 0.25);
+const blocked = (x, z) => solids.some((b) => x > b.min.x - 0.2 && x < b.max.x + 0.2 && z > b.min.z - 0.2 && z < b.max.z + 0.2);
 const roamPoint = new THREE.Vector3();
 function roamSpot(center, radius, from, t) { // somewhere near center, on the roof and reachable in a straight line, not inside anything
   refreshSolids(t);
@@ -2025,7 +2044,7 @@ function stepWalker(dt, t) {
   let mx = -sin * ahead + cos * across, mz = -cos * ahead - sin * across;
   const length = Math.hypot(mx, mz), amount = Math.min(1, length), walking = amount > 0.05;
   if (walking) {
-    const step = (amount * (held('shift') ? 4.5 : 2.4) * dt) / length;
+    const step = (amount * (held('shift') ? 6 : 3.2) * dt) / length;
     refreshSolids(t);
     const at = walker.position, edge = ROOF - 0.4, stuck = blocked(at.x, at.z); // stuck inside something: let you out
     const x = THREE.MathUtils.clamp(at.x + mx * step, -edge, edge);
@@ -2035,7 +2054,7 @@ function stepWalker(dt, t) {
   }
   camera.position.set(walker.position.x, EYE_HEIGHT + (walking ? Math.sin(t * 9) * 0.03 * amount : 0), walker.position.z);
   camera.rotation.set(look.pitch, look.yaw, 0, 'YXZ');
-  let reach = 2.6; // the nearest place within reach
+  let reach = 3.2; // the nearest place within reach
   nearPlace = null;
   for (const place of Object.values(places)) {
     const d = Math.hypot(place.x - walker.position.x, place.z - walker.position.z);

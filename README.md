@@ -78,6 +78,9 @@ If a repository has no activity for 60 days GitHub pauses the schedule; just cli
   runs, the arrow keys walk and turn, and **E** looks at the place you're next to. On a phone the stick moves, dragging
   looks and tapping a place opens it. Buildings are solid. Ember and Vega don't notice you: you're only looking in.
 - Place names show for a few seconds when the page opens, then only for what you point at (or walk up to).
+- **The village**: the roof is 48 m across, and each place is a little house. From above their roofs are hidden, like a
+  dollhouse, so you can see Ember and Vega inside; walk in and the roofs are back. Your own models fill a lot
+  `"size"` metres across (3.2 unless you set it; Vega's trading floor is 8).
 - **Click a place** (or its label) to see who's there and what they're up to: what Ember's reading at the terminal,
   Vega's account at the trading floor, your notes at the board, the art on the art wall. Click Ember or Vega for the
   place they're at. The card stays live while it's open.
@@ -94,8 +97,10 @@ If a repository has no activity for 60 days GitHub pauses the schedule; just cli
   day, golden sunsets, and the neon taking over at night. Cloudy days are greyer. Add `?hour=13` to the address to see
   another time of day. Builder mode always shows the night, which is what `site/scenery.json` describes.
 - **Made in Blender**: everything on the roof is modelled from code in `blender/`. `rooftop.py` makes the data
-  terminal, charging pod, lookout railing, old radio, the bench where Ember and Vega sit together (to the same measurements as the plain boxes they replaced),
-  the art wall (the page paints Ember's four newest works into its frames: drawings, poems, tunes as sheet music) and
+  rooftop village: the terminal in a little net café, the charging pod in Ember's home, the radio in a studio and the
+  art wall in a gallery (the page paints Ember's four newest works into its frames: drawings, poems, tunes as sheet
+  music), each a small house with a doorway, lit windows and a neon sign, plus the lookout railing, the bench where Ember
+  and Vega sit together, street lamps, planters and
   the roof clutter: air conditioners, a water tank, a dish, vents, crates, pipes and a stairwell, which are props in
   `site/scenery.json` you can move in builder mode. Run `blender -b -P rooftop.py -- --render --export` after changing
   it; it also saves `rooftop.blend`, the whole roof laid out, to open and look around.

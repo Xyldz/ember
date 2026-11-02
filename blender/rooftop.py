@@ -136,6 +136,10 @@ def make_materials():
     M["cushion"] = material("Cushion", (0.22, 0.1, 0.32), roughness=0.95)
     M["gilt"] = material("Gilt frame", (0.55, 0.38, 0.14), metallic=0.9, roughness=0.35)
     M["canvas"] = material("Canvas", (0.78, 0.76, 0.7), roughness=0.9)
+    M["roof"] = material("Roof", (0.05, 0.055, 0.07), metallic=0.3, roughness=0.7)
+    M["render"] = material("Rendered wall", (0.3, 0.29, 0.31), roughness=0.85)
+    M["tiles"] = material("Floor tiles", (0.12, 0.13, 0.16), metallic=0.2, roughness=0.4)
+    M["lit"] = material("Lit window", (1, 0.72, 0.42), emission=(1, 0.66, 0.36), strength=1.4)
     M["code"] = material("Code screen", (0.02, 0.05, 0.05), emission=(0.1, 0.6, 0.5), strength=0.6)
     M["graph"] = material("Graph screen", image=make_image("Graph", graph()), glow_image=True)
     M["lines"] = material("Side screen", image=make_image("Lines", code_lines()), glow_image=True)
@@ -472,6 +476,28 @@ def roof_vents():
     box("Vent glow", (0.6, 0.02, 0.03), (0.15, -0.87, 0.47), M["violet"])
 
 
+def roof_lamp():
+    """A street lamp for the village: a slim post with a curved arm and a glowing head over the walkway."""
+    cylinder("Lamp foot", 0.16, 0.14, (0, 0, 0.07), (0, 0, 1), M["dark"], segments=14)
+    rod("Lamp post", 0.055, (0, 0, 0), (0, 0, 3.4), M["dark"])
+    cable("Lamp arm", [(0, 0, 3.3), (0.12, 0, 3.6), (0.45, 0, 3.7), (0.75, 0, 3.6)], 0.035, M["dark"])
+    cylinder("Lamp hood", 0.22, 0.14, (0.78, 0, 3.52), (0, 0, 1), M["dark"], segments=16, tip=0.07)
+    cylinder("Lamp glow", 0.17, 0.04, (0.78, 0, 3.44), (0, 0, 1), M["amber"], segments=16)
+    box("Post band", (0.13, 0.13, 0.05), (0, 0, 1.2), M["cyan"])
+
+
+def roof_planter():
+    """A big concrete planter with a little tree and a bench edge to sit on, for the square."""
+    box("Planter", (2.2, 2.2, 0.55), (0, 0, 0.275), M["concrete"], bevel=0.04)
+    box("Soil", (1.9, 1.9, 0.04), (0, 0, 0.55), M["rust"])
+    box("Planter rim", (2.3, 2.3, 0.06), (0, 0, 0.58), M["wood"], bevel=0.01)
+    rod("Trunk", 0.09, (0, 0, 0.5), (0.1, 0.05, 2.1), M["rust"])
+    for offset, r in (((0.1, 0.05, 2.5), 0.85), ((0.55, 0.2, 2.2), 0.55), ((-0.45, -0.1, 2.25), 0.6), ((0.05, -0.4, 2.85), 0.55)):
+        sphere("Leaves", r, offset, M["leaves"], segments=14, rings=10)
+    for x in (-1.12, 1.12):
+        box("Planter glow", (0.03, 1.8, 0.03), (x, 0, 0.45), M["green"])
+
+
 def roof_crates():
     box("Crate", (1.0, 1.0, 0.8), (0, 0, 0.4), M["wood"], bevel=0.02)
     box("Crate", (0.9, 0.9, 0.7), (0.15, 0.05, 1.15), M["wood"], rotation=(0, 0, 0.3), bevel=0.02)
@@ -609,8 +635,73 @@ def art_wall():
         cylinder("Splash", r, 0.004, (x, y, 0.003), (0, 0, 1), M[colour], segments=16)
 
 
-BUILDINGS = {"terminal": terminal, "pod": pod, "railing": railing, "radio": radio, "bench": bench, "art_wall": art_wall}
-PROPS = {"roof_ac": roof_ac, "roof_tank": roof_tank, "roof_dish": roof_dish, "roof_vents": roof_vents,
+def house(x0, x1, back, front, height, wall, floor, trim, sign, core, door=2.2):
+    """A little building around this piece, for the rooftop village: a floor, walls on three sides, a front with a doorway
+    and two windows, a neon sign over the door and a roof. Ember stands inside, just in from the door (the origin).
+    The page hides everything called Roof... while you watch from above, so you can see in, and reads Colliders (the
+    walls and the core, the furniture, as [x0, y0, x1, y1]) so you can't walk through them."""
+    t = 0.2
+    middle, deep = (x0 + x1) / 2, (front + back) / 2
+    box("Floor", (x1 - x0, back - front, 0.04), (middle, deep, 0.02), floor)
+    box("Back wall", (x1 - x0 + t, t, height), (middle, back, height / 2), wall)
+    for x in (x0, x1):
+        box("Side wall", (t, back - front, height), (x, deep, height / 2), wall)
+    walls = [(x0, back - t / 2, x1, back + t / 2), (x0 - t / 2, front, x0 + t / 2, back), (x1 - t / 2, front, x1 + t / 2, back)]
+    for a, b in ((x0, -door / 2), (door / 2, x1)):  # the front either side of the door: a sill, a window, wall above
+        mid, w = (a + b) / 2, b - a
+        box("Front wall", (w, t, 0.9), (mid, front, 0.45), wall)
+        box("Window", (w, 0.04, 1.4), (mid, front, 1.6), M["glass"])
+        box("Front wall", (w, t, height - 2.3), (mid, front, (2.3 + height) / 2), wall)
+        walls.append((a, front - t / 2, b, front + t / 2))
+    box("Over the door", (door, t, height - 2.5), (0, front, (2.5 + height) / 2), wall)
+    outside = front - t / 2 - 0.035
+    box("Trim", (x1 - x0 + t, 0.05, 0.05), (middle, outside, height - 0.12), M[trim])  # neon along the top of the front
+    for x in (-door / 2, door / 2):
+        box("Door trim", (0.05, 0.05, 2.5), (x, outside, 1.25), M[trim])
+    text("Sign", sign, min(0.42, (height - 2.5) * 0.55), (0, outside - 0.01, (2.5 + height) / 2), M[trim], extrude=0)
+    box("Awning", (door + 0.8, 0.9, 0.06), (0, front - 0.55, 2.75), M["roof"])  # a little roof over the door
+    box("Awning edge", (door + 0.8, 0.04, 0.04), (0, front - 1.0, 2.73), M[trim])
+    for x in (x0 - 0.12, x1 + 0.12):  # warm lit windows down each side, and two at the back: the houses glow at night
+        for y in np.linspace(front + 1.2, back - 1.0, max(1, round((back - front) / 2.6))):
+            box("Side window", (0.03, 1.0, 1.1), (x, y, 1.75), M["lit"])
+    for x in (x0 + (x1 - x0) * 0.27, x1 - (x1 - x0) * 0.27):
+        box("Back window", (1.0, 0.03, 1.1), (x, back + 0.12, 1.75), M["lit"])
+    box("Roof", (x1 - x0 + 0.6, back - front + 0.6, 0.18), (middle, deep, height + 0.09), M["roof"])
+    for y in (front - 0.3, back + 0.3):
+        box("Roof edge", (x1 - x0 + 0.6, 0.05, 0.05), (middle, y, height + 0.2), M[trim])
+    holder = bpy.data.objects.new("Colliders", None)
+    collection(piece).objects.link(holder)
+    holder["rects"] = json.dumps([[round(a, 2), round(-d, 2), round(c, 2), round(-b, 2)] for a, b, c, d in walls + [core]])
+
+
+def net_cafe():
+    """The data terminal, in a little net café: blue-black panels, cyan neon, a NET CAFE sign."""
+    terminal()
+    house(-3.3, 3.6, 3.6, -2.6, 4.6, M["panel"], M["tiles"], "cyan", "NET CAFE", (-2.1, 0.7, 2.4, 3.0))
+
+
+def capsule_home():
+    """The charging pod, in a little home: pink neon and a HOME sign. Ember sleeps in here."""
+    pod()
+    house(-2.8, 3.0, 3.9, -2.4, 3.4, M["render"], M["wood"], "pink", "HOME", (-1.6, 0.0, 1.9, 3.1))
+
+
+def radio_studio():
+    """The old radio, in a little studio: amber neon and an ON AIR sign. The antenna pokes out through the roof."""
+    radio()
+    house(-2.8, 2.6, 3.0, -2.4, 3.2, M["paint"], M["wood"], "amber", "ON AIR", (-1.8, 0.75, 1.65, 2.05))
+
+
+def gallery():
+    """The art wall, as the back of a little gallery: white walls, violet neon, a GALLERY sign."""
+    art_wall()
+    house(-3.4, 4.3, 1.75, -3.4, 4.0, M["white"], M["concrete"], "violet", "GALLERY", (2.4, 0.5, 3.4, 1.2))
+
+
+BUILDINGS = {"terminal": net_cafe, "pod": capsule_home, "railing": railing, "radio": radio_studio, "bench": bench,
+             "art_wall": gallery}
+PROPS = {"roof_ac": roof_ac, "roof_tank": roof_tank, "roof_dish": roof_dish, "roof_vents": roof_vents, "roof_lamp": roof_lamp,
+         "roof_planter": roof_planter,
          "roof_crates": roof_crates, "roof_pipes": roof_pipes, "roof_stairs": roof_stairs}
 PIECES = {**BUILDINGS, **PROPS}
 
@@ -703,11 +794,11 @@ def use_gpu():
 
 
 def join_by_material(name):
-    """One mesh per material (fewer draw calls on the page). CodeScreen and the Canvas_ frames keep their names: the
-    page looks for them."""
+    """One mesh per material (fewer draw calls on the page). CodeScreen, the Canvas_ frames and the Roof parts keep their
+    names: the page looks for them."""
     groups = {}
     for obj in collection(name).objects:
-        if obj.type == "MESH" and obj.name != "CodeScreen" and not obj.name.startswith("Canvas"):
+        if obj.type == "MESH" and obj.name != "CodeScreen" and not obj.name.startswith(("Canvas", "Roof")):
             groups.setdefault(obj.active_material.name, []).append(obj)
     for objs in groups.values():
         if len(objs) > 1:
@@ -721,7 +812,7 @@ def export(name, path):
         obj.select_set(obj.users_collection[0].name == name)
     path.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.export_scene.gltf(filepath=str(path), export_format="GLB", use_selection=True, export_apply=True,
-                              export_lights=False, export_cameras=False, export_yup=True,
+                              export_lights=False, export_cameras=False, export_yup=True, export_extras=True,
                               export_draco_mesh_compression_enable=True)
 
 

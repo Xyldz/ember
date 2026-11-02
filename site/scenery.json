@@ -7,7 +7,7 @@
     "sky: background, fog, light, glow (bloom) and exposure (overall brightness)."
   ],
   "roof": {
-    "size": 24,
+    "size": 48,
     "color": "#1a1d2e",
     "grid": true,
     "grid_color": "#3ff0ff",
@@ -58,11 +58,11 @@
       "id": "skyline",
       "text": "EMBER",
       "color": "#3ff0ff",
-      "size": 8,
+      "size": 14,
       "pos": [
-        -1,
-        6.8,
-        -15.5
+        -2,
+        12,
+        -32
       ]
     }
   ],
@@ -73,9 +73,9 @@
       "model": "models/roof_ac.glb",
       "autofit": false,
       "pos": [
-        10.6,
+        22.6,
         0,
-        -0.5
+        -3
       ],
       "rotation": 90,
       "scale": 1
@@ -86,9 +86,9 @@
       "model": "models/roof_ac.glb",
       "autofit": false,
       "pos": [
-        10.6,
+        22.6,
         0,
-        4.8
+        1
       ],
       "rotation": 90,
       "scale": 1
@@ -99,9 +99,9 @@
       "model": "models/roof_tank.glb",
       "autofit": false,
       "pos": [
-        -10.4,
+        -21.6,
         0,
-        -3.9
+        -14
       ],
       "rotation": 0,
       "scale": 1
@@ -112,9 +112,9 @@
       "model": "models/roof_dish.glb",
       "autofit": false,
       "pos": [
-        10.4,
+        21.5,
         0,
-        -10.4
+        -21.5
       ],
       "rotation": -135,
       "scale": 1
@@ -125,9 +125,9 @@
       "model": "models/roof_vents.glb",
       "autofit": false,
       "pos": [
-        -10.2,
+        -21,
         0,
-        9.8
+        21
       ],
       "rotation": 20,
       "scale": 1
@@ -138,9 +138,9 @@
       "model": "models/roof_crates.glb",
       "autofit": false,
       "pos": [
-        9.8,
+        21,
         0,
-        9.6
+        21
       ],
       "rotation": -20,
       "scale": 1
@@ -151,9 +151,9 @@
       "model": "models/roof_pipes.glb",
       "autofit": false,
       "pos": [
-        11.3,
+        22.8,
         0,
-        -3.2
+        10
       ],
       "rotation": 0,
       "scale": 1
@@ -164,11 +164,115 @@
       "model": "models/roof_stairs.glb",
       "autofit": false,
       "pos": [
-        -10.4,
+        -21.5,
         0,
-        -10.2
+        -21.5
       ],
       "rotation": 45,
+      "scale": 1
+    },
+    {
+      "id": "lamp_1",
+      "name": "Street lamp",
+      "model": "models/roof_lamp.glb",
+      "autofit": false,
+      "pos": [
+        -6.5,
+        0,
+        0
+      ],
+      "rotation": 0,
+      "scale": 1
+    },
+    {
+      "id": "lamp_2",
+      "name": "Street lamp",
+      "model": "models/roof_lamp.glb",
+      "autofit": false,
+      "pos": [
+        6.5,
+        0,
+        0
+      ],
+      "rotation": 180,
+      "scale": 1
+    },
+    {
+      "id": "lamp_3",
+      "name": "Street lamp",
+      "model": "models/roof_lamp.glb",
+      "autofit": false,
+      "pos": [
+        -6.5,
+        0,
+        11.5
+      ],
+      "rotation": 0,
+      "scale": 1
+    },
+    {
+      "id": "lamp_4",
+      "name": "Street lamp",
+      "model": "models/roof_lamp.glb",
+      "autofit": false,
+      "pos": [
+        6.5,
+        0,
+        11.5
+      ],
+      "rotation": 180,
+      "scale": 1
+    },
+    {
+      "id": "lamp_5",
+      "name": "Street lamp",
+      "model": "models/roof_lamp.glb",
+      "autofit": false,
+      "pos": [
+        -6,
+        0,
+        -9.5
+      ],
+      "rotation": 0,
+      "scale": 1
+    },
+    {
+      "id": "lamp_6",
+      "name": "Street lamp",
+      "model": "models/roof_lamp.glb",
+      "autofit": false,
+      "pos": [
+        6,
+        0,
+        -9.5
+      ],
+      "rotation": 180,
+      "scale": 1
+    },
+    {
+      "id": "planter_1",
+      "name": "Planter",
+      "model": "models/roof_planter.glb",
+      "autofit": false,
+      "pos": [
+        3.4,
+        0,
+        6.5
+      ],
+      "rotation": 0,
+      "scale": 1
+    },
+    {
+      "id": "planter_2",
+      "name": "Planter",
+      "model": "models/roof_planter.glb",
+      "autofit": false,
+      "pos": [
+        -7.5,
+        0,
+        14
+      ],
+      "rotation": 0,
       "scale": 1
     }
   ]

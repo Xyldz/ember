@@ -64,6 +64,10 @@ ACTION_WORDS = {"search": "search the internet", "rest": "recharge faster", "rad
                 "board": "read any notes the builder pins up for you",
                 "telescope": "see the real night sky up close, fainter planets too",
                 "art": "look over the newest things you've made, hung up on the wall"}
+# News of a big change to the world, told once (Ember and Vega notice it on their next thought)
+WORLD_NEWS = ("Overnight the roof grew to four times its size and became a little village: the terminal is in a net café "
+              "now, the charging pod in a home of your own, the radio in a studio and your art in a gallery, around a "
+              "square with the bulletin board in the middle. Vega's trading floor is full-sized at last.")
 MAX_RADIO_PER_DAY = 30  # after that, only static (each broadcast is a small Haiku call)
 PRACTICE_XP = 10  # doubled if Ember looked something up about it first
 RESEARCH_XP = 5
@@ -126,6 +130,7 @@ def new_state() -> dict:
         "costs": {"month": "", "usd": 0.0, "total_usd": 0.0},
         "tick_started_at": 0, "next_think_at": 0,
         "desk": [],  # notes the builder leaves Ember (GitHub issues, see tick_once.py)
+        "news_seen": "",  # the last WORLD_NEWS Ember was told
         "friend": friend.new_friend(),  # Vega, who runs the trading floor (see friend.py)
         "market": {"prices": {}, "checked": 0, "history": {}},  # the real prices on Vega's screens
     }
@@ -1115,6 +1120,10 @@ def tick(brain, next_think_in_seconds: float, wake_now: bool = False, dream_now:
         if state["costs"]["month"] != t.strftime("%Y-%m"):
             state["costs"].update(month=t.strftime("%Y-%m"), usd=0.0)
         notice_new_buildings()
+        if state["news_seen"] != WORLD_NEWS:
+            state["news_seen"] = WORLD_NEWS
+            log_event(WORLD_NEWS, "event")
+            friend.log_own(WORLD_NEWS.replace("your own", "Ember's own").replace("your art", "Ember's art"), "note")
         check_weather()
         plan_city(brain)
         friend.tick(brain)  # before Ember thinks, so it hears anything Vega calls out
