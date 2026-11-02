@@ -92,7 +92,9 @@
   .walk-hint { position: absolute; left: 50%; bottom: 82px; z-index: 5; padding: 8px 16px; border: 1px solid color-mix(in srgb, var(--ember) 40%, transparent);
     border-radius: var(--pill); color: var(--ink); font: inherit; font-size: 13px; white-space: nowrap; transform: translateX(-50%);
     pointer-events: auto; cursor: pointer; transition: left .35s; }
-  .walk-hint[hidden], .stick[hidden] { display: none; }
+  .walk-hint[hidden], .stick[hidden], .crosshair[hidden] { display: none; }
+  .crosshair { position: absolute; left: 50%; top: 50%; z-index: 4; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%;
+    background: rgba(255, 255, 255, .85); box-shadow: 0 0 8px var(--ember); pointer-events: none; transition: left .35s; }
   .stick { position: absolute; left: 22px; bottom: 132px; z-index: 5; width: 112px; height: 112px; border: 1px solid var(--line);
     border-radius: 50%; background: var(--glass); pointer-events: auto; touch-action: none; }
   .stick i { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%;
@@ -219,7 +221,7 @@
     scrollbar-width: thin; scrollbar-color: var(--line) transparent; transform: translateX(calc(100% + 24px)); visibility: hidden;
     transition: transform .35s cubic-bezier(.2, .8, .2, 1), visibility 0s .35s; }
   .drawer-open #panel { transform: none; visibility: visible; transition: transform .35s cubic-bezier(.2, .8, .2, 1); }
-  .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card, .drawer-open .walk-hint { left: calc(50% - 218px); }
+  .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card, .drawer-open .walk-hint, .drawer-open .crosshair { left: calc(50% - 218px); }
   #panel > * { flex-shrink: 0; }
   .drawer-top { display: flex; align-items: center; gap: 8px; padding: 14px 16px 4px; }
   .switch { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: var(--pill); background: var(--card); }
@@ -495,13 +497,13 @@
   @media (max-height: 500px) { /* on its side: the drawer stays on the right, full height */
     .act { -webkit-line-clamp: 1; }
     #panel { top: 8px; right: calc(8px + env(safe-area-inset-right)); bottom: 8px; }
-    .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card, .drawer-open .walk-hint { left: calc(50% - 214px); }
+    .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card, .drawer-open .walk-hint, .drawer-open .crosshair { left: calc(50% - 214px); }
   }
   /* ---------- Upright phones: the cards side by side, the story slides up from the bottom ---------- */
   @media (max-width: 760px) {
     .hud { left: 8px; right: 8px; width: auto; flex-direction: row; }
     .who-card { flex: 1 1 0; min-width: 0; }
-    .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card, .drawer-open .walk-hint { left: 50%; }
+    .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card, .drawer-open .walk-hint, .drawer-open .crosshair { left: 50%; }
     #panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: min(80vh, 760px); border-bottom: 0;
       border-radius: var(--radius) var(--radius) 0 0; transform: translateY(105%); padding-bottom: env(safe-area-inset-bottom); }
     #panel::before { content: ""; display: block; width: 38px; height: 4px; margin: 8px auto 0; border-radius: 2px; background: var(--line); }
@@ -546,7 +548,7 @@
         <button data-follow="free" title="Drag to turn · right-drag to move · scroll to zoom · double-click to fly there">🎥<span class="lbl"> Free</span></button>
         <button data-follow="ember" title="The camera follows Ember around the roof">✦<span class="lbl"> Ember</span></button>
         <button data-follow="vega" id="cam-vega" title="The camera follows Vega around the roof" hidden>🤖<span class="lbl"> Vega</span></button>
-        <button data-follow="walk" title="Walk around the roof yourself: W A S D or the arrow keys, drag to look, E to look at a place">🚶<span class="lbl"> Walk</span></button>
+        <button data-follow="walk" title="Walk the roof in first person: click to look around, W A S D to walk, E to look at a place">🚶<span class="lbl"> Walk</span></button>
         <i class="sep"></i>
         <button id="cam-reset" title="Back to the view of the whole roof">⟲</button>
         <button id="cam-sky" title="The sky follows the real sun over London. Click for night all the time">☀</button>
@@ -558,6 +560,7 @@
       </div>
       <button id="walk-hint" class="walk-hint glass" hidden></button>
       <div id="stick" class="stick" aria-hidden="true" hidden><i></i></div>
+      <div id="crosshair" class="crosshair" hidden></div>
       <div id="place-card" class="place-card glass" role="dialog" aria-labelledby="place-name" hidden>
         <div class="place-top"><h2 id="place-name"></h2><button id="place-close" class="close" title="Close">✕</button></div>
         <div id="place-body"></div>
@@ -1715,9 +1718,7 @@ function setFollow(mode) {
   if (mode === 'walk' && !wasWalking) startWalk();
   if (mode !== 'walk' && wasWalking) stopWalk();
 }
-function followed() {
-  return follow === 'ember' ? avatar.position : follow === 'vega' && vega ? vega.root.position : follow === 'walk' ? walker.position : null;
-}
+function followed() { return follow === 'ember' ? avatar.position : follow === 'vega' && vega ? vega.root.position : null; }
 function flyTo(target, cameraAt) { // glide there; the camera keeps its angle unless told where to end up
   const offset = camera.position.clone().sub(controls.target);
   if (offset.length() > 11) offset.setLength(11);
@@ -1740,6 +1741,10 @@ renderer.domElement.addEventListener('pointerdown', (event) => { pressedAt = { x
 renderer.domElement.addEventListener('pointerup', (event) => {
   if (BUILDING || !pressedAt || !latest || performance.now() - pressedAt.t > 500
       || Math.hypot(event.clientX - pressedAt.x, event.clientY - pressedAt.y) > 6) return;
+  if (follow === 'walk' && !matchMedia('(pointer: coarse)').matches) {
+    if (!document.pointerLockElement) renderer.domElement.requestPointerLock()?.catch?.(() => {}); // refused (e.g. in a frame): drag instead
+    return;
+  }
   const hit = hitAt(event);
   if (!hit) return;
   if (inside(hit.object, avatar)) return showPlace(latest.location);
@@ -1759,6 +1764,7 @@ renderer.domElement.addEventListener('pointerdown', (event) => { // grabbing the
   if (follow !== 'walk' && (event.button === 2 || event.shiftKey || event.ctrlKey || event.metaKey)) setFollow('free'); // you're moving it yourself
 });
 function steerCamera(dt) {
+  if (follow === 'walk') return; // walking moves the camera itself
   if (flight) {
     const k = Math.min(1, (performance.now() - flight.start) / 900), ease = k * k * (3 - 2 * k);
     controls.target.lerpVectors(...flight.target, ease);
@@ -1866,49 +1872,61 @@ resize();
 const timer = new THREE.Clock();
 let sinceFrame = 0;
 // ---------------------------------------------------------------------------
-// Walk mode: you, as a little visitor on the roof. W A S D or the arrow keys (the stick on a phone) walk, Shift runs,
-// dragging looks around, and E (or the button that pops up) looks at the place you're next to. Ember and Vega turn to
-// you when you're close and the pigeons get out of your way, but that's all this page: Ember itself can't know you came.
+// Walk mode: the roof in first person. Click to look around with the mouse (Esc lets go of it) or drag; W A S D walk,
+// Shift runs, the arrow keys walk and turn, and E (or the button that pops up) looks at the place you're next to. On a
+// phone the stick walks and dragging looks. Buildings and roof clutter are solid. Ember and Vega turn to you when you're
+// close and the pigeons get out of your way, but that's all this page: Ember itself can't know you came.
 // ---------------------------------------------------------------------------
-const walker = new THREE.Group(), walkerLegs = [];
-{
-  const jacket = mat(0x56608c, { roughness: 0.7 }), dark = mat(0x1d2136);
-  put(new THREE.CapsuleGeometry(0.21, 0.42, 4, 12), jacket, 0, 0.72, 0, walker);
-  put(new THREE.TorusGeometry(0.215, 0.025, 8, 32).rotateX(Math.PI / 2), neon(0x3ff0ff, 2), 0, 0.86, 0, walker).castShadow = false; // a glowing band, seen from any side
-  put(new THREE.SphereGeometry(0.19, 16, 12), dark, 0, 1.2, 0, walker);
-  put(new THREE.BoxGeometry(0.26, 0.06, 0.06), neon(0xff3fb4, 2.4), 0, 1.22, 0.16, walker).castShadow = false; // a glowing visor
-  for (const side of [-1, 1]) {
-    const leg = new THREE.Group();
-    leg.position.set(side * 0.09, 0.42, 0);
-    put(new THREE.CapsuleGeometry(0.07, 0.26, 4, 8), dark, 0, -0.2, 0, leg);
-    walker.add(leg);
-    walkerLegs.push(leg);
-  }
-  const ring = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.4, 32).rotateX(-Math.PI / 2), neon(0xff3fb4, 1.5));
-  ring.position.y = 0.02;
-  walker.add(ring);
-}
-walker.visible = false;
-scene.add(walker);
-const walkKeys = new Set(), stick = { x: 0, y: 0 }, walkForward = new THREE.Vector3(), walkMove = new THREE.Vector3();
+const walker = new THREE.Object3D(); // where your feet are; the camera is your eyes
+const EYE_HEIGHT = 1.6; // metres
+const walkKeys = new Set(), stick = { x: 0, y: 0 }, look = { yaw: 0, pitch: 0, drag: null };
 const WALK_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift']);
-let nearPlace = null, walkHelpUntil = 0;
+let nearPlace = null, walkHelpUntil = 0, overviewFov = camera.fov, solids = [], solidsAt = -1, unlockedAt = 0;
+const solidBox = new THREE.Box3();
 function startWalk() {
-  walker.visible = true;
-  walker.position.set(2.5, 0, 8); // by the front edge, looking into the roof
-  walker.rotation.y = Math.PI;
-  controls.enablePan = false;
-  walkHelpUntil = performance.now() + 7000;
-  $('stick').hidden = !matchMedia('(pointer: coarse)').matches;
-  flyTo(new THREE.Vector3(2.5, 1, 8), new THREE.Vector3(2.5, 4.4, 14.8));
+  walker.position.set(2.5, 0, 8.5); // by the front edge, looking into the roof
+  look.yaw = 0;
+  look.pitch = -0.08;
+  flight = null;
+  controls.enabled = false;
+  overviewFov = camera.fov;
+  camera.fov = innerWidth < innerHeight ? 80 : 70; // a phone held upright needs it wider to see much either side
+  camera.updateProjectionMatrix();
+  solidsAt = -1;
+  walkHelpUntil = performance.now() + 9000;
+  const touch = matchMedia('(pointer: coarse)').matches;
+  $('stick').hidden = !touch;
+  $('crosshair').hidden = touch;
 }
 function stopWalk() {
-  walker.visible = false;
-  controls.enablePan = true;
+  if (document.pointerLockElement) document.exitPointerLock();
+  controls.target.copy(camera.position).add(new THREE.Vector3(0, 0, -4).applyEuler(camera.rotation)); // so the glide back starts where you're looking
+  controls.enabled = true;
+  camera.fov = overviewFov;
+  camera.updateProjectionMatrix();
   walkKeys.clear();
   nearPlace = null;
-  $('walk-hint').hidden = $('stick').hidden = true;
+  $('walk-hint').hidden = $('stick').hidden = $('crosshair').hidden = true;
+  flyTo(HOME_VIEW.target, HOME_VIEW.camera); // back up to the whole roof
 }
+function turnView(dx, dy, speed) {
+  look.yaw -= dx * speed;
+  look.pitch = THREE.MathUtils.clamp(look.pitch - dy * speed, -1.2, 1.2);
+}
+renderer.domElement.addEventListener('pointerdown', (event) => {
+  if (follow === 'walk' && !document.pointerLockElement) look.drag = { id: event.pointerId, x: event.clientX, y: event.clientY };
+});
+addEventListener('pointermove', (event) => {
+  if (follow !== 'walk') return;
+  if (document.pointerLockElement === renderer.domElement) turnView(event.movementX, event.movementY, 0.0024);
+  else if (look.drag?.id === event.pointerId) {
+    turnView(look.drag.x - event.clientX, look.drag.y - event.clientY, 0.005); // dragging grabs the world, like Street View
+    look.drag.x = event.clientX;
+    look.drag.y = event.clientY;
+  }
+});
+addEventListener('pointerup', (event) => { if (look.drag?.id === event.pointerId) look.drag = null; });
+document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement) unlockedAt = performance.now(); });
 addEventListener('keydown', (event) => {
   if (follow !== 'walk' || event.target.closest?.('input, textarea, select')) return;
   const key = event.key.toLowerCase();
@@ -1938,24 +1956,38 @@ $('walk-hint').addEventListener('click', () => { if (nearPlace) showPlace(nearPl
   pad.addEventListener('pointerup', end);
   pad.addEventListener('pointercancel', end);
 }
+function refreshSolids(t) { // what you can't walk through: each building and prop's box (flat things like decks don't count)
+  if (t - solidsAt < 1) return;
+  solidsAt = t;
+  solids = [];
+  for (const group of [...Object.values(places).map((place) => place.group), ...Object.values(sceneryParts.props)]) {
+    const box = new THREE.Box3();
+    group.traverse((o) => { if (o.isMesh && solidBox.setFromObject(o).max.y > 0.4) box.union(solidBox); });
+    if (!box.isEmpty()) solids.push(box);
+  }
+}
+const blocked = (x, z) => solids.some((b) => x > b.min.x - 0.3 && x < b.max.x + 0.3 && z > b.min.z - 0.3 && z < b.max.z + 0.3);
 function stepWalker(dt, t) {
   if (follow !== 'walk') return;
   const held = (...keys) => keys.some((key) => walkKeys.has(key));
+  look.yaw += ((held('arrowleft') ? 1 : 0) - (held('arrowright') ? 1 : 0)) * 2.2 * dt;
   const ahead = (held('w', 'arrowup') ? 1 : 0) - (held('s', 'arrowdown') ? 1 : 0) + stick.y;
-  const across = (held('d', 'arrowright') ? 1 : 0) - (held('a', 'arrowleft') ? 1 : 0) + stick.x;
-  walkForward.subVectors(controls.target, camera.position).setY(0).normalize(); // forward is the way the camera looks
-  walkMove.set(walkForward.x * ahead - walkForward.z * across, 0, walkForward.z * ahead + walkForward.x * across);
-  const amount = Math.min(1, walkMove.length()), walking = amount > 0.05;
+  const across = (held('d') ? 1 : 0) - (held('a') ? 1 : 0) + stick.x;
+  const sin = Math.sin(look.yaw), cos = Math.cos(look.yaw); // facing -z when yaw is 0
+  let mx = -sin * ahead + cos * across, mz = -cos * ahead - sin * across;
+  const length = Math.hypot(mx, mz), amount = Math.min(1, length), walking = amount > 0.05;
   if (walking) {
-    walkMove.setLength(amount * (held('shift') ? 5.5 : 3.2) * dt);
-    const edge = ROOF - 0.4;
-    walker.position.x = THREE.MathUtils.clamp(walker.position.x + walkMove.x, -edge, edge);
-    walker.position.z = THREE.MathUtils.clamp(walker.position.z + walkMove.z, -edge, edge);
-    const turn = Math.atan2(walkMove.x, walkMove.z) - walker.rotation.y;
-    walker.rotation.y += Math.atan2(Math.sin(turn), Math.cos(turn)) * Math.min(1, dt * 10);
+    const step = (amount * (held('shift') ? 5.5 : 3) * dt) / length;
+    mx *= step;
+    mz *= step;
+    refreshSolids(t);
+    const at = walker.position, edge = ROOF - 0.4, stuck = blocked(at.x, at.z); // stuck inside something: let you out
+    const x = THREE.MathUtils.clamp(at.x + mx, -edge, edge), z = THREE.MathUtils.clamp(at.z + mz, -edge, edge);
+    if (stuck || !blocked(x, at.z)) at.x = x; // one way at a time, so you slide along walls
+    if (stuck || !blocked(at.x, z)) at.z = z;
   }
-  walkerLegs.forEach((leg, i) => { leg.rotation.x = walking ? Math.sin(t * 11 + i * Math.PI) * 0.6 * amount : leg.rotation.x * 0.8; });
-  walker.position.y = walking ? Math.abs(Math.sin(t * 11)) * 0.04 : 0;
+  camera.position.set(walker.position.x, EYE_HEIGHT + (walking ? Math.sin(t * 9) * 0.035 * amount : 0), walker.position.z);
+  camera.rotation.set(look.pitch, look.yaw, 0, 'YXZ');
   let reach = 2.6; // the nearest place within reach
   nearPlace = null;
   for (const place of Object.values(places)) {
@@ -1964,8 +1996,8 @@ function stepWalker(dt, t) {
   }
   const hint = $('walk-hint'), touch = !$('stick').hidden, cardOpen = !$('place-card').hidden;
   const text = nearPlace && !cardOpen ? `Look at the ${places[nearPlace].building.name.toLowerCase()}${touch ? '' : ' · E'}`
-    : performance.now() < walkHelpUntil ? (touch ? 'Use the stick to walk · drag to look around'
-      : 'W A S D to walk, Shift to run · drag to look · E to look at a place') : '';
+    : performance.now() < walkHelpUntil ? (touch ? 'The stick walks · drag to look around'
+      : 'Click to look around with the mouse · W A S D to walk, Shift to run · E to look at a place') : '';
   if (hint.textContent !== text) hint.textContent = text;
   hint.hidden = !text;
 }
@@ -2067,7 +2099,7 @@ function animate() {
   movePigeons(t, dt);
 
   steerCamera(dt);
-  controls.update();
+  if (follow !== 'walk') controls.update();
   shadowFrame = (shadowFrame + 1) % 3;
   renderer.shadowMap.needsUpdate = !IS_PHONE || shadowFrame === 0; // on a phone, shadows every third frame save a lot of work
   if (worldEl.clientWidth && worldEl.clientHeight) composer.render();
@@ -3337,7 +3369,7 @@ addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   if (!$('place-card').hidden) $('place-card').hidden = true;
   else if (!$('note-box').hidden) $('note-box').hidden = true;
-  else if (follow === 'walk') setFollow('free');
+  else if (follow === 'walk') { if (!document.pointerLockElement && performance.now() - unlockedAt > 400) setFollow('free'); }
   else setDrawer(false);
 });
 $('cam-drawer').classList.toggle('on', document.documentElement.classList.contains('drawer-open'));
