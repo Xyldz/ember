@@ -240,6 +240,9 @@
   .wish.granted .tag, .wish.goal .tag { color: var(--ember); }
   .wish.goal.done .tag { color: var(--good); }
   .wish.goal.dropped .tag { color: var(--muted); }
+  #note-pick { width: 100%; margin: 4px 0 2px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--vega) 6%, transparent); color: var(--ink); font: inherit; font-size: 12.5px; cursor: pointer; }
+  #note-pick option { background: var(--bg); color: var(--ink); }
   .pinned { margin: 6px 0 12px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--vega) 30%, transparent); border-radius: var(--radius-sm);
     background: color-mix(in srgb, var(--vega) 6%, transparent); font-size: 12.5px; line-height: 1.5; }
   .pinned > q { display: block; margin-bottom: 6px; color: var(--ink); font-style: italic; }
@@ -550,7 +553,7 @@
       </div>
     </header>
     <div id="ember-glance" class="glance">
-      <div id="sec-notes" class="section" hidden><h2>Your notes</h2><div id="notes"></div></div>
+      <div id="sec-notes" class="section" hidden><h2>Your notes</h2><select id="note-pick" aria-label="Pick one of your notes" hidden></select><div id="notes"></div></div>
       <div id="sec-skills" class="section" hidden><h2>Interests</h2><div id="skills"></div></div>
       <div id="sec-goals" class="section" hidden><h2>Goals</h2><div id="goals"></div></div>
       <div id="sec-wondering" class="section" hidden><h2>Wondering</h2><div class="wish goal"><span class="tag">next</span><span id="wondering"></span></div></div>
@@ -2533,6 +2536,8 @@ const ago = (t) => { // seconds since 1970 → "5m ago"
   const m = Math.round((Date.now() / 1000 - t) / 60);
   return m < 1 ? 'just now' : m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`;
 };
+let pickedNote = null; // the note chosen in the dropdown (the newest if none)
+$('note-pick').addEventListener('change', (event) => { pickedNote = Number(event.target.value); render(latest); });
 function pinnedCard(note, s) { // a note you left: where it's got to, like a parcel tracker, and what Ember did because of it
   const board = s.buildings.find((b) => b.actions?.includes('board'));
   const card = el('div', 'pinned'), steps = el('ol');
@@ -2651,8 +2656,21 @@ function render(s) {
   $('wishes').replaceChildren(...wishRows(s.wishes, s.name));
   $('sec-skills').hidden = !s.skills.length;
   $('sec-goals').hidden = !activeGoals.length && !finishedGoals.length;
-  const notes = (s.desk ?? []).slice(-2).reverse(); // your latest notes, newest first
-  $('notes').replaceChildren(...notes.map((note) => pinnedCard(note, s)));
+  const notes = (s.desk ?? []).slice().reverse(); // newest first; the dropdown picks which one you see
+  const chosen = notes.find((n) => n.number === pickedNote) ?? notes[0];
+  const pick = $('note-pick'), pickKey = JSON.stringify(notes.map((n) => [n.number, n.read, n.number === chosen?.number]));
+  if (pick.dataset.key !== pickKey) { // rebuilt only when something changes, so an open dropdown doesn't snap shut
+    pick.dataset.key = pickKey;
+    pick.replaceChildren(...notes.map((n) => {
+      const words = n.text.split(/\s+/);
+      const option = el('option', '', `${n.read ? '✓ Read' : '📌 Waiting'} · ${words.slice(0, 7).join(' ')}${words.length > 7 ? '…' : ''}`);
+      option.value = n.number;
+      option.selected = n === chosen;
+      return option;
+    }));
+  }
+  pick.hidden = notes.length < 2;
+  $('notes').replaceChildren(...(chosen ? [pinnedCard(chosen, s)] : []));
   $('sec-notes').hidden = !notes.length;
   $('wondering').textContent = s.wondering ?? '';
   $('sec-wondering').hidden = !s.wondering;
