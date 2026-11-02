@@ -3036,12 +3036,17 @@ const sceneryReady = fetch(`scenery.json?t=${Date.now()}`, { cache: 'no-store' }
   .then((loaded) => { if (loaded) { scenery = withDefaults(loaded); buildScenery(scenery); } })
   .catch(() => {});
 
+// The layout as published: buildings.json goes out with the site, so a change from builder mode shows as soon as the site
+// redeploys (a minute or two), not only after Ember's next thought. Run locally there's no copy, and the state's list is used.
+const layoutReady = fetch(`buildings.json?t=${Date.now()}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
 let latest = null;
 async function refresh() {
   try {
     const response = await fetch(`data/state.json?t=${Date.now()}`, { cache: 'no-store' });
     if (!response.ok) throw new Error('no state yet');
     const s = await response.json();
+    const layout = await layoutReady;
+    if (Array.isArray(layout?.buildings)) Object.assign(s, { buildings: layout.buildings, empty_lots: layout.empty_lots ?? [] });
     if (!BUILDING) buildWorld(s); // in builder mode, the world shows your unsaved draft instead
     if (s.gallery_key !== galleryKey) { // something new was made: fetch the gallery
       const galleryResponse = await fetch(`data/gallery.json?t=${Date.now()}`, { cache: 'no-store' });

@@ -171,7 +171,7 @@ def publish() -> dict:
         log.append(output)
         if code:
             return {"ok": False, "log": "\n".join(log)}
-    return {"ok": True, "log": "Published! The live site updates in a minute or two."}
+    return {"ok": True, "log": "Published! The live site shows it in a minute or two, and Ember notices on its next thought."}
 
 
 def life_loop(brain, every_seconds: float) -> None:

@@ -82,7 +82,9 @@ jobs:
           git push -q -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" data
 
       - name: Tidy up before publishing
-        run: rm -rf site/data/.git
+        run: |
+          rm -rf site/data/.git
+          cp buildings.json site/buildings.json  # the page draws the layout from this, so builder changes show straight away
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
