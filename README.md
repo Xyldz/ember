@@ -73,11 +73,10 @@ If a repository has no activity for 60 days GitHub pauses the schedule; just cli
 - Circuit traces run across the roof from the terminal to every place, with a pad under each spot; pulses of light run
   along them, more of them along the way Ember's heading. They follow `buildings.json`, so they rewire themselves
   when you move things in builder mode.
-- **🚶 Walk** in the toolbar: walk the roof in first person at about Ember's height, the way Pino's world does it:
-  **click to look** (Esc lets go of the mouse), **W / S move**, **A / D turn** (arrow keys too, Shift runs) and **E
-  whistles**, and Ember floats over. Walk up to a place and click to look at it. On a phone the stick moves and turns,
-  dragging looks and tapping a place opens it. Buildings are solid. Ember and Vega turn to you and the pigeons scatter,
-  but that's the page: Ember itself can't know you came.
+- **🚶 Walk** in the toolbar: walk the roof in first person at about Ember's height, with the mouse like an FPS: it's
+  grabbed as you start and turns your view (Esc lets go, a click grabs it again). **W A S D** move and strafe, Shift
+  runs, the arrow keys walk and turn, and **E** looks at the place you're next to. On a phone the stick moves, dragging
+  looks and tapping a place opens it. Buildings are solid. Ember and Vega don't notice you: you're only looking in.
 - Place names show for a few seconds when the page opens, then only for what you point at (or walk up to).
 - **Click a place** (or its label) to see who's there and what they're up to: what Ember's reading at the terminal,
   Vega's account at the trading floor, your notes at the board, the art on the art wall. Click Ember or Vega for the

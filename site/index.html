@@ -94,7 +94,9 @@
   .walk-hint { position: absolute; left: 50%; bottom: 82px; z-index: 5; padding: 8px 16px; border: 1px solid color-mix(in srgb, var(--ember) 40%, transparent);
     border-radius: var(--pill); color: var(--ink); font: inherit; font-size: 13px; white-space: nowrap; transform: translateX(-50%);
     pointer-events: auto; cursor: pointer; transition: left .35s; }
-  .walk-hint[hidden], .stick[hidden] { display: none; }
+  .walk-hint[hidden], .stick[hidden], .crosshair[hidden] { display: none; }
+  .crosshair { position: absolute; left: 50%; top: 50%; z-index: 4; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%;
+    background: rgba(255, 255, 255, .85); box-shadow: 0 0 8px var(--ember); pointer-events: none; transition: left .35s; }
   .stick { position: absolute; left: 22px; bottom: 132px; z-index: 5; width: 112px; height: 112px; border: 1px solid var(--line);
     border-radius: 50%; background: var(--glass); pointer-events: auto; touch-action: none; }
   .stick i { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%;
@@ -221,7 +223,7 @@
     scrollbar-width: thin; scrollbar-color: var(--line) transparent; transform: translateX(calc(100% + 24px)); visibility: hidden;
     transition: transform .35s cubic-bezier(.2, .8, .2, 1), visibility 0s .35s; }
   .drawer-open #panel { transform: none; visibility: visible; transition: transform .35s cubic-bezier(.2, .8, .2, 1); }
-  .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card, .drawer-open .walk-hint { left: calc(50% - 218px); }
+  .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card, .drawer-open .walk-hint, .drawer-open .crosshair { left: calc(50% - 218px); }
   #panel > * { flex-shrink: 0; }
   .drawer-top { display: flex; align-items: center; gap: 8px; padding: 14px 16px 4px; }
   .switch { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: var(--pill); background: var(--card); }
@@ -504,13 +506,13 @@
   @media (max-height: 500px) { /* on its side: the drawer stays on the right, full height */
     .act { -webkit-line-clamp: 1; }
     #panel { top: 8px; right: calc(8px + env(safe-area-inset-right)); bottom: 8px; }
-    .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card, .drawer-open .walk-hint { left: calc(50% - 214px); }
+    .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card, .drawer-open .walk-hint, .drawer-open .crosshair { left: calc(50% - 214px); }
   }
   /* ---------- Upright phones: the cards side by side, the story slides up from the bottom ---------- */
   @media (max-width: 760px) {
     .hud { left: 8px; right: 8px; width: auto; flex-direction: row; }
     .who-card { flex: 1 1 0; min-width: 0; }
-    .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card, .drawer-open .walk-hint { left: 50%; }
+    .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card, .drawer-open .walk-hint, .drawer-open .crosshair { left: 50%; }
     #panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: min(80vh, 760px); border-bottom: 0;
       border-radius: var(--radius) var(--radius) 0 0; transform: translateY(105%); padding-bottom: env(safe-area-inset-bottom); }
     #panel::before { content: ""; display: block; width: 38px; height: 4px; margin: 8px auto 0; border-radius: 2px; background: var(--line); }
@@ -555,7 +557,7 @@
         <button data-follow="free" title="Drag to turn · right-drag to move · scroll to zoom · double-click to fly there">🎥<span class="lbl"> Free</span></button>
         <button data-follow="ember" title="The camera follows Ember around the roof">✦<span class="lbl"> Ember</span></button>
         <button data-follow="vega" id="cam-vega" title="The camera follows Vega around the roof" hidden>🤖<span class="lbl"> Vega</span></button>
-        <button data-follow="walk" title="Walk the roof in first person: click to look · W / S move · A / D turn · E whistle">🚶<span class="lbl"> Walk</span></button>
+        <button data-follow="walk" title="Walk the roof in first person: mouse to look, W A S D to move, E to look at a place, Esc lets go of the mouse">🚶<span class="lbl"> Walk</span></button>
         <i class="sep"></i>
         <button id="cam-reset" title="Back to the view of the whole roof">⟲</button>
         <button id="cam-sky" title="The sky follows the real sun over London. Click for night all the time">☀</button>
@@ -567,6 +569,7 @@
       </div>
       <button id="walk-hint" class="walk-hint glass" hidden></button>
       <div id="stick" class="stick" aria-hidden="true" hidden><i></i></div>
+      <div id="crosshair" class="crosshair" hidden></div>
       <div id="place-card" class="place-card glass" role="dialog" aria-labelledby="place-name" hidden>
         <div class="place-top"><h2 id="place-name"></h2><button id="place-close" class="close" title="Close">✕</button></div>
         <div id="place-body"></div>
@@ -1748,11 +1751,7 @@ renderer.domElement.addEventListener('pointerdown', (event) => { pressedAt = { x
 renderer.domElement.addEventListener('pointerup', (event) => {
   if (BUILDING || !pressedAt || !latest || performance.now() - pressedAt.t > 500
       || Math.hypot(event.clientX - pressedAt.x, event.clientY - pressedAt.y) > 6) return;
-  if (follow === 'walk' && !matchMedia('(pointer: coarse)').matches) {
-    if (document.pointerLockElement) return lookAtNearPlace();
-    renderer.domElement.requestPointerLock()?.catch?.(() => {}); // refused (e.g. in a frame): dragging still looks
-    return;
-  }
+  if (follow === 'walk' && !matchMedia('(pointer: coarse)').matches) return document.pointerLockElement ? lookAtNearPlace() : grabMouse();
   const hit = hitAt(event);
   if (!hit) return;
   if (inside(hit.object, avatar)) return showPlace(latest.location);
@@ -1880,11 +1879,11 @@ resize();
 const timer = new THREE.Clock();
 let sinceFrame = 0;
 // ---------------------------------------------------------------------------
-// Walk mode, the way Pino's world does it: the roof in first person, at about Ember's height. Click to look around with
-// the mouse (Esc lets go), W / S move, A / D turn (the arrow keys too, Shift runs), and E whistles: Ember comes over.
-// Walk up to a place and click to look at it. On a phone the stick moves and turns, dragging looks, and tapping a place
-// opens it. Buildings and roof clutter are solid. Ember and Vega turn to you and the pigeons scatter, but that's all this
-// page: Ember itself can't know you came.
+// Walk mode: the roof in first person, at about Ember's height, with the mouse like an FPS: it's grabbed as you start
+// (Esc lets go, a click grabs it again) and turns your view; W A S D move and strafe, Shift runs, the arrow keys walk and
+// turn, and E (or a click) looks at the place you're next to. On a phone the stick moves and strafes, dragging looks, and
+// tapping a place opens it. Buildings and roof clutter are solid. Ember and Vega don't notice you: you're only looking in
+// (the pigeons do hop out of your way).
 // ---------------------------------------------------------------------------
 const walker = new THREE.Object3D(); // where your feet are; the camera is your eyes
 const EYE_HEIGHT = 1.05; // metres: about Ember's height, so the roof's things look their proper size
@@ -1904,6 +1903,10 @@ function startWalk() {
   solidsAt = -1;
   walkHelpUntil = performance.now() + 9000;
   $('stick').hidden = !matchMedia('(pointer: coarse)').matches;
+  if ($('stick').hidden) grabMouse();
+}
+function grabMouse() { // refused (e.g. in a frame): dragging still looks
+  renderer.domElement.requestPointerLock()?.catch?.(() => {});
 }
 function stopWalk() {
   if (document.pointerLockElement) document.exitPointerLock();
@@ -1925,30 +1928,12 @@ function lookAtNearPlace() {
   if (document.pointerLockElement) document.exitPointerLock(); // you'll want the mouse for the card
   showPlace(nearPlace);
 }
-function whistle() { // E: two quick notes, up then down, and Ember floats over to you (if it's awake)
-  audio ??= new AudioContext();
-  for (const [delay, from, to] of [[0, 1500, 2400], [0.26, 2400, 1600]]) {
-    const start = audio.currentTime + delay, osc = audio.createOscillator(), gain = audio.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(from, start);
-    osc.frequency.exponentialRampToValueAtTime(to, start + 0.2);
-    gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(0.1, start + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.24);
-    osc.connect(gain).connect(audio.destination);
-    osc.start(start);
-    osc.stop(start + 0.3);
-  }
-  if (asleep) return;
-  const dx = avatar.position.x - walker.position.x, dz = avatar.position.z - walker.position.z, far = Math.hypot(dx, dz) || 1;
-  goal.set(walker.position.x + (dx / far) * 2.5, 0, walker.position.z + (dz / far) * 2.5); // it stops in front of you, then drifts home
-}
 renderer.domElement.addEventListener('pointerdown', (event) => {
   if (follow === 'walk' && !document.pointerLockElement) look.drag = { id: event.pointerId, x: event.clientX, y: event.clientY };
 });
 addEventListener('pointermove', (event) => {
   if (follow !== 'walk') return;
-  if (document.pointerLockElement === renderer.domElement) turnView(event.movementX, event.movementY, 0.0022);
+  if (document.pointerLockElement === renderer.domElement) turnView(event.movementX, event.movementY, 0.002);
   else if (look.drag?.id === event.pointerId) {
     turnView(look.drag.x - event.clientX, look.drag.y - event.clientY, 0.005); // dragging grabs the world, like Street View
     look.drag.x = event.clientX;
@@ -1956,7 +1941,10 @@ addEventListener('pointermove', (event) => {
   }
 });
 addEventListener('pointerup', (event) => { if (look.drag?.id === event.pointerId) look.drag = null; });
-document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement) unlockedAt = performance.now(); });
+document.addEventListener('pointerlockchange', () => {
+  if (!document.pointerLockElement) unlockedAt = performance.now();
+  $('crosshair').hidden = !document.pointerLockElement;
+});
 addEventListener('keydown', (event) => {
   if (follow !== 'walk' || event.target.closest?.('input, textarea, select')) return;
   const key = event.key.toLowerCase();
@@ -1964,8 +1952,8 @@ addEventListener('keydown', (event) => {
     walkKeys.add(key);
     event.preventDefault();
   }
-  if (key === 'e' && !event.repeat) whistle();
 });
+addEventListener('keydown', (event) => { if (follow === 'walk' && event.key.toLowerCase() === 'e' && !event.repeat) lookAtNearPlace(); });
 addEventListener('keyup', (event) => walkKeys.delete(event.key.toLowerCase()));
 addEventListener('blur', () => walkKeys.clear());
 $('walk-hint').addEventListener('click', lookAtNearPlace);
@@ -2012,19 +2000,22 @@ const blocked = (x, z) => solids.some((b) => x > b.min.x - 0.25 && x < b.max.x +
 function stepWalker(dt, t) {
   if (follow !== 'walk') return;
   const held = (...keys) => keys.some((key) => walkKeys.has(key));
-  look.yaw += ((held('a', 'arrowleft') ? 1 : 0) - (held('d', 'arrowright') ? 1 : 0) - stick.x) * 2.2 * dt; // A / D turn
-  const ahead = THREE.MathUtils.clamp((held('w', 'arrowup') ? 1 : 0) - (held('s', 'arrowdown') ? 1 : 0) + stick.y, -1, 1); // W / S move
-  const walking = Math.abs(ahead) > 0.05;
+  look.yaw += ((held('arrowleft') ? 1 : 0) - (held('arrowright') ? 1 : 0)) * 2.2 * dt; // the arrow keys turn
+  const ahead = (held('w', 'arrowup') ? 1 : 0) - (held('s', 'arrowdown') ? 1 : 0) + stick.y;
+  const across = (held('d') ? 1 : 0) - (held('a') ? 1 : 0) + stick.x; // A / D strafe
+  const sin = Math.sin(look.yaw), cos = Math.cos(look.yaw); // facing -z when yaw is 0
+  let mx = -sin * ahead + cos * across, mz = -cos * ahead - sin * across;
+  const length = Math.hypot(mx, mz), amount = Math.min(1, length), walking = amount > 0.05;
   if (walking) {
-    const step = ahead * (held('shift') ? 4.5 : 2.4) * dt;
+    const step = (amount * (held('shift') ? 4.5 : 2.4) * dt) / length;
     refreshSolids(t);
     const at = walker.position, edge = ROOF - 0.4, stuck = blocked(at.x, at.z); // stuck inside something: let you out
-    const x = THREE.MathUtils.clamp(at.x - Math.sin(look.yaw) * step, -edge, edge);
-    const z = THREE.MathUtils.clamp(at.z - Math.cos(look.yaw) * step, -edge, edge);
+    const x = THREE.MathUtils.clamp(at.x + mx * step, -edge, edge);
+    const z = THREE.MathUtils.clamp(at.z + mz * step, -edge, edge);
     if (stuck || !blocked(x, at.z)) at.x = x; // one way at a time, so you slide along walls
     if (stuck || !blocked(at.x, z)) at.z = z;
   }
-  camera.position.set(walker.position.x, EYE_HEIGHT + (walking ? Math.sin(t * 9) * 0.03 * Math.abs(ahead) : 0), walker.position.z);
+  camera.position.set(walker.position.x, EYE_HEIGHT + (walking ? Math.sin(t * 9) * 0.03 * amount : 0), walker.position.z);
   camera.rotation.set(look.pitch, look.yaw, 0, 'YXZ');
   let reach = 2.6; // the nearest place within reach
   nearPlace = null;
@@ -2033,9 +2024,9 @@ function stepWalker(dt, t) {
     if (d < reach) { reach = d; nearPlace = place.building.id; }
   }
   const hint = $('walk-hint'), touch = !$('stick').hidden, cardOpen = !$('place-card').hidden, name = nearPlace && places[nearPlace].building.name.toLowerCase();
-  const text = nearPlace && !cardOpen ? (touch || !document.pointerLockElement ? `Look at the ${name}` : `Click to look at the ${name}`)
-    : performance.now() < walkHelpUntil ? (touch ? 'The stick moves and turns · drag to look · tap a place to look at it'
-      : 'Click to look · W / S move · A / D turn · E whistle') : '';
+  const text = nearPlace && !cardOpen ? (touch || !document.pointerLockElement ? `Look at the ${name}` : `E · look at the ${name}`)
+    : performance.now() < walkHelpUntil || (!touch && !document.pointerLockElement) ? (touch ? 'The stick moves · drag to look · tap a place to look at it'
+      : document.pointerLockElement ? 'Mouse to look · W A S D to move · Shift to run · Esc lets go of the mouse' : 'Click to look around with the mouse') : '';
   if (hint.textContent !== text) hint.textContent = text;
   hint.hidden = !text;
 }
@@ -2068,11 +2059,6 @@ function animate() {
   avatarBody.scale.setScalar((resting ? 0.8 : 1) * (1 + Math.sin(t * (resting ? 1 : 2.4)) * 0.04));
   shellMaterial.emissiveIntensity = resting ? 0.25 : 0.35 + (charge / 100) * 0.5; // dimmer when its charge is low
   motes.rotation.y += dt * (resting ? 0.3 : 1.4);
-  if (follow === 'walk' && !resting && walker.position.distanceTo(avatar.position) < 3.2) { // someone's come to see it
-    const turn = Math.atan2(walker.position.x - avatar.position.x, walker.position.z - avatar.position.z) - avatarBody.rotation.y;
-    avatarBody.rotation.y += Math.atan2(Math.sin(turn), Math.cos(turn)) * Math.min(1, dt * 4);
-    motes.rotation.y += dt * 3;
-  }
   avatarLight.intensity = resting ? 0.6 : 2;
 
   for (const car of cars) {
@@ -2120,8 +2106,7 @@ function animate() {
     vega.root.rotation.y += Math.atan2(Math.sin(heading), Math.cos(heading)) * Math.min(1, dt * 4); // the short way round
     at.y = Math.abs(Math.sin(t * (rolling ? 10 : 2.2))) * (rolling ? 0.03 : 0.015);
     vega.tip.visible = Math.sin(t * (vegaAsleep ? 0.8 : 2.5) + 1) > -0.3;
-    const visitor = follow === 'walk' && walker.position.distanceTo(at) < avatar.position.distanceTo(at); // whoever's nearer
-    const near = vega.root.worldToLocal(vegaLook.copy(visitor ? walker.position : avatar.position));
+    const near = vega.root.worldToLocal(vegaLook.copy(avatar.position));
     const turn = rolling || vegaAsleep ? 0 : Math.hypot(near.x, near.z) < 7 ? Math.max(-0.9, Math.min(0.9, Math.atan2(near.x, near.z))) : Math.sin(t * 0.3) * 0.3;
     vega.head.rotation.y += (turn - vega.head.rotation.y) * Math.min(1, dt * 2);
     vega.head.rotation.x += ((vegaAsleep ? 0.3 : 0) - vega.head.rotation.x) * Math.min(1, dt * 2); // nods off when powered down
