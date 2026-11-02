@@ -240,8 +240,10 @@ def vega_live_schema(location_ids: list[str], moods: list[str]) -> dict:
             "finished_goal": {"type": "string", "description": "One of your goals you just achieved, as written, or empty."},
             "wish": {"type": "string", "description": "Something you'd really love built or brought up to the roof, and why, "
                                                       "or empty. A builder reads these. Usually empty."},
+            "because_of_note": {"type": "boolean", "description": "True if what you're doing now is because of a note the builder left you."},
         },
-        "required": ["thought", "mood", "action", "target_location", "doing", "say", "new_goal", "finished_goal", "wish"],
+        "required": ["thought", "mood", "action", "target_location", "doing", "say", "new_goal", "finished_goal", "wish",
+                     "because_of_note"],
         "additionalProperties": False,
     }
 
@@ -724,7 +726,8 @@ class DemoBrain:
                 "mood": random.choice(moods), "action": action, "target_location": random.choice(location_ids),
                 "doing": random.choice(self.VEGA_DOINGS), "say": random.choice(["", "", "Shoo, you."]),
                 "new_goal": random.choice([""] * 6 + ["Teach the pigeons to count to seven"]), "finished_goal": "",
-                "wish": random.choice([""] * 10 + ["A little pigeon coop by the edge, so they stop nesting in my coin slot."])}
+                "wish": random.choice([""] * 10 + ["A little pigeon coop by the edge, so they stop nesting in my coin slot."]),
+                "because_of_note": random.random() < 0.2}
 
     def vega_diary(self, day_log: str, notes: str, account: str) -> dict:
         return {"title": "(Demo.) Pigeons, sevens and the kid", "about_ember": [],

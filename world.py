@@ -62,7 +62,8 @@ SECTION_TITLES = {"what_im_like": "What I'm like", "what_i_care_about": "What I 
 ACTION_WORDS = {"search": "search the internet", "rest": "recharge faster", "radio": "hear what's on the radio",
                 "friend": "talk with the old trading bot who runs the place",
                 "board": "read any notes the builder pins up for you",
-                "telescope": "see the real night sky up close, fainter planets too"}
+                "telescope": "see the real night sky up close, fainter planets too",
+                "art": "look over the newest things you've made, hung up on the wall"}
 MAX_RADIO_PER_DAY = 30  # after that, only static (each broadcast is a small Haiku call)
 PRACTICE_XP = 10  # doubled if Ember looked something up about it first
 RESEARCH_XP = 5
@@ -758,6 +759,16 @@ def notice_board() -> str | None:
     return next((b for b in buildings if can(b, "board")), None)
 
 
+def waiting_note(note: dict, board: str) -> str:
+    """An unread note, put to Ember or Vega: who it's from, how long it's waited and its first few words. Enough to
+    wonder about, not enough to skip it."""
+    minutes = (time.time() - (note.get("pinned") or note.get("told") or time.time())) / 60
+    waited = f"{round(minutes / 60)} hours" if minutes >= 90 else f"{max(1, round(minutes))} minutes"
+    opening = " ".join(note["text"].split()[:6]).rstrip(".,;:!?")
+    return (f"The builder (whoever builds things up here) pinned a note for you on the {board} {waited} ago, "
+            f'and you haven\'t read it yet. It starts: "{opening}…" The rest is on the {board}.')
+
+
 def message_waiting() -> tuple[dict | None, str | None]:
     """The next unread note the builder left Ember, and the board it's pinned on."""
     return next((n for n in state["desk"] if not n["read"]), None), notice_board()
@@ -808,13 +819,8 @@ def describe_situation() -> str:
     note, screen = message_waiting()
     if note and screen in (None, state["location"]):
         message = f'A note from the builder (whoever builds things up here) is pinned in front of you: "{note["text"]}"'
-    elif note:  # who it's from, how long it's waited and its first few words: enough to wonder about, not enough to skip it
-        board = buildings[screen]["name"].lower()
-        minutes = (time.time() - (note.get("pinned") or note.get("told") or time.time())) / 60
-        waited = f"{round(minutes / 60)} hours" if minutes >= 90 else f"{max(1, round(minutes))} minutes"
-        opening = " ".join(note["text"].split()[:6]).rstrip(".,;:!?")
-        message = (f"The builder (whoever builds things up here) pinned a note for you on the {board} {waited} ago, "
-                   f'and you haven\'t read it yet. It starts: "{opening}…" The rest is on the {board}.')
+    elif note:
+        message = waiting_note(note, buildings[screen]["name"].lower())
     else:
         message = ""
 

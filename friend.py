@@ -428,16 +428,18 @@ What you've been up to lately (newest last):
 It's a moment to yourself. What do you do?"""
     note, board = next((n for n in friend["desk"] if not n["read"]), None), world.notice_board()
     reading = note if note and board in (None, where()) else None
+    if note:
+        note.setdefault("told", int(time.time()))  # for the page: when Vega first knew the note was there
     if reading:
         moment += f'\n\nA note from the builder (whoever builds things up here) is pinned in front of you: "{note["text"]}"'
     elif note:
-        moment += f"\n\nThere's a note for you pinned on the {place_name(board)}."
+        moment += f"\n\n{world.waiting_note(note, place_name(board))}"
     try:
         plan = brain.vega_live(situation(moment), list(world.buildings), MOODS)
     except BRAIN_ERRORS:
         return
     if reading:  # its reaction goes back to whoever left the note
-        reading.update(read=True, reply=plan["say"].strip() or plan["thought"].strip())
+        reading.update(read=True, read_at=int(time.time()), reply=plan["say"].strip() or plan["thought"].strip())
         log_own(f'Read a note from the builder: "{reading["text"][:160]}"', "note")
     t = world.now()
     friend.update(thought=plan["thought"].strip(), thought_time=t.strftime("%H:%M"),
@@ -466,6 +468,10 @@ It's a moment to yourself. What do you do?"""
     if plan["action"] == "go_to":
         move(plan["target_location"])
     log_own(friend["doing"][:1].upper() + friend["doing"][1:] + ".", "doing")
+    last_read = next((n for n in reversed(friend["desk"]) if n["read"]), None)
+    if plan["because_of_note"] and last_read:  # Vega says this was because of the builder's note
+        doing = friend["doing"][:1].upper() + friend["doing"][1:]
+        last_read["followed"] = (last_read.get("followed", []) + [{"t": int(time.time()), "text": doing}])[-8:]
     said = plan["say"].strip()
     if said and world.state["location"] == where() and not world.state["asleep"]:
         speak(said)  # Ember's here to hear it
@@ -625,7 +631,7 @@ def view() -> dict | None:
                     "chart": [p for _, p in charts.get(symbol, [])]}
                    for symbol in SYMBOLS if symbol in market["prices"]],
         "checked": market["checked"], "trades": friend["trades"], "history": friend["history"],
-        "chat": friend["chat"], "notes": friend["notes"], "days": friend["days"][-10:],
+        "chat": friend["chat"], "notes": friend["notes"], "days": friend["days"][-10:], "desk": friend["desk"],
     }
 
 

@@ -83,6 +83,28 @@
   .place.friend { color: var(--vega); }
   .place.lot { border: 1px dashed var(--line); color: var(--muted); }
   .place[hidden] { display: none; }
+  .place.go { pointer-events: auto; cursor: pointer; }
+  .place.go:hover { color: var(--ink); }
+  .place-card { position: absolute; left: 50%; bottom: 76px; z-index: 5; width: min(420px, 92%); max-height: min(62vh, 560px); overflow-y: auto;
+    padding: 14px 18px 18px; border-radius: var(--radius); transform: translateX(-50%); pointer-events: auto;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .5); transition: left .35s; }
+  .place-card[hidden] { display: none; }
+  .place-top { display: flex; align-items: center; gap: 10px; }
+  .place-card h2 { color: var(--ember); }
+  .place-card .about { margin: 6px 0; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+  .place-card .here { display: flex; gap: 8px; margin: 8px 0 2px; font-size: 13.5px; line-height: 1.45; }
+  .place-card .here b { flex: none; }
+  .place-card .here.ember b { color: var(--ember); }
+  .place-card .here.vega b { color: var(--vega); }
+  .place-card .thought { margin: 2px 0 6px; color: var(--soft); font-size: 12.5px; font-style: italic; line-height: 1.5; }
+  .place-card .extra { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13px; line-height: 1.5; }
+  .place-card .extra h3 { margin: 0 0 4px; color: var(--muted); font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
+  .place-card .extra p { margin: 2px 0; }
+  .place-card .works { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .place-card .works .card { margin: 0; }
+  .place-card .go-btn { margin: 10px 8px 0 0; padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--pill); background: none;
+    color: var(--ink); font: inherit; font-size: 12px; cursor: pointer; }
+  .place-card .go-btn:hover { border-color: var(--muted); }
   .bubble { position: absolute; transform: translate(-50%, calc(-100% - 10px)); width: max-content; max-width: min(280px, 70vw);
     padding: 9px 13px; border: 1px solid color-mix(in srgb, var(--ember) 35%, transparent); border-radius: var(--radius-sm);
     background: var(--glass); backdrop-filter: blur(10px); color: var(--soft); font-size: 13px; font-style: italic; line-height: 1.45;
@@ -189,7 +211,7 @@
     scrollbar-width: thin; scrollbar-color: var(--line) transparent; transform: translateX(calc(100% + 24px)); visibility: hidden;
     transition: transform .35s cubic-bezier(.2, .8, .2, 1), visibility 0s .35s; }
   .drawer-open #panel { transform: none; visibility: visible; transition: transform .35s cubic-bezier(.2, .8, .2, 1); }
-  .drawer-open .cam, .drawer-open .note-box { left: calc(50% - 218px); }
+  .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card { left: calc(50% - 218px); }
   #panel > * { flex-shrink: 0; }
   .drawer-top { display: flex; align-items: center; gap: 8px; padding: 14px 16px 4px; }
   .switch { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: var(--pill); background: var(--card); }
@@ -240,9 +262,9 @@
   .wish.granted .tag, .wish.goal .tag { color: var(--ember); }
   .wish.goal.done .tag { color: var(--good); }
   .wish.goal.dropped .tag { color: var(--muted); }
-  #note-pick { width: 100%; margin: 4px 0 2px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm);
+  .note-pick { width: 100%; margin: 4px 0 2px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm);
     background: color-mix(in srgb, var(--vega) 6%, transparent); color: var(--ink); font: inherit; font-size: 12.5px; cursor: pointer; }
-  #note-pick option { background: var(--bg); color: var(--ink); }
+  .note-pick option { background: var(--bg); color: var(--ink); }
   .pinned { margin: 6px 0 12px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--vega) 30%, transparent); border-radius: var(--radius-sm);
     background: color-mix(in srgb, var(--vega) 6%, transparent); font-size: 12.5px; line-height: 1.5; }
   .pinned > q { display: block; margin-bottom: 6px; color: var(--ink); font-style: italic; }
@@ -465,13 +487,13 @@
   @media (max-height: 500px) { /* on its side: the drawer stays on the right, full height */
     .act { -webkit-line-clamp: 1; }
     #panel { top: 8px; right: calc(8px + env(safe-area-inset-right)); bottom: 8px; }
-    .drawer-open .cam, .drawer-open .note-box { left: calc(50% - 214px); }
+    .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card { left: calc(50% - 214px); }
   }
   /* ---------- Upright phones: the cards side by side, the story slides up from the bottom ---------- */
   @media (max-width: 760px) {
     .hud { left: 8px; right: 8px; width: auto; flex-direction: row; }
     .who-card { flex: 1 1 0; min-width: 0; }
-    .drawer-open .cam, .drawer-open .note-box { left: 50%; }
+    .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card { left: 50%; }
     #panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: min(80vh, 760px); border-bottom: 0;
       border-radius: var(--radius) var(--radius) 0 0; transform: translateY(105%); padding-bottom: env(safe-area-inset-bottom); }
     #panel::before { content: ""; display: block; width: 38px; height: 4px; margin: 8px auto 0; border-radius: 2px; background: var(--line); }
@@ -525,6 +547,10 @@
         <i class="sep"></i>
         <button id="cam-drawer" title="Their story: today, diary, trades and more">☰<span class="lbl"> Story</span></button>
       </div>
+      <div id="place-card" class="place-card glass" role="dialog" aria-labelledby="place-name" hidden>
+        <div class="place-top"><h2 id="place-name"></h2><button id="place-close" class="close" title="Close">✕</button></div>
+        <div id="place-body"></div>
+      </div>
       <div id="note-box" class="note-box glass" hidden>
         <h2>📌 Pin a note on the bulletin board</h2>
         <div class="picks"><button data-for="Ember">For Ember</button><button data-for="Vega">For Vega</button></div>
@@ -553,7 +579,7 @@
       </div>
     </header>
     <div id="ember-glance" class="glance">
-      <div id="sec-notes" class="section" hidden><h2>Your notes</h2><select id="note-pick" aria-label="Pick one of your notes" hidden></select><div id="notes"></div></div>
+      <div id="sec-notes" class="section" hidden><h2>Your notes</h2><select id="note-pick" class="note-pick" aria-label="Pick one of your notes" hidden></select><div id="notes"></div></div>
       <div id="sec-skills" class="section" hidden><h2>Interests</h2><div id="skills"></div></div>
       <div id="sec-goals" class="section" hidden><h2>Goals</h2><div id="goals"></div></div>
       <div id="sec-wondering" class="section" hidden><h2>Wondering</h2><div class="wish goal"><span class="tag">next</span><span id="wondering"></span></div></div>
@@ -581,6 +607,7 @@
         <div id="v-mini"></div>
       </div>
       <div id="v-alloc"></div>
+      <div id="v-sec-notes" class="section" hidden><h2>Your notes</h2><select id="v-note-pick" class="note-pick" aria-label="Pick one of your notes for Vega" hidden></select><div id="v-notes"></div></div>
       <div id="v-goals"></div>
       <div class="section"><h2>Wishlist</h2><div id="v-wishes"></div></div>
       <a id="v-note" class="note-link" target="_blank" rel="noopener noreferrer" hidden>📌 Pin a note for Vega on the bulletin board</a>
@@ -1084,6 +1111,8 @@ function withModel(file, x, z, group) {
       o.castShadow = castsShadow(o.material);
       o.receiveShadow = true;
       if (o.name === 'CodeScreen') o.material = new THREE.MeshBasicMaterial({ map: codeTexture, color: 0x9a9a9a });
+      const frame = /^Canvas_(\d)/.exec(o.name); // the art wall's frames
+      if (frame) o.material = new THREE.MeshBasicMaterial({ map: wallFrames[frame[1] - 1].texture, color: 0xb4b4b4 });
     });
     group.add(gltf.scene);
   }, undefined, () => console.warn(`Couldn't load the model ${file}`));
@@ -1099,6 +1128,11 @@ const builders = {
     withModel('models/pod.glb', x, z, group);
     addLight(cx, 1.2, cz, 0xff3fb4, group, 4);
     return { anchor: new THREE.Vector3(cx, 2.3, cz), sleep: { x: cx, z: cz, y: 0.35 } };
+  },
+  art_wall(x, z, group) { // Ember's four newest works hang in the frames (see paintWall)
+    withModel('models/art_wall.glb', x, z, group);
+    addLight(x, 2.4, z - 0.4, 0xffd9a8, group, 4);
+    return { anchor: new THREE.Vector3(x, 3.95, z - 1.35) };
   },
   bench(x, z, group) { // a bench for two: Ember floats at the right-hand end, Vega parks at the left; asleep, Ember curls up on it
     withModel('models/bench.glb', x, z, group);
@@ -1240,6 +1274,86 @@ function paintArt(svg) {
   };
   image.src = svgUri(svg);
 }
+// The art wall's four frames, left to right: Ember's newest works, each with its title underneath like a gallery label
+const wallFrames = [1, 2, 3, 4].map(() => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 320;
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.flipY = false; // glTF's way up
+  return { canvas, texture };
+});
+function wrapText(ctx, text, x, y, width, lineHeight, bottom) { // returns where it stopped
+  for (const paragraph of text.split('\n')) {
+    let line = '';
+    for (const word of paragraph.split(' ')) {
+      const longer = line ? `${line} ${word}` : word;
+      if (line && ctx.measureText(longer).width > width) {
+        if (y > bottom) return y;
+        ctx.fillText(line, x, y);
+        y += lineHeight;
+        line = word;
+      } else line = longer;
+    }
+    if (y > bottom) return y;
+    ctx.fillText(line, x, y);
+    y += lineHeight;
+  }
+  return y;
+}
+function paintFrame({ canvas, texture }, work) {
+  const ctx = canvas.getContext('2d'), W = canvas.width, H = canvas.height;
+  ctx.fillStyle = '#f2ede2';
+  ctx.fillRect(0, 0, W, H);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#2b2733';
+  const label = () => {
+    ctx.fillStyle = '#2b2733';
+    ctx.font = '600 15px Georgia, serif';
+    wrapText(ctx, work.title, W / 2, H - 34, W - 30, 17, H - 10);
+    texture.needsUpdate = true;
+  };
+  if (!work) {
+    ctx.fillStyle = '#b9b1a1';
+    ctx.font = 'italic 19px Georgia, serif';
+    ctx.fillText('waiting for', W / 2, H / 2 - 8);
+    ctx.fillText('something new', W / 2, H / 2 + 18);
+  } else if (work.type === 'drawing') {
+    const image = new Image(); // drawn from an <img>, so nothing inside the SVG can run
+    image.onload = () => { ctx.drawImage(image, 14, 14, W - 28, W - 28); label(); };
+    image.src = svgUri(work.svg);
+    return;
+  } else if (work.type === 'poem') {
+    ctx.font = '600 17px Georgia, serif';
+    const y = wrapText(ctx, work.title, W / 2, 34, W - 30, 20, 80);
+    ctx.font = 'italic 13px Georgia, serif';
+    ctx.fillStyle = '#4a4352';
+    wrapText(ctx, work.text, W / 2, y + 12, W - 34, 16, H - 16);
+    texture.needsUpdate = true;
+    return;
+  } else if (work.type === 'tune') {
+    ctx.font = '600 17px Georgia, serif';
+    wrapText(ctx, `♪ ${work.title}`, W / 2, 40, W - 30, 20, 80);
+    ctx.strokeStyle = '#6d6577';
+    for (let k = 0; k < 5; k++) { ctx.beginPath(); ctx.moveTo(18, 140 + k * 12); ctx.lineTo(W - 18, 140 + k * 12); ctx.stroke(); }
+    const notes = (work.notes ?? []).filter((n) => n.pitch !== 'rest').slice(0, 14);
+    notes.forEach((n, i) => { // each note on the staff, by how high it is
+      const steps = 'CDEFGAB'.indexOf(n.pitch[0]) + 7 * Number(n.pitch.at(-1));
+      const x = 34 + i * ((W - 68) / Math.max(1, notes.length - 1)), y = Math.max(110, Math.min(220, 188 - (steps - 30) * 6));
+      ctx.beginPath(); ctx.ellipse(x, y, 7, 5, -0.4, 0, Math.PI * 2); ctx.fillStyle = '#2b2733'; ctx.fill();
+      ctx.beginPath(); ctx.moveTo(x + 6, y); ctx.lineTo(x + 6, y - 30); ctx.stroke();
+    });
+    ctx.font = 'italic 13px Georgia, serif';
+    ctx.fillText(`for ${work.instrument ?? 'the speaker'}`, W / 2, 252);
+  }
+  if (work) label();
+  texture.needsUpdate = true;
+}
+function paintWall() { // newest on the left
+  const newest = galleryItems.slice(-4).reverse();
+  wallFrames.forEach((frame, i) => paintFrame(frame, newest[i]));
+}
 const artHolo = new THREE.Group();
 artHolo.add(new THREE.Mesh(new THREE.PlaneGeometry(1.75, 1.75), new THREE.MeshBasicMaterial({ color: 0x3ff0ff, transparent: true, opacity: 0.22, side: THREE.DoubleSide })));
 const artPicture = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6), new THREE.MeshBasicMaterial({ map: artTexture, color: 0x8a8a8a, transparent: true, side: THREE.DoubleSide }));
@@ -1269,7 +1383,7 @@ function buildBuilding(building) {
     info.sleep = { x: spot.x, z: spot.z, y: spot.y };
   }
   places[building.id] = { ...info, group, x: building.pos[0], z: building.pos[1], building };
-  addLabel(building.name, info.anchor, 'place', group);
+  addLabel(building.name, info.anchor, 'place go', group).addEventListener('click', () => { if (!BUILDING) showPlace(building.id); });
   return group;
 }
 
@@ -1288,7 +1402,7 @@ function buildWorld(s, force = false) {
 
   const studio = Object.values(places).find((p) => p.building.actions?.includes('create'))
     ?? Object.values(places).find((p) => p.building.actions?.includes('search'));
-  artHolo.userData.placed = Boolean(studio);
+  artHolo.userData.placed = Boolean(studio) && !Object.values(places).some((p) => p.building.actions?.includes('art')); // the wall shows it instead
   if (studio) artHolo.position.set(studio.x + 2.7, 2.6, studio.z - 1.2);
   const lab = Object.values(places).find((p) => p.building.actions?.includes('search'));
   researchAnchor = lab ? new THREE.Vector3(lab.x - 3, 3.4, lab.z - 1.2) : null;
@@ -1517,12 +1631,26 @@ function inside(object, root) {
   return false;
 }
 const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
-renderer.domElement.addEventListener('dblclick', (event) => {
-  if (BUILDING) return;
+function hitAt(event) {
   const box = renderer.domElement.getBoundingClientRect();
   pointer.set(((event.clientX - box.left) / box.width) * 2 - 1, -((event.clientY - box.top) / box.height) * 2 + 1);
   raycaster.setFromCamera(pointer, camera);
-  const hit = raycaster.intersectObjects([avatar, worldGroup, sceneryGroup].filter(Boolean), true)[0];
+  return raycaster.intersectObjects([avatar, worldGroup, sceneryGroup].filter(Boolean), true)[0];
+}
+let pressedAt = null; // a click is a press that hardly moved: anything more is turning the camera
+renderer.domElement.addEventListener('pointerdown', (event) => { pressedAt = { x: event.clientX, y: event.clientY, t: performance.now() }; });
+renderer.domElement.addEventListener('pointerup', (event) => {
+  if (BUILDING || !pressedAt || !latest || performance.now() - pressedAt.t > 500
+      || Math.hypot(event.clientX - pressedAt.x, event.clientY - pressedAt.y) > 6) return;
+  const hit = hitAt(event);
+  if (!hit) return;
+  if (inside(hit.object, avatar)) return showPlace(latest.location);
+  if (vega && inside(hit.object, vega.root)) return showPlace(latest.vega?.location);
+  for (let o = hit.object; o; o = o.parent) if (o.userData.buildingId) return showPlace(o.userData.buildingId);
+});
+renderer.domElement.addEventListener('dblclick', (event) => {
+  if (BUILDING) return;
+  const hit = hitAt(event);
   if (!hit) return;
   const who = inside(hit.object, avatar) ? 'ember' : vega && inside(hit.object, vega.root) ? 'vega' : 'free';
   setFollow(who); // double-clicking Ember or Vega follows them
@@ -2536,9 +2664,101 @@ const ago = (t) => { // seconds since 1970 → "5m ago"
   const m = Math.round((Date.now() / 1000 - t) / 60);
   return m < 1 ? 'just now' : m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`;
 };
-let pickedNote = null; // the note chosen in the dropdown (the newest if none)
-$('note-pick').addEventListener('change', (event) => { pickedNote = Number(event.target.value); render(latest); });
-function pinnedCard(note, s) { // a note you left: where it's got to, like a parcel tracker, and what Ember did because of it
+// A place's card: who's there and what they're up to, and what's going on there (it stays live while it's open)
+let shownPlace = null, placeKey = '';
+function showPlace(id, s = latest) {
+  const building = s?.buildings.find((b) => b.id === id);
+  if (!building) return;
+  const v = s.vega;
+  const key = JSON.stringify([id, s.location, s.activity, s.thought, s.asleep, v?.location, v?.doing, v?.asleep, Math.round(v?.worth ?? 0),
+    s.wondering, s.learned.length, s.desk, v?.desk, galleryKey, s.needs.charge, v?.battery]);
+  if (key === placeKey && id === shownPlace && !$('place-card').hidden) return; // nothing new: leave it be (a tune may be playing)
+  shownPlace = id;
+  placeKey = key;
+  $('note-box').hidden = true;
+  $('place-name').textContent = building.name;
+  const body = [el('p', 'about', building.about)];
+  const here = (who, name, text) => {
+    const row = el('div', `here ${who}`);
+    row.append(el('b', '', name), el('span', '', text));
+    body.push(row);
+  };
+  if (s.location === id) {
+    here('ember', s.name, s.asleep ? 'Asleep here.' : `${s.activity}.`);
+    if (!s.asleep && s.thought) body.push(el('p', 'thought', `"${s.thought}"`));
+  }
+  if (v && v.location === id) here('vega', v.name, v.asleep ? 'Powered down here.' : v.doing ? `${v.doing[0].toUpperCase()}${v.doing.slice(1)}.` : 'Here.');
+  if (s.location !== id && v?.location !== id) {
+    const visits = Object.entries(s.experience ?? {}).filter(([k]) => k.endsWith(`|${id}`)).reduce((n, [, r]) => n + r.count, 0);
+    body.push(el('p', 'about', `Nobody's here right now. ${visits ? `${s.name} has stopped to do something here ${visits} time${visits === 1 ? '' : 's'}.`
+      : `${s.name} hasn't stopped to do anything here yet.`}`));
+  }
+  const extra = (title, ...nodes) => {
+    const box = el('div', 'extra');
+    box.append(el('h3', '', title), ...nodes);
+    body.push(box);
+  };
+  const button = (text, action) => {
+    const b = el('button', 'go-btn', text);
+    b.addEventListener('click', () => { $('place-card').hidden = true; action(); });
+    return b;
+  };
+  const actions = building.actions ?? [];
+  if (actions.includes('search')) {
+    const last = s.learned.filter((m) => m.query).at(-1);
+    if (last) extra('Last thing it looked up', el('p', '', `🔎 ${last.query}`), el('p', 'about', noteParts(last.text).headline),
+      button('All its research', () => { setWho('ember'); setDrawer(true); selectTab('research'); }));
+    if (s.wondering) extra('Wondering next', el('p', '', s.wondering));
+  }
+  if (actions.includes('rest')) extra('Charge', el('p', '', `${s.name} ${s.needs.charge}%${v ? ` · ${v.name} ${v.battery}%` : ''}`));
+  if (actions.includes('radio')) {
+    const heard = s.events.filter((e) => e.kind === 'radio').at(-1);
+    if (heard) extra('Last on the radio', el('p', '', heard.text));
+  }
+  if (actions.includes('friend') && v) {
+    const trade = v.trades.at(-1);
+    extra('Pretend account', el('p', '', `$${v.worth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`),
+      ...(trade ? [el('p', 'about', `Last trade: ${trade.side} $${trade.dollars.toLocaleString()} of ${trade.symbol} at ${trade.time}. "${trade.why}"`)] : []),
+      button("Vega's trades", () => { setWho('vega'); setDrawer(true); selectTab('v-portfolio'); }));
+  }
+  if (actions.includes('board')) {
+    const waiting = (desk) => (desk ?? []).filter((n) => !n.read).length;
+    extra('Your notes', el('p', '', `For ${s.name}: ${waiting(s.desk)} waiting${v ? ` · For ${v.name}: ${waiting(v.desk)} waiting` : ''}`),
+      button('📌 Pin a note', () => openNote(who === 'vega' ? 'Vega' : 'Ember')),
+      button('See your notes', () => { setDrawer(true); selectTab(who === 'vega' ? 'v-today' : 'today'); $(`${who === 'vega' ? 'v-' : ''}sec-notes`).scrollIntoView({ block: 'start' }); }));
+  }
+  if (actions.includes('art')) {
+    const grid = el('div', 'works');
+    grid.append(...galleryCards(s).slice(0, 4));
+    extra('On the wall', grid, button('Everything it has made', () => { setWho('ember'); setDrawer(true); selectTab('gallery'); }));
+  }
+  $('place-body').replaceChildren(...body);
+  $('place-card').hidden = false;
+}
+$('place-close').addEventListener('click', () => { $('place-card').hidden = true; });
+const pickedNotes = {}; // the note each dropdown shows ('' is Ember's, 'v-' Vega's); the newest if none
+for (const prefix of ['', 'v-']) {
+  $(`${prefix}note-pick`).addEventListener('change', (event) => { pickedNotes[prefix] = Number(event.target.value); render(latest); });
+}
+function showNotes(prefix, desk, s, who) { // who: { name, location, activity } of whoever the notes are for
+  const notes = (desk ?? []).slice().reverse(); // newest first; the dropdown picks which one you see
+  const chosen = notes.find((n) => n.number === pickedNotes[prefix]) ?? notes[0];
+  const pick = $(`${prefix}note-pick`), pickKey = JSON.stringify(notes.map((n) => [n.number, n.read, n.number === chosen?.number]));
+  if (pick.dataset.key !== pickKey) { // rebuilt only when something changes, so an open dropdown doesn't snap shut
+    pick.dataset.key = pickKey;
+    pick.replaceChildren(...notes.map((n) => {
+      const words = n.text.split(/\s+/);
+      const option = el('option', '', `${n.read ? '✓ Read' : '📌 Waiting'} · ${words.slice(0, 7).join(' ')}${words.length > 7 ? '…' : ''}`);
+      option.value = n.number;
+      option.selected = n === chosen;
+      return option;
+    }));
+  }
+  pick.hidden = notes.length < 2;
+  $(`${prefix}notes`).replaceChildren(...(chosen ? [pinnedCard(chosen, s, who)] : []));
+  $(`${prefix}sec-notes`).hidden = !notes.length;
+}
+function pinnedCard(note, s, who) { // a note you left: where it's got to, like a parcel tracker, and what came of it
   const board = s.buildings.find((b) => b.actions?.includes('board'));
   const card = el('div', 'pinned'), steps = el('ol');
   card.append(el('q', '', note.text.length > 110 ? `${note.text.slice(0, 110)}…` : note.text));
@@ -2549,8 +2769,8 @@ function pinnedCard(note, s) { // a note you left: where it's got to, like a par
   };
   step('on', '📌', `Pinned on the ${board?.name.toLowerCase() ?? 'board'}`, note.pinned);
   const told = note.told || note.read; // notes read before this was added have no time
-  step(told ? 'on' : '', told ? '👀' : '○', told ? `${s.name} knows it's there` : `${s.name} hasn't noticed yet`, note.told);
-  if (!note.read && board && s.location === board.id) step('now', '🚶', s.activity.startsWith('Heading') ? 'Heading to the board now' : 'At the board now');
+  step(told ? 'on' : '', told ? '👀' : '○', told ? `${who.name} knows it's there` : `${who.name} hasn't noticed yet`, note.told);
+  if (!note.read && board && who.location === board.id) step('now', '🚶', who.activity.startsWith('Heading') ? 'Heading to the board now' : 'At the board now');
   step(note.read ? 'on' : '', note.read ? '✓' : '○', note.read ? `Read it: "${note.reply}"` : 'Not read yet', note.read_at);
   card.append(steps);
   if (note.followed?.length) {
@@ -2656,22 +2876,9 @@ function render(s) {
   $('wishes').replaceChildren(...wishRows(s.wishes, s.name));
   $('sec-skills').hidden = !s.skills.length;
   $('sec-goals').hidden = !activeGoals.length && !finishedGoals.length;
-  const notes = (s.desk ?? []).slice().reverse(); // newest first; the dropdown picks which one you see
-  const chosen = notes.find((n) => n.number === pickedNote) ?? notes[0];
-  const pick = $('note-pick'), pickKey = JSON.stringify(notes.map((n) => [n.number, n.read, n.number === chosen?.number]));
-  if (pick.dataset.key !== pickKey) { // rebuilt only when something changes, so an open dropdown doesn't snap shut
-    pick.dataset.key = pickKey;
-    pick.replaceChildren(...notes.map((n) => {
-      const words = n.text.split(/\s+/);
-      const option = el('option', '', `${n.read ? '✓ Read' : '📌 Waiting'} · ${words.slice(0, 7).join(' ')}${words.length > 7 ? '…' : ''}`);
-      option.value = n.number;
-      option.selected = n === chosen;
-      return option;
-    }));
-  }
-  pick.hidden = notes.length < 2;
-  $('notes').replaceChildren(...(chosen ? [pinnedCard(chosen, s)] : []));
-  $('sec-notes').hidden = !notes.length;
+  showNotes('', s.desk, s, { name: s.name, location: s.location, activity: s.activity });
+  if (s.vega) showNotes('v-', s.vega.desk, s, { name: s.vega.name, location: s.vega.location, activity: s.vega.doing });
+  if (!$('place-card').hidden) showPlace(shownPlace, s);
   $('wondering').textContent = s.wondering ?? '';
   $('sec-wondering').hidden = !s.wondering;
   $('glance-empty').hidden = !(s.skills.length + activeGoals.length + finishedGoals.length === 0);
@@ -2757,6 +2964,7 @@ async function refresh() {
       galleryItems = galleryResponse.ok ? await galleryResponse.json() : [];
       galleryKey = s.gallery_key;
       paintArt(galleryItems.findLast((work) => work.type === 'drawing')?.svg);
+      paintWall();
     }
     latest = s;
     applyLive(s);
@@ -2844,6 +3052,7 @@ const NEW_ISSUE = location.hostname.endsWith('.github.io')
 let noteFor = 'Ember';
 function openNote(name) {
   noteFor = name;
+  $('place-card').hidden = true;
   document.querySelectorAll('#note-box [data-for]').forEach((b) => b.classList.toggle('on', b.dataset.for === name));
   $('note-box').hidden = false;
   $('note-text').focus();
@@ -2909,7 +3118,8 @@ document.querySelectorAll('.who-card').forEach((card) => {
 });
 addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
-  if (!$('note-box').hidden) $('note-box').hidden = true;
+  if (!$('place-card').hidden) $('place-card').hidden = true;
+  else if (!$('note-box').hidden) $('note-box').hidden = true;
   else setDrawer(false);
 });
 $('cam-drawer').classList.toggle('on', document.documentElement.classList.contains('drawer-open'));

@@ -134,6 +134,8 @@ def make_materials():
     M["hazard"] = material("Hazard stripes", image=make_image("Hazard", hazard()), roughness=0.6)
     M["glass"] = material("Glass", (0.6, 0.95, 1), roughness=0.05, alpha=0.16)
     M["cushion"] = material("Cushion", (0.22, 0.1, 0.32), roughness=0.95)
+    M["gilt"] = material("Gilt frame", (0.55, 0.38, 0.14), metallic=0.9, roughness=0.35)
+    M["canvas"] = material("Canvas", (0.78, 0.76, 0.7), roughness=0.9)
     M["code"] = material("Code screen", (0.02, 0.05, 0.05), emission=(0.1, 0.6, 0.5), strength=0.6)
     M["graph"] = material("Graph screen", image=make_image("Graph", graph()), glow_image=True)
     M["lines"] = material("Side screen", image=make_image("Lines", code_lines()), glow_image=True)
@@ -564,7 +566,50 @@ def bench():
         sphere("Leaves", r, t + Vector(offset), M["leaves"], segments=12, rings=8)
 
 
-BUILDINGS = {"terminal": terminal, "pod": pod, "railing": railing, "radio": radio, "bench": bench}
+def art_wall():
+    """Where Ember's art hangs: a concrete wall with four frames under picture lights and a neon ART sign, and a
+    paint-spattered table at the right-hand end. The page paints Ember's newest works onto Canvas_1..Canvas_4 (left to
+    right), so those keep their names. Ember floats at the origin, in front of the wall."""
+    wall_y = 1.35
+    box("Wall", (4.8, 0.3, 2.7), (0, wall_y, 1.35), M["concrete"], bevel=0.02)
+    box("Coping", (5.0, 0.42, 0.1), (0, wall_y, 2.75), M["dark"], bevel=0.01)
+    box("Wall paint", (4.6, 0.02, 2.35), (0, wall_y - 0.16, 1.45), M["panel"])
+    face = wall_y - 0.17
+    for i, x in enumerate((-1.71, -0.57, 0.57, 1.71), start=1):
+        frame_mat = M["gilt"] if i % 2 else M["dark"]
+        w, h, t = 0.9, 1.12, 0.07
+        for dx, dz, size in ((0, h / 2, (w, 0.06, t)), (0, -h / 2, (w, 0.06, t)),
+                             (-w / 2, 0, (t, 0.06, h + t)), (w / 2, 0, (t, 0.06, h + t))):
+            box("Frame", size, (x + dx, face - 0.03, 1.45 + dz), frame_mat, bevel=0.008)
+        picture(f"Canvas_{i}", w - 0.07, h - 0.07, (x, face - 0.035, 1.45), M["canvas"])
+        box("Plaque", (0.32, 0.02, 0.07), (x, face - 0.01, 0.74), M["white"], bevel=0.004)
+        # a brass picture light on a little arm
+        rod("Lamp arm", 0.012, (x, face, 2.12), (x, face - 0.22, 2.2), M["dark"])
+        cylinder("Picture lamp", 0.045, 0.34, (x, face - 0.24, 2.2), (1, 0, 0), M["gilt"], segments=12)
+        box("Lamp glow", (0.3, 0.02, 0.012), (x, face - 0.24, 2.16), M["amber"])
+    text("Sign", "ART", 0.5, (0, wall_y, 3.08), M["pink"])
+    for x in (-0.42, 0.42):
+        rod("Sign bracket", 0.015, (x, wall_y + 0.02, 2.8), (x, wall_y + 0.02, 3.3), M["dark"])
+    # A paint table at the right-hand end, with pots of neon paint, a jar of brushes and splashes on the roof
+    tx, ty = 2.95, 0.85
+    box("Table top", (0.75, 0.48, 0.04), (tx, ty, 0.78), M["wood"], bevel=0.008)
+    for dx in (-0.32, 0.32):
+        for dy in (-0.2, 0.2):
+            rod("Table leg", 0.02, (tx + dx, ty + dy, 0), (tx + dx, ty + dy, 0.76), M["dark"])
+    for dx, dy, colour in ((-0.22, -0.08, "cyan"), (-0.05, 0.1, "pink"), (0.12, -0.1, "amber"), (0.26, 0.08, "violet")):
+        cylinder("Paint pot", 0.06, 0.1, (tx + dx, ty + dy, 0.85), (0, 0, 1), M["steel"], segments=14)
+        cylinder("Paint", 0.055, 0.004, (tx + dx, ty + dy, 0.902), (0, 0, 1), M[colour], segments=14)
+    cylinder("Brush jar", 0.06, 0.16, (tx + 0.05, ty - 0.17, 0.88), (0, 0, 1), M["glass"], segments=14)
+    for k, tip in enumerate(("cyan", "pink", "amber")):
+        top = (tx + 0.02 + k * 0.03, ty - 0.17 + (k - 1) * 0.02, 1.08)
+        rod("Brush", 0.008, (tx + 0.05, ty - 0.17, 0.82), top, M["wood"], segments=6)
+        sphere("Bristles", 0.016, top, M[tip], segments=8, rings=6)
+    for x, y, r, colour in ((2.5, 0.2, 0.16, "pink"), (3.3, 0.35, 0.11, "cyan"), (-1.2, 0.55, 0.09, "amber"),
+                            (0.8, 0.4, 0.07, "violet"), (2.9, -0.15, 0.06, "cyan")):
+        cylinder("Splash", r, 0.004, (x, y, 0.003), (0, 0, 1), M[colour], segments=16)
+
+
+BUILDINGS = {"terminal": terminal, "pod": pod, "railing": railing, "radio": radio, "bench": bench, "art_wall": art_wall}
 PROPS = {"roof_ac": roof_ac, "roof_tank": roof_tank, "roof_dish": roof_dish, "roof_vents": roof_vents,
          "roof_crates": roof_crates, "roof_pipes": roof_pipes, "roof_stairs": roof_stairs}
 PIECES = {**BUILDINGS, **PROPS}
@@ -658,10 +703,11 @@ def use_gpu():
 
 
 def join_by_material(name):
-    """One mesh per material (fewer draw calls on the page). CodeScreen keeps its name: the page looks for it."""
+    """One mesh per material (fewer draw calls on the page). CodeScreen and the Canvas_ frames keep their names: the
+    page looks for them."""
     groups = {}
     for obj in collection(name).objects:
-        if obj.type == "MESH" and obj.name != "CodeScreen":
+        if obj.type == "MESH" and obj.name != "CodeScreen" and not obj.name.startswith("Canvas"):
             groups.setdefault(obj.active_material.name, []).append(obj)
     for objs in groups.values():
         if len(objs) > 1:

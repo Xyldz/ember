@@ -14,9 +14,9 @@ const NEEDS = ['charge', 'curiosity', 'joy', 'calm', 'connection'];
 const UNLOCKS = [['search', 'Internet access (Ember can search here)'], ['rest', 'Proper rest (sleeping here recharges faster)'],
   ['radio', "A radio (Ember hears what's on the city's stations)"], ['friend', "Vega's desk (Ember's friend Vega works here)"],
   ['board', 'A bulletin board (notes you leave Ember and Vega get pinned here)'],
-  ['telescope', 'A telescope (Ember sees the real sky up close here)']];
+  ['telescope', 'A telescope (Ember sees the real sky up close here)'], ['art', "An art wall (Ember's newest art hangs here)"]];
 const LOOK_NAMES = { terminal: 'Built-in: data terminal', pod: 'Built-in: charging pod', railing: 'Built-in: railing',
-  radio: 'Built-in: old radio', bench: 'Built-in: bench', shapes: 'Simple shapes', model: 'My 3D model (.glb / .obj)', placeholder: 'Placeholder box' };
+  radio: 'Built-in: old radio', bench: 'Built-in: bench', art_wall: 'Built-in: art wall', shapes: 'Simple shapes', model: 'My 3D model (.glb / .obj)', placeholder: 'Placeholder box' };
 const MODEL_FILE = /\.(glb|gltf|obj)$/i;
 const EDGE_NAMES = ['front edge', 'back edge', 'right edge', 'left edge'];
 
