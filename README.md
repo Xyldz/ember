@@ -73,6 +73,9 @@ If a repository has no activity for 60 days GitHub pauses the schedule; just cli
 - Circuit traces run across the roof from the terminal to every place, with a pad under each spot; pulses of light run
   along them, more of them along the way Ember's heading. They follow `buildings.json`, so they rewire themselves
   when you move things in builder mode.
+- **🚶 Walk** in the toolbar: walk around the roof yourself as a little visitor. W A S D or the arrow keys walk (Shift
+  runs), dragging looks around, and E looks at the place you're next to; on a phone there's a stick. Ember and Vega turn
+  to you when you're close and the pigeons scatter, but that's the page: Ember itself can't know you came.
 - **Click a place** (or its label) to see who's there and what they're up to: what Ember's reading at the terminal,
   Vega's account at the trading floor, your notes at the board, the art on the art wall. Click Ember or Vega for the
   place they're at. The card stays live while it's open.

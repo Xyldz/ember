@@ -89,6 +89,14 @@
     padding: 14px 18px 18px; border-radius: var(--radius); transform: translateX(-50%); pointer-events: auto;
     box-shadow: 0 24px 70px rgba(0, 0, 0, .5); transition: left .35s; }
   .place-card[hidden] { display: none; }
+  .walk-hint { position: absolute; left: 50%; bottom: 82px; z-index: 5; padding: 8px 16px; border: 1px solid color-mix(in srgb, var(--ember) 40%, transparent);
+    border-radius: var(--pill); color: var(--ink); font: inherit; font-size: 13px; white-space: nowrap; transform: translateX(-50%);
+    pointer-events: auto; cursor: pointer; transition: left .35s; }
+  .walk-hint[hidden], .stick[hidden] { display: none; }
+  .stick { position: absolute; left: 22px; bottom: 132px; z-index: 5; width: 112px; height: 112px; border: 1px solid var(--line);
+    border-radius: 50%; background: var(--glass); pointer-events: auto; touch-action: none; }
+  .stick i { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%;
+    background: color-mix(in srgb, var(--ember) 55%, transparent); box-shadow: 0 0 18px var(--ember); }
   .place-top { display: flex; align-items: center; gap: 10px; }
   .place-card h2 { color: var(--ember); }
   .place-card .about { margin: 6px 0; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
@@ -211,7 +219,7 @@
     scrollbar-width: thin; scrollbar-color: var(--line) transparent; transform: translateX(calc(100% + 24px)); visibility: hidden;
     transition: transform .35s cubic-bezier(.2, .8, .2, 1), visibility 0s .35s; }
   .drawer-open #panel { transform: none; visibility: visible; transition: transform .35s cubic-bezier(.2, .8, .2, 1); }
-  .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card { left: calc(50% - 218px); }
+  .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card, .drawer-open .walk-hint { left: calc(50% - 218px); }
   #panel > * { flex-shrink: 0; }
   .drawer-top { display: flex; align-items: center; gap: 8px; padding: 14px 16px 4px; }
   .switch { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: var(--pill); background: var(--card); }
@@ -487,13 +495,13 @@
   @media (max-height: 500px) { /* on its side: the drawer stays on the right, full height */
     .act { -webkit-line-clamp: 1; }
     #panel { top: 8px; right: calc(8px + env(safe-area-inset-right)); bottom: 8px; }
-    .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card { left: calc(50% - 214px); }
+    .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card, .drawer-open .walk-hint { left: calc(50% - 214px); }
   }
   /* ---------- Upright phones: the cards side by side, the story slides up from the bottom ---------- */
   @media (max-width: 760px) {
     .hud { left: 8px; right: 8px; width: auto; flex-direction: row; }
     .who-card { flex: 1 1 0; min-width: 0; }
-    .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card { left: 50%; }
+    .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card, .drawer-open .walk-hint { left: 50%; }
     #panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: min(80vh, 760px); border-bottom: 0;
       border-radius: var(--radius) var(--radius) 0 0; transform: translateY(105%); padding-bottom: env(safe-area-inset-bottom); }
     #panel::before { content: ""; display: block; width: 38px; height: 4px; margin: 8px auto 0; border-radius: 2px; background: var(--line); }
@@ -538,6 +546,7 @@
         <button data-follow="free" title="Drag to turn · right-drag to move · scroll to zoom · double-click to fly there">🎥<span class="lbl"> Free</span></button>
         <button data-follow="ember" title="The camera follows Ember around the roof">✦<span class="lbl"> Ember</span></button>
         <button data-follow="vega" id="cam-vega" title="The camera follows Vega around the roof" hidden>🤖<span class="lbl"> Vega</span></button>
+        <button data-follow="walk" title="Walk around the roof yourself: W A S D or the arrow keys, drag to look, E to look at a place">🚶<span class="lbl"> Walk</span></button>
         <i class="sep"></i>
         <button id="cam-reset" title="Back to the view of the whole roof">⟲</button>
         <button id="cam-sky" title="The sky follows the real sun over London. Click for night all the time">☀</button>
@@ -547,6 +556,8 @@
         <i class="sep"></i>
         <button id="cam-drawer" title="Their story: today, diary, trades and more">☰<span class="lbl"> Story</span></button>
       </div>
+      <button id="walk-hint" class="walk-hint glass" hidden></button>
+      <div id="stick" class="stick" aria-hidden="true" hidden><i></i></div>
       <div id="place-card" class="place-card glass" role="dialog" aria-labelledby="place-name" hidden>
         <div class="place-top"><h2 id="place-name"></h2><button id="place-close" class="close" title="Close">✕</button></div>
         <div id="place-body"></div>
@@ -1697,11 +1708,16 @@ const HOME_VIEW = { camera: camera.position.clone(), target: controls.target.clo
 let follow = 'free', flight = null; // flight: a glide to somewhere new, in progress
 const followStep = new THREE.Vector3(), clampStep = new THREE.Vector3();
 function setFollow(mode) {
+  const wasWalking = follow === 'walk';
   follow = mode;
   document.querySelectorAll('#cam [data-follow]').forEach((b) => b.classList.toggle('on', b.dataset.follow === mode));
-  store.set('follow', mode);
+  store.set('follow', mode === 'walk' ? 'free' : mode); // a visit doesn't start mid-walk
+  if (mode === 'walk' && !wasWalking) startWalk();
+  if (mode !== 'walk' && wasWalking) stopWalk();
 }
-function followed() { return follow === 'ember' ? avatar.position : follow === 'vega' && vega ? vega.root.position : null; }
+function followed() {
+  return follow === 'ember' ? avatar.position : follow === 'vega' && vega ? vega.root.position : follow === 'walk' ? walker.position : null;
+}
 function flyTo(target, cameraAt) { // glide there; the camera keeps its angle unless told where to end up
   const offset = camera.position.clone().sub(controls.target);
   if (offset.length() > 11) offset.setLength(11);
@@ -1731,7 +1747,7 @@ renderer.domElement.addEventListener('pointerup', (event) => {
   for (let o = hit.object; o; o = o.parent) if (o.userData.buildingId) return showPlace(o.userData.buildingId);
 });
 renderer.domElement.addEventListener('dblclick', (event) => {
-  if (BUILDING) return;
+  if (BUILDING || follow === 'walk') return;
   const hit = hitAt(event);
   if (!hit) return;
   const who = inside(hit.object, avatar) ? 'ember' : vega && inside(hit.object, vega.root) ? 'vega' : 'free';
@@ -1740,7 +1756,7 @@ renderer.domElement.addEventListener('dblclick', (event) => {
 });
 renderer.domElement.addEventListener('pointerdown', (event) => { // grabbing the camera takes over from the autopilot
   flight = null;
-  if (event.button === 2 || event.shiftKey || event.ctrlKey || event.metaKey) setFollow('free'); // you're moving it yourself
+  if (follow !== 'walk' && (event.button === 2 || event.shiftKey || event.ctrlKey || event.metaKey)) setFollow('free'); // you're moving it yourself
 });
 function steerCamera(dt) {
   if (flight) {
@@ -1788,7 +1804,7 @@ function movePigeons(t, dt) {
       if (k >= 1) { p.flight = null; bird.scale.y = 1; p.target.copy(at); }
       continue;
     }
-    const scared = [avatar.position, vega && !feeder ? vega.root.position : null]
+    const scared = [avatar.position, vega && !feeder ? vega.root.position : null, follow === 'walk' ? walker.position : null]
       .some((who) => who && Math.hypot(who.x - at.x, who.z - at.z) < 1.3);
     if (scared) {
       const a = Math.random() * Math.PI * 2, r = 3 + Math.random() * 4;
@@ -1849,6 +1865,111 @@ resize();
 
 const timer = new THREE.Clock();
 let sinceFrame = 0;
+// ---------------------------------------------------------------------------
+// Walk mode: you, as a little visitor on the roof. W A S D or the arrow keys (the stick on a phone) walk, Shift runs,
+// dragging looks around, and E (or the button that pops up) looks at the place you're next to. Ember and Vega turn to
+// you when you're close and the pigeons get out of your way, but that's all this page: Ember itself can't know you came.
+// ---------------------------------------------------------------------------
+const walker = new THREE.Group(), walkerLegs = [];
+{
+  const jacket = mat(0x56608c, { roughness: 0.7 }), dark = mat(0x1d2136);
+  put(new THREE.CapsuleGeometry(0.21, 0.42, 4, 12), jacket, 0, 0.72, 0, walker);
+  put(new THREE.TorusGeometry(0.215, 0.025, 8, 32).rotateX(Math.PI / 2), neon(0x3ff0ff, 2), 0, 0.86, 0, walker).castShadow = false; // a glowing band, seen from any side
+  put(new THREE.SphereGeometry(0.19, 16, 12), dark, 0, 1.2, 0, walker);
+  put(new THREE.BoxGeometry(0.26, 0.06, 0.06), neon(0xff3fb4, 2.4), 0, 1.22, 0.16, walker).castShadow = false; // a glowing visor
+  for (const side of [-1, 1]) {
+    const leg = new THREE.Group();
+    leg.position.set(side * 0.09, 0.42, 0);
+    put(new THREE.CapsuleGeometry(0.07, 0.26, 4, 8), dark, 0, -0.2, 0, leg);
+    walker.add(leg);
+    walkerLegs.push(leg);
+  }
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.4, 32).rotateX(-Math.PI / 2), neon(0xff3fb4, 1.5));
+  ring.position.y = 0.02;
+  walker.add(ring);
+}
+walker.visible = false;
+scene.add(walker);
+const walkKeys = new Set(), stick = { x: 0, y: 0 }, walkForward = new THREE.Vector3(), walkMove = new THREE.Vector3();
+const WALK_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift']);
+let nearPlace = null, walkHelpUntil = 0;
+function startWalk() {
+  walker.visible = true;
+  walker.position.set(2.5, 0, 8); // by the front edge, looking into the roof
+  walker.rotation.y = Math.PI;
+  controls.enablePan = false;
+  walkHelpUntil = performance.now() + 7000;
+  $('stick').hidden = !matchMedia('(pointer: coarse)').matches;
+  flyTo(new THREE.Vector3(2.5, 1, 8), new THREE.Vector3(2.5, 4.4, 14.8));
+}
+function stopWalk() {
+  walker.visible = false;
+  controls.enablePan = true;
+  walkKeys.clear();
+  nearPlace = null;
+  $('walk-hint').hidden = $('stick').hidden = true;
+}
+addEventListener('keydown', (event) => {
+  if (follow !== 'walk' || event.target.closest?.('input, textarea, select')) return;
+  const key = event.key.toLowerCase();
+  if (WALK_KEYS.has(key)) {
+    walkKeys.add(key);
+    event.preventDefault();
+  }
+  if (key === 'e' && nearPlace) showPlace(nearPlace);
+});
+addEventListener('keyup', (event) => walkKeys.delete(event.key.toLowerCase()));
+addEventListener('blur', () => walkKeys.clear());
+$('walk-hint').addEventListener('click', () => { if (nearPlace) showPlace(nearPlace); });
+{ // the stick on a phone: drag the knob, the further the faster
+  const pad = $('stick'), knob = pad.firstElementChild;
+  const move = (event) => {
+    const box = pad.getBoundingClientRect(), r = box.width / 2, max = r * 0.6;
+    let x = event.clientX - box.left - r, y = event.clientY - box.top - r;
+    const length = Math.hypot(x, y);
+    if (length > max) { x *= max / length; y *= max / length; }
+    stick.x = x / max;
+    stick.y = -y / max;
+    knob.style.transform = `translate(${x}px, ${y}px)`;
+  };
+  const end = () => { stick.x = stick.y = 0; knob.style.transform = ''; };
+  pad.addEventListener('pointerdown', (event) => { pad.setPointerCapture(event.pointerId); move(event); });
+  pad.addEventListener('pointermove', (event) => { if (pad.hasPointerCapture(event.pointerId)) move(event); });
+  pad.addEventListener('pointerup', end);
+  pad.addEventListener('pointercancel', end);
+}
+function stepWalker(dt, t) {
+  if (follow !== 'walk') return;
+  const held = (...keys) => keys.some((key) => walkKeys.has(key));
+  const ahead = (held('w', 'arrowup') ? 1 : 0) - (held('s', 'arrowdown') ? 1 : 0) + stick.y;
+  const across = (held('d', 'arrowright') ? 1 : 0) - (held('a', 'arrowleft') ? 1 : 0) + stick.x;
+  walkForward.subVectors(controls.target, camera.position).setY(0).normalize(); // forward is the way the camera looks
+  walkMove.set(walkForward.x * ahead - walkForward.z * across, 0, walkForward.z * ahead + walkForward.x * across);
+  const amount = Math.min(1, walkMove.length()), walking = amount > 0.05;
+  if (walking) {
+    walkMove.setLength(amount * (held('shift') ? 5.5 : 3.2) * dt);
+    const edge = ROOF - 0.4;
+    walker.position.x = THREE.MathUtils.clamp(walker.position.x + walkMove.x, -edge, edge);
+    walker.position.z = THREE.MathUtils.clamp(walker.position.z + walkMove.z, -edge, edge);
+    const turn = Math.atan2(walkMove.x, walkMove.z) - walker.rotation.y;
+    walker.rotation.y += Math.atan2(Math.sin(turn), Math.cos(turn)) * Math.min(1, dt * 10);
+  }
+  walkerLegs.forEach((leg, i) => { leg.rotation.x = walking ? Math.sin(t * 11 + i * Math.PI) * 0.6 * amount : leg.rotation.x * 0.8; });
+  walker.position.y = walking ? Math.abs(Math.sin(t * 11)) * 0.04 : 0;
+  let reach = 2.6; // the nearest place within reach
+  nearPlace = null;
+  for (const place of Object.values(places)) {
+    const d = Math.hypot(place.x - walker.position.x, place.z - walker.position.z);
+    if (d < reach) { reach = d; nearPlace = place.building.id; }
+  }
+  const hint = $('walk-hint'), touch = !$('stick').hidden, cardOpen = !$('place-card').hidden;
+  const text = nearPlace && !cardOpen ? `Look at the ${places[nearPlace].building.name.toLowerCase()}${touch ? '' : ' · E'}`
+    : performance.now() < walkHelpUntil ? (touch ? 'Use the stick to walk · drag to look around'
+      : 'W A S D to walk, Shift to run · drag to look · E to look at a place') : '';
+  if (hint.textContent !== text) hint.textContent = text;
+  hint.hidden = !text;
+}
+
 function animate() {
   requestAnimationFrame(animate);
   sinceFrame += timer.getDelta();
@@ -1856,6 +1977,7 @@ function animate() {
   const dt = Math.min(sinceFrame, 0.1), t = timer.elapsedTime;
   sinceFrame = 0;
   stepPulses(dt);
+  stepWalker(dt, t);
 
   const dx = goal.x - avatar.position.x, dz = goal.z - avatar.position.z, dist = Math.hypot(dx, dz);
   const moving = placed && dist > 0.05;
@@ -1876,6 +1998,11 @@ function animate() {
   avatarBody.scale.setScalar((resting ? 0.8 : 1) * (1 + Math.sin(t * (resting ? 1 : 2.4)) * 0.04));
   shellMaterial.emissiveIntensity = resting ? 0.25 : 0.35 + (charge / 100) * 0.5; // dimmer when its charge is low
   motes.rotation.y += dt * (resting ? 0.3 : 1.4);
+  if (follow === 'walk' && !resting && walker.position.distanceTo(avatar.position) < 3.2) { // someone's come to see it
+    const turn = Math.atan2(walker.position.x - avatar.position.x, walker.position.z - avatar.position.z) - avatarBody.rotation.y;
+    avatarBody.rotation.y += Math.atan2(Math.sin(turn), Math.cos(turn)) * Math.min(1, dt * 4);
+    motes.rotation.y += dt * 3;
+  }
   avatarLight.intensity = resting ? 0.6 : 2;
 
   for (const car of cars) {
@@ -1923,7 +2050,8 @@ function animate() {
     vega.root.rotation.y += Math.atan2(Math.sin(heading), Math.cos(heading)) * Math.min(1, dt * 4); // the short way round
     at.y = Math.abs(Math.sin(t * (rolling ? 10 : 2.2))) * (rolling ? 0.03 : 0.015);
     vega.tip.visible = Math.sin(t * (vegaAsleep ? 0.8 : 2.5) + 1) > -0.3;
-    const near = vega.root.worldToLocal(vegaLook.copy(avatar.position));
+    const visitor = follow === 'walk' && walker.position.distanceTo(at) < avatar.position.distanceTo(at); // whoever's nearer
+    const near = vega.root.worldToLocal(vegaLook.copy(visitor ? walker.position : avatar.position));
     const turn = rolling || vegaAsleep ? 0 : Math.hypot(near.x, near.z) < 7 ? Math.max(-0.9, Math.min(0.9, Math.atan2(near.x, near.z))) : Math.sin(t * 0.3) * 0.3;
     vega.head.rotation.y += (turn - vega.head.rotation.y) * Math.min(1, dt * 2);
     vega.head.rotation.x += ((vegaAsleep ? 0.3 : 0) - vega.head.rotation.x) * Math.min(1, dt * 2); // nods off when powered down
@@ -3168,7 +3296,7 @@ if (NEW_ISSUE) {
 // The camera bar: follow Ember or Vega (or not), back to the whole roof, and real sky or night all the time
 document.querySelectorAll('#cam [data-follow]').forEach((button) => button.addEventListener('click', () => {
   setFollow(button.dataset.follow);
-  if (followed()) flyTo(followed().clone().setY(1));
+  if (followed() && follow !== 'walk') flyTo(followed().clone().setY(1)); // walking sets its own camera
 }));
 $('cam-reset').addEventListener('click', () => { setFollow('free'); flyTo(HOME_VIEW.target, HOME_VIEW.camera); });
 function setSky(mode) {
@@ -3209,6 +3337,7 @@ addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   if (!$('place-card').hidden) $('place-card').hidden = true;
   else if (!$('note-box').hidden) $('note-box').hidden = true;
+  else if (follow === 'walk') setFollow('free');
   else setDrawer(false);
 });
 $('cam-drawer').classList.toggle('on', document.documentElement.classList.contains('drawer-open'));
