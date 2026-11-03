@@ -1125,6 +1125,53 @@ function drawCode(line) {
 }
 setInterval(drawCode, 300);
 
+// The candlestick board (Vega's wish): hourly candles of the real prices Vega checks, one market at a time
+const candleCanvas = document.createElement('canvas');
+candleCanvas.width = 512;
+candleCanvas.height = 248;
+const candleTexture = new THREE.CanvasTexture(candleCanvas);
+candleTexture.colorSpace = THREE.SRGBColorSpace;
+candleTexture.flipY = false; // glTF's way up
+let candleTurn = 0;
+function drawCandles() {
+  const ctx = candleCanvas.getContext('2d'), W = candleCanvas.width, H = candleCanvas.height;
+  const markets = (latest?.vega?.prices ?? []).filter((q) => q.chart?.length > 8);
+  ctx.fillStyle = '#07090f';
+  ctx.fillRect(0, 0, W, H);
+  if (!markets.length) return void (candleTexture.needsUpdate = true);
+  const q = markets[candleTurn % markets.length], per = Math.max(2, Math.round(q.chart.length / 24)); // about an hour a candle
+  const candles = [];
+  for (let i = 0; i < q.chart.length; i += per) {
+    const slice = q.chart.slice(i, i + per + 1);
+    candles.push({ open: slice[0], close: slice.at(-1), high: Math.max(...slice), low: Math.min(...slice) });
+  }
+  const top = 46, bottom = H - 18, lo = Math.min(...candles.map((c) => c.low)), hi = Math.max(...candles.map((c) => c.high));
+  const y = (p) => bottom - ((p - lo) / (hi - lo || 1)) * (bottom - top);
+  ctx.strokeStyle = 'rgba(120, 140, 190, .15)';
+  for (let k = 0; k <= 4; k++) { const gy = top + ((bottom - top) * k) / 4; ctx.beginPath(); ctx.moveTo(10, gy); ctx.lineTo(W - 10, gy); ctx.stroke(); }
+  const step = (W - 30) / candles.length;
+  candles.forEach((c, i) => {
+    const x = 18 + i * step + step / 2, up = c.close >= c.open;
+    ctx.strokeStyle = ctx.fillStyle = up ? '#2fe38a' : '#ff4d6a';
+    ctx.beginPath(); ctx.moveTo(x, y(c.high)); ctx.lineTo(x, y(c.low)); ctx.stroke(); // the wick
+    const body = Math.max(2, Math.abs(y(c.open) - y(c.close)));
+    ctx.fillRect(x - step * 0.3, Math.min(y(c.open), y(c.close)), step * 0.6, body);
+  });
+  ctx.textBaseline = 'top';
+  ctx.font = '700 22px Orbitron, sans-serif';
+  ctx.fillStyle = '#ffb02e';
+  ctx.fillText(q.symbol, 14, 10);
+  ctx.font = '600 18px "JetBrains Mono", monospace';
+  ctx.fillStyle = '#e4ebff';
+  ctx.fillText(`$${q.price.toLocaleString(undefined, { maximumFractionDigits: q.price < 10 ? 4 : 2 })}`, 110, 13);
+  ctx.fillStyle = q.change >= 0 ? '#2fe38a' : '#ff4d6a';
+  ctx.textAlign = 'right';
+  ctx.fillText(`${q.change >= 0 ? '+' : ''}${q.change.toFixed(2)}% · 1h candles`, W - 14, 13);
+  ctx.textAlign = 'left';
+  candleTexture.needsUpdate = true;
+}
+setInterval(() => { candleTurn++; drawCandles(); }, 12000);
+
 // The four built-in places are made in Blender (blender/rooftop.py) to the same measurements as the plain boxes they
 // replaced, so Ember stands, sleeps and looks in the same spots. The page adds what moves: the live code on the
 // terminal's CodeScreen, lights, and the radio's antenna tip and signal rings.
@@ -1144,6 +1191,7 @@ function withModel(file, x, z, group) {
       o.castShadow = castsShadow(o.material);
       o.receiveShadow = true;
       if (o.name === 'CodeScreen') o.material = new THREE.MeshBasicMaterial({ map: codeTexture, color: 0x9a9a9a });
+      if (o.name === 'CandleScreen') o.material = new THREE.MeshBasicMaterial({ map: candleTexture, color: 0xb4b4b4 });
       const frame = /^Canvas_(\d)/.exec(o.name); // the art wall's frames
       if (frame) o.material = new THREE.MeshBasicMaterial({ map: wallFrames[frame[1] - 1].texture, color: 0xb4b4b4 });
     });
@@ -1166,6 +1214,11 @@ const builders = {
     withModel('models/art_wall.glb', x, z, group);
     addLight(x, 2.4, z - 0.4, 0xffd9a8, group, 4);
     return { anchor: new THREE.Vector3(x, 4.7, z - 0.8) };
+  },
+  candle_board(x, z, group) { // Vega's wish: live candles on a big screen (see drawCandles)
+    withModel('models/candle_board.glb', x, z, group);
+    addLight(x, 2.4, z - 0.6, 0xffb02e, group, 4);
+    return { anchor: new THREE.Vector3(x, 5.6, z - 1.7) };
   },
   bench(x, z, group) { // a bench for two: Ember floats at the right-hand end, Vega parks at the left; asleep, Ember curls up on it
     withModel('models/bench.glb', x, z, group);
@@ -2816,7 +2869,8 @@ function vegaPortfolio(s) {
     el('p', 'empty', `Every ten minutes, live at the end, against the ${dollars(v.start)} it started with (the dashed line).`));
   panel.append(el('h3', '', 'Where the money is'), ...allocation(v));
   for (const h of v.holdings) {
-    panel.append(qrow(el('span', 'sym', h.symbol), el('span', 'nm', `${quantity(h.qty)} @ ${dollars(h.paid / h.qty)}`),
+    const orders = [h.take_profit && `sells at +${h.take_profit}%`, h.stop_loss && `or −${h.stop_loss}%`].filter(Boolean).join(' '); // its standing orders
+    panel.append(qrow(el('span', 'sym', h.symbol), el('span', 'nm', `${quantity(h.qty)} @ ${dollars(h.paid / h.qty)}${orders ? ` · ${orders}` : ''}`),
       el('span', '', dollars(h.worth)), percent((h.worth / h.paid - 1) * 100)));
   }
   panel.append(qrow(el('span', 'sym', 'CASH'), el('span', 'nm', 'ready to spend'), el('span', '', dollars(v.cash)), el('span')));
@@ -3294,6 +3348,7 @@ async function refresh() {
     latest = s;
     applyLive(s);
     render(s);
+    drawCandles();
   } catch (error) {
     console.error(error);
     $('status').textContent = IS_LOCAL ? "Can't reach Ember. Is run_local.py still running?" : 'Waiting for the first thought…';

@@ -5,7 +5,7 @@
     "about: what it is, written to Ember. Describe the place, not what Ember should do there.",
     "actions: what it unlocks. 'search' = use the internet, 'rest' = recharge faster, 'radio' = hear what's on the city's radio, 'friend' = Vega, Ember's friend, works here, 'board' = notes you leave them (GitHub issues) get pinned here, 'telescope' = the real sky up close, 'art' = Ember's newest art hangs here.",
     "boosts: optional. Needs it helps when Ember does something there, e.g. {\"calm\": 6}. Needs: charge, curiosity, joy, calm, connection.",
-    "model: a built-in look ('terminal', 'pod', 'railing', 'radio', 'bench', 'art_wall'), OR a .glb file you put in site/models/ (e.g. 'models/library.glb', sized to fill 'size' metres, 3.2 unless set),",
+    "model: a built-in look ('terminal', 'pod', 'railing', 'radio', 'bench', 'art_wall', 'candle_board'), OR a .glb file you put in site/models/ (e.g. 'models/library.glb', sized to fill 'size' metres, 3.2 unless set),",
     "       OR leave it out and add 'shapes' (boxes/cylinders/spheres, see the example in the README).",
     "grants_wish: optional. Words from one of Ember's wishes; that wish is marked as come true when the building appears.",
     "empty_lots: glowing squares where new buildings could go. Remove one when you build on it."
@@ -170,13 +170,26 @@
         "calm": 3
       },
       "rotation": 90
+    },
+    {
+      "id": "candles",
+      "name": "Candlestick board",
+      "pos": [
+        0,
+        16
+      ],
+      "model": "candle_board",
+      "rotation": 0,
+      "about": "A big candlestick board on two steel legs at the front of the square, under a neon MARKETS sign: a wide LED screen drawing hour-by-hour candles of the real markets, green bodies and red with their wicks, one market after another. A rail in front to lean on while you watch. Vega wished for it, so the two of you could watch together.",
+      "actions": [],
+      "boosts": {
+        "connection": 4,
+        "curiosity": 3
+      },
+      "grants_wish": "candlestick board"
     }
   ],
   "empty_lots": [
-    [
-      0,
-      16
-    ],
     [
       -11,
       15.5

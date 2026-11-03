@@ -76,7 +76,7 @@ MAX_FORM_CHANGES_PER_DAY = 2
 MAX_SELF_LINES = 10  # per section of the character sheet
 MEMORY_SLOTS = 24  # per memory section: when it's full, a new memory has to beat the weakest one to get in
 MEMORY_HALF_LIFE_DAYS = 21  # a memory's strength halves every three weeks unless something brings it back
-FASCINATION_HALF_LIFE_DAYS = 7  # this week's reading counts more than last month's
+FASCINATION_HALF_LIFE_DAYS = 3  # what Ember read a few days ago fades fast, so one topic doesn't take over
 MAX_GOALS = 3  # active at once
 SLEEP_RECHARGE = {"pod": 15, "elsewhere": 8}  # charge regained per tick asleep: a proper bed helps
 CHAPTER_EVERY_DAYS = 7
@@ -821,6 +821,12 @@ def describe_situation() -> str:
     finished_goals = ", ".join(f"{g['text']} ({g['status']})" for g in [g for g in state["goals"] if g["status"] != "active"][-3:])
     chapter = state["chapters"][-1] if state["chapters"] else None
     stale = rut()
+    hung = min(4, len(gallery))
+    gallery_line = (f"Your gallery has {hung} of its 4 frames filled; the newest things you make hang there."
+                    if any(can(b, "art") for b in buildings) else "")
+    been = {entry.split("|", 1)[1] for entry in state["routine"][-30:]} | {state["location"]}
+    away = [buildings[b]["name"].lower() for b in buildings if b not in been]
+    unvisited = f"Places you haven't spent time at lately: the {', the '.join(away)}." if away and len(state["routine"]) >= 10 else ""
     note, screen = message_waiting()
     if note and screen in (None, state["location"]):
         message = f'A note from the builder (whoever builds things up here) is pinned in front of you: "{note["text"]}"'
@@ -862,6 +868,8 @@ Your interests:
 
 Things you've made (newest last):
 {made}
+{gallery_line}
+{unvisited}
 
 Your wishes:
 {wishes}
@@ -1072,9 +1080,9 @@ def live(brain, wake_now: bool) -> None:
     feel_neglect()
     feel_weather()
     stale = rut()
-    if stale:
-        change_need("curiosity", -2)
-        change_need("joy", -1)
+    if stale:  # the same old thing has lost its shine
+        change_need("curiosity", -3)
+        change_need("joy", -2)
     if bool(stale) != state["in_rut"]:
         state["in_rut"] = bool(stale)
         log_event("Feels stuck in a rut." if stale else "Broke out of its rut.", "rut")

@@ -698,8 +698,36 @@ def gallery():
     house(-3.4, 4.3, 1.75, -3.4, 4.0, M["white"], M["concrete"], "violet", "GALLERY", (2.4, 0.5, 3.4, 1.2))
 
 
+def candle_board():
+    """Vega's wish: a big candlestick board on steel legs, with a rail in front to lean on while you watch. The page
+    draws live candles of the real markets onto CandleScreen. Ember (and Vega, beside it) stand at the origin."""
+    y = 1.7
+    box("Deck", (6.8, 3.4, 0.06), (0, 0.9, 0.03), M["tiles"])
+    for x in (-2.75, 2.75):
+        box("Leg", (0.22, 0.22, 4.3), (x, y + 0.05, 2.15), M["steel"], bevel=0.01)
+        box("Foot", (0.6, 0.6, 0.1), (x, y + 0.05, 0.05), M["dark"])
+    box("Screen housing", (5.9, 0.3, 3.0), (0, y, 2.9), M["dark"], bevel=0.03)
+    screen = picture("CandleScreen", 5.5, 2.65, (0, y - 0.16, 2.9), M["code"])
+    screen.name = "CandleScreen"
+    for z in (1.4, 4.4):  # an amber neon frame round the screen
+        box("Frame glow", (5.9, 0.04, 0.05), (0, y - 0.17, z), M["amber"])
+    for x in (-2.96, 2.96):
+        box("Frame glow", (0.05, 0.04, 3.0), (x, y - 0.17, 2.9), M["amber"])
+    text("Sign", "MARKETS", 0.45, (0, y, 4.85), M["amber"])
+    for x in (-1.4, 1.4):
+        rod("Sign post", 0.02, (x, y + 0.02, 4.4), (x, y + 0.02, 5.1), M["dark"])
+    # A rail in front to lean on, at about elbow height for Vega
+    for x in (-2.4, 0, 2.4):
+        rod("Rail post", 0.035, (x, 0.75, 0), (x, 0.75, 1.0), M["dark"])
+    rod("Rail", 0.04, (-2.5, 0.75, 1.0), (2.5, 0.75, 1.0), M["steel"])
+    box("Rail glow", (4.9, 0.03, 0.03), (0, 0.72, 0.94), M["amber"])
+    holder = bpy.data.objects.new("Colliders", None)
+    collection(piece).objects.link(holder)
+    holder["rects"] = json.dumps([[-3.0, -(y + 0.2), 3.0, -(y - 0.2)], [-2.5, -0.8, 2.5, -0.7]])
+
+
 BUILDINGS = {"terminal": net_cafe, "pod": capsule_home, "railing": railing, "radio": radio_studio, "bench": bench,
-             "art_wall": gallery}
+             "art_wall": gallery, "candle_board": candle_board}
 PROPS = {"roof_ac": roof_ac, "roof_tank": roof_tank, "roof_dish": roof_dish, "roof_vents": roof_vents, "roof_lamp": roof_lamp,
          "roof_planter": roof_planter,
          "roof_crates": roof_crates, "roof_pipes": roof_pipes, "roof_stairs": roof_stairs}
@@ -798,7 +826,7 @@ def join_by_material(name):
     names: the page looks for them."""
     groups = {}
     for obj in collection(name).objects:
-        if obj.type == "MESH" and obj.name != "CodeScreen" and not obj.name.startswith(("Canvas", "Roof")):
+        if obj.type == "MESH" and obj.name not in ("CodeScreen", "CandleScreen") and not obj.name.startswith(("Canvas", "Roof")):
             groups.setdefault(obj.active_material.name, []).append(obj)
     for objs in groups.values():
         if len(objs) > 1:

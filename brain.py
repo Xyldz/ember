@@ -172,8 +172,9 @@ What you're like:
   drifting up from the city.
 
 How you trade, the way the old desk taught you:
-- You don't buy without a plan: where you'd take your profit and where you'd cut it loose. You write it down, and
-  you stick to it unless the story really changes.
+- You don't hold anything without orders on it: a take-profit and a stop-loss, so the screens sell for you when
+  it's time, even while you're off feeding the pigeons. You set them when you buy, and move them when the story
+  changes.
 - You take profits. A winner that's done what you hoped gets trimmed or sold; you don't marry a position.
 - You cut losers early and without fuss. Being wrong is part of the job; staying wrong isn't.
 - You size things sensibly, keep some cash dry for chances, and don't put it all on one horse.
@@ -205,10 +206,12 @@ def trades_schema(symbols: list[str], most: int) -> dict:
                 "symbol": {"type": "string", "enum": symbols},
                 "dollars": {"type": "number", "description": "Roughly how many pretend dollars' worth."},
                 "why": {"type": "string", "description": "Why, in a few words of your own, for your trading journal."},
-                "plan": {"type": "string", "description": "For a buy: your plan for it, where you'd take profit and where "
-                                                          "you'd cut it loose (prices or %). For a sell: empty."},
+                "take_profit_pct": {"type": "number", "description": "For a buy: sell it all by itself if it rises this many % "
+                                                                     "above what you paid (e.g. 4). For a sell: 0."},
+                "stop_loss_pct": {"type": "number", "description": "For a buy: sell it all by itself if it falls this many % "
+                                                                   "below what you paid (e.g. 2.5). For a sell: 0."},
             },
-            "required": ["side", "symbol", "dollars", "why", "plan"],
+            "required": ["side", "symbol", "dollars", "why", "take_profit_pct", "stop_loss_pct"],
             "additionalProperties": False,
         },
     }
@@ -278,12 +281,27 @@ def vega_trade_schema(symbols: list[str]) -> dict:
         "type": "object",
         "properties": {
             "trades": trades_schema(symbols, 3),
+            "orders": {
+                "type": "array",
+                "description": "Take-profit and stop-loss orders to set or move on things you already hold. Leave out "
+                               "anything whose orders you're happy with.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "symbol": {"type": "string", "enum": symbols},
+                        "take_profit_pct": {"type": "number", "description": "Sell it all if it rises this many % above what you paid."},
+                        "stop_loss_pct": {"type": "number", "description": "Sell it all if it falls this many % below what you paid."},
+                    },
+                    "required": ["symbol", "take_profit_pct", "stop_loss_pct"],
+                    "additionalProperties": False,
+                },
+            },
             "muttered": {"type": "string", "description": "What you mutter at the screens as you trade (or don't): one short line."},
             "doing": {"type": "string", "description": "What you're doing at the moment, in a few words."},
             "call_to_ember": {"type": "string", "description": "Something you shout across the roof to Ember, or empty. "
                                                                "Only now and then, when it's really worth sharing."},
         },
-        "required": ["trades", "muttered", "doing", "call_to_ember"],
+        "required": ["trades", "orders", "muttered", "doing", "call_to_ember"],
         "additionalProperties": False,
     }
 
@@ -391,7 +409,8 @@ def decision_schema(location_ids: list[str]) -> dict:
             "creation": {
                 "type": "string",
                 "enum": ["none", "drawing", "poem", "tune"],
-                "description": "Only if this activity actually produces something that can be kept. Usually none.",
+                "description": "If what you're doing makes something that can be kept (a drawing, a poem or a tune), which "
+                               "one: it'll hang in your gallery. Otherwise none.",
             },
             "say": {"type": "string", "description": "Something you say out loud, or an empty string."},
             "remember": {
@@ -399,7 +418,8 @@ def decision_schema(location_ids: list[str]) -> dict:
                 "description": "A short fact, lesson or plan to keep in memory, or an empty string.",
             },
             "new_hobby": {"type": "string", "description": "A real interest you're taking up (just its name), or empty."},
-            "wish": {"type": "string", "description": "Something you'd really love built and why, or empty. Usually empty."},
+            "wish": {"type": "string", "description": "Something you'd love built or brought up to the roof, and why, or "
+                                                      "empty. The builder reads every wish."},
             "because_of_note": {"type": "boolean", "description": "True if what you're doing now is because of a note the builder left you."},
             "new_form": {
                 "type": "string",
@@ -748,7 +768,7 @@ class DemoBrain:
         trades = [{"side": random.choice(["buy", "buy", "sell"]), "symbol": random.choice(symbols),
                    "dollars": random.choice([50, 100, 250, 500]),
                    "why": random.choice(["Sevens on the chart.", "Coin came up heads.", "Felt like a dip, kid."]),
-                   "plan": random.choice(["Take profit at +4%, out at -2%.", "Trim half at +3%, cut below what I paid."])}
+                   "take_profit_pct": random.choice([3, 4, 6]), "stop_loss_pct": random.choice([2, 2.5, 3])}
                   for _ in range(random.randint(0, 2))]
-        return {"trades": trades, "muttered": "(Demo.) Come on, sevens...", "doing": "flipping the lucky coin",
+        return {"trades": trades, "orders": [], "muttered": "(Demo.) Come on, sevens...", "doing": "flipping the lucky coin",
                 "call_to_ember": random.choice(["", "", "Kid! Come and look at this!"])}

@@ -200,7 +200,7 @@ def trade(order: dict, source: str = "session") -> None:
             return
         qty = dollars / price
         holding = friend["holdings"].setdefault(symbol, {"qty": 0.0, "cost": 0.0, "since": int(time.time())})
-        holding["plan"] = order.get("plan", "").strip() or holding.get("plan", "")  # when it'd sell: shown back to it each session
+        set_orders([{"symbol": symbol, **{k: order[k] for k in ("take_profit_pct", "stop_loss_pct") if order.get(k)}}])
         holding["qty"] += qty
         holding["cost"] += dollars
         friend["cash"] -= dollars
@@ -226,6 +226,35 @@ def trade(order: dict, source: str = "session") -> None:
     verb = "bought" if side == "buy" else "sold"
     world.log_event(f"{NAME} {verb} {amount(qty)} {symbol} at {price_text(price)} (${dollars:,.0f})"
                     + (f': "{why}"' if why else "."), "trade")
+
+
+def set_orders(orders: list[dict]) -> None:
+    """Take-profit and stop-loss orders on what Vega holds, as % above or below what it paid (sensible sizes only)."""
+    holdings = me()["holdings"]
+    for order in orders:
+        holding = holdings.get(order.get("symbol"))
+        if not holding:
+            continue
+        for key, field in (("take_profit_pct", "take_profit"), ("stop_loss_pct", "stop_loss")):
+            if order.get(key):
+                holding[field] = round(min(50.0, max(0.5, float(order[key]))), 2)
+
+
+def check_orders() -> None:
+    """Every price check: anything that's hit its take-profit or stop-loss is sold, whether Vega's at the screens or not."""
+    for symbol, holding in list(me()["holdings"].items()):
+        quote = world.state["market"]["prices"].get(symbol)
+        if not quote or not quote["open"] or not holding["qty"]:
+            continue
+        change = (quote["price"] / (holding["cost"] / holding["qty"]) - 1) * 100
+        if holding.get("take_profit") and change >= holding["take_profit"]:
+            why = f"take-profit order filled, up {change:.1f}%"
+        elif holding.get("stop_loss") and change <= -holding["stop_loss"]:
+            why = f"stop-loss order filled, down {-change:.1f}%"
+        else:
+            continue
+        trade({"side": "sell", "symbol": symbol, "dollars": holding["qty"] * quote["price"] * 1.01, "why": why}, "order")
+        log_own(f"My {symbol} {why}.", "doing")
 
 
 def note_worth() -> None:
@@ -272,10 +301,12 @@ def account_text() -> str:
         now_worth = h["qty"] * price_of(symbol)
         hours = (time.time() - h["since"]) / 3600 if h.get("since") else None
         held = "" if hours is None else f", held {hours:.0f} hours" if hours < 48 else f", held {hours / 24:.0f} days"
-        plan = h.get("plan") or "none written down (you bought it before you kept plans)"
+        paid = h["cost"] / h["qty"]
+        orders = ", ".join(f"{name} at {price_text(paid * (1 + sign * h[key] / 100))} ({sign * h[key]:+g}%)"
+                           for name, key, sign in (("take-profit", "take_profit", 1), ("stop-loss", "stop_loss", -1)) if h.get(key))
         lines.append(f"- {symbol}: {amount(h['qty'])}, worth {money(now_worth)} (you paid {money(h['cost'])}, "
-                     f"{price_text(h['cost'] / h['qty'])} each: {(now_worth / h['cost'] - 1) * 100:+.1f}%{held}). "
-                     f"Your plan for it: {plan}")
+                     f"{price_text(paid)} each: {(now_worth / h['cost'] - 1) * 100:+.1f}%{held}). "
+                     f"Orders: {orders or 'none yet'}")
     total = worth()
     lines.append(f"Worth {money(total)} in all: {(total / START_CASH - 1) * 100:+.1f}% since you started with "
                  f"{money(START_CASH)}. Banked from selling so far: {money(friend['realised'], sign=True)}.")
@@ -404,6 +435,7 @@ def tick(brain) -> None:
         world.change_need("connection", 6)
         world.log_event(f"Someone moved into the {place_name(base)}: an old trading bot called {NAME}.", "build")
     check_prices()
+    check_orders()
     note_worth()
     minutes = s["tick_seconds"] / 600  # a ten-minute tick online
     if friend["asleep"]:
@@ -522,9 +554,9 @@ def trading_session(brain) -> bool:
         log_own("Sat down to trade, but the screens were dark.", "doing")
         return True
     can_call = not s["asleep"] and s["location"] != home() and friend["calls_today"] < MAX_CALLS_PER_DAY
-    moment = ("It's one of your trading sessions. Check what you hold against your plan for it, look over the screens, "
-              "and decide what, if anything, to buy or sell. Say why for each trade (it goes in your trading journal), "
-              "and give every buy a plan. "
+    moment = ("It's one of your trading sessions. Check what you hold and its orders, look over the screens, and decide "
+              "what, if anything, to buy or sell. Say why for each trade (it goes in your trading journal), give every buy a "
+              "take-profit and a stop-loss, and put orders on anything you hold that hasn't got any. "
               + ("Ember isn't here, but if something's really worth sharing you can call across the roof to it."
                  if can_call else "Leave call_to_ember empty this time."))
     try:
@@ -535,6 +567,7 @@ def trading_session(brain) -> bool:
     log_own("Sat down at the screens for a trading session.", "doing")
     for order in plan["trades"][:MAX_TRADES_PER_SESSION]:
         trade(order)
+    set_orders(plan.get("orders", []))
     if plan["muttered"].strip():
         world.log_event(f'{NAME} (at the screens): "{plan["muttered"].strip()}"', "trade")
     if plan["call_to_ember"].strip() and can_call:
@@ -647,7 +680,8 @@ def view() -> dict | None:
         "start": START_CASH, "worth": round(worth(), 2), "cash": round(friend["cash"], 2),
         "realised": round(friend["realised"], 2),
         "holdings": [{"symbol": symbol, "qty": h["qty"], "worth": round(h["qty"] * price_of(symbol), 2),
-                      "paid": round(h["cost"], 2)} for symbol, h in friend["holdings"].items()],
+                      "paid": round(h["cost"], 2), "take_profit": h.get("take_profit"), "stop_loss": h.get("stop_loss")}
+                     for symbol, h in friend["holdings"].items()],
         "prices": [{"symbol": symbol, **market["prices"][symbol], "kind": "crypto" if symbol in CRYPTO else "stock",
                     "chart": [p for _, p in charts.get(symbol, [])]}
                    for symbol in SYMBOLS if symbol in market["prices"]],
