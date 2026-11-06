@@ -5,7 +5,7 @@
     "about: what it is, written to Ember. Describe the place, not what Ember should do there.",
     "actions: what it unlocks. 'search' = use the internet, 'rest' = recharge faster, 'radio' = hear what's on the city's radio, 'friend' = Vega, Ember's friend, works here, 'board' = notes you leave them (GitHub issues) get pinned here, 'telescope' = the real sky up close, 'art' = Ember's newest art hangs here.",
     "boosts: optional. Needs it helps when Ember does something there, e.g. {\"calm\": 6}. Needs: charge, curiosity, joy, calm, connection.",
-    "model: a built-in look ('terminal', 'pod', 'railing', 'radio', 'bench', 'art_wall', 'candle_board'), OR a .glb file you put in site/models/ (e.g. 'models/library.glb', sized to fill 'size' metres, 3.2 unless set),",
+    "model: a built-in look ('terminal', 'pod', 'railing', 'radio', 'bench', 'art_wall', 'candle_board', 'chart_shelf'), OR a .glb file you put in site/models/ (e.g. 'models/library.glb', sized to fill 'size' metres, 3.2 unless set),",
     "       OR leave it out and add 'shapes' (boxes/cylinders/spheres, see the example in the README).",
     "grants_wish: optional. Words from one of Ember's wishes; that wish is marked as come true when the building appears.",
     "empty_lots: glowing squares where new buildings could go. Remove one when you build on it."
@@ -187,6 +187,23 @@
         "curiosity": 3
       },
       "grants_wish": "candlestick board"
+    },
+    {
+      "id": "chart_shelf",
+      "name": "Star chart shelf",
+      "pos": [
+        9.6,
+        -18.2
+      ],
+      "model": "chart_shelf",
+      "rotation": 20,
+      "about": "A weatherproof shelf beside the telescope, under its own little tin roof: low shelves of star charts kept flat and dry in stacks, and a counter on top with one chart laid out and a red lamp to read it by. Vega wished for it, so the charts would stop curling up in the damp.",
+      "actions": [],
+      "boosts": {
+        "calm": 3,
+        "curiosity": 3
+      },
+      "grants_wish": "weatherproof shelf"
     }
   ],
   "empty_lots": [

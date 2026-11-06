@@ -1215,6 +1215,11 @@ const builders = {
     addLight(x, 2.4, z - 0.4, 0xffd9a8, group, 4);
     return { anchor: new THREE.Vector3(x, 4.7, z - 0.8) };
   },
+  chart_shelf(x, z, group) { // Vega's other wish: star charts kept flat and dry, with a lamp to read them by
+    withModel('models/chart_shelf.glb', x, z, group);
+    addLight(x + 0.4, 1.45, z - 0.75, 0xff8a5c, group, 3);
+    return { anchor: new THREE.Vector3(x, 3, z - 1) };
+  },
   candle_board(x, z, group) { // Vega's wish: live candles on a big screen (see drawCandles)
     withModel('models/candle_board.glb', x, z, group);
     addLight(x, 2.4, z - 0.6, 0xffb02e, group, 4);

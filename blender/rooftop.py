@@ -726,8 +726,43 @@ def candle_board():
     holder["rects"] = json.dumps([[-3.0, -(y + 0.2), 3.0, -(y - 0.2)], [-2.5, -0.8, 2.5, -0.7]])
 
 
+def chart_shelf():
+    """Vega's wish: a weatherproof shelf by the telescope, to keep the star charts flat and dry. Low shelves of flat
+    charts, a counter on top with one chart laid out and a red lamp, all under its own little roof (not called Roof...:
+    the page would hide it from above, and the roof is the point). Ember stands at the origin."""
+    y, w, d = 1.0, 1.9, 0.62
+    for x in (-w / 2, w / 2):
+        box("Shelf side", (0.06, d, 0.95), (x, y, 0.475), M["wood"], bevel=0.008)
+    box("Shelf back", (w, 0.03, 0.95), (0, y + d / 2 - 0.015, 0.475), M["wood"])
+    for level, z in enumerate((0.1, 0.38, 0.66)):
+        box("Shelf board", (w - 0.06, d - 0.04, 0.03), (0, y, z), M["wood"])
+        for k, x in enumerate((-0.58, 0, 0.58)):  # flat stacks of charts, none quite the same height
+            t = 0.05 + 0.035 * ((k + level) % 3)
+            box("Charts", (0.5, d - 0.16, t), (x, y - 0.02, z + 0.015 + t / 2), M["white"])
+    box("Counter", (w + 0.12, d + 0.1, 0.05), (0, y - 0.02, 0.975), M["wood"], bevel=0.008)
+    # One chart laid out flat on the counter, with a few stars, and the red lamp beside it
+    box("Open chart", (0.9, 0.44, 0.006), (-0.36, y - 0.02, 1.003), M["panel"])
+    for sx, sy in ((-0.7, 0.1), (-0.55, -0.08), (-0.42, 0.13), (-0.3, -0.02), (-0.17, 0.07), (-0.08, -0.12), (-0.62, -0.14), (-0.24, 0.15)):
+        box("Star", (0.014, 0.014, 0.004), (sx, y - 0.02 + sy, 1.008), M["cyan"])
+    cylinder("Lamp base", 0.06, 0.03, (0.55, y, 1.015), (0, 0, 1), M["dark"], segments=14)
+    rod("Lamp stem", 0.012, (0.55, y, 1.02), (0.55, y, 1.2), M["dark"])
+    cylinder("Lamp shade", 0.09, 0.08, (0.55, y, 1.25), (0, 0, 1), M["dark"], segments=14, tip=0.04)
+    sphere("Lamp glow", 0.045, (0.55, y, 1.2), M["red"], segments=10, rings=8)
+    # Its own little roof, on four posts, with a warm strip under the front eave
+    for x in (-w / 2 + 0.03, w / 2 - 0.03):
+        for dy in (-d / 2 + 0.03, d / 2 - 0.03):
+            rod("Post", 0.025, (x, y + dy, 0.98), (x, y + dy, 2.08), M["dark"])
+    pitch = math.radians(24)
+    for side in (-1, 1):
+        box("Little roof", (w + 0.6, 0.78, 0.04), (0, y + side * 0.356, 2.21), M["rust"], rotation=(-side * pitch, 0, 0), bevel=0.005)
+    box("Eave glow", (w + 0.3, 0.02, 0.02), (0, y - 0.66, 2.03), M["amber"])
+    holder = bpy.data.objects.new("Colliders", None)  # the unit is solid; you can stand under the eaves
+    collection(piece).objects.link(holder)
+    holder["rects"] = json.dumps([[-w / 2 - 0.05, -(y + d / 2 + 0.03), w / 2 + 0.05, -(y - d / 2 - 0.05)]])
+
+
 BUILDINGS = {"terminal": net_cafe, "pod": capsule_home, "railing": railing, "radio": radio_studio, "bench": bench,
-             "art_wall": gallery, "candle_board": candle_board}
+             "art_wall": gallery, "candle_board": candle_board, "chart_shelf": chart_shelf}
 PROPS = {"roof_ac": roof_ac, "roof_tank": roof_tank, "roof_dish": roof_dish, "roof_vents": roof_vents, "roof_lamp": roof_lamp,
          "roof_planter": roof_planter,
          "roof_crates": roof_crates, "roof_pipes": roof_pipes, "roof_stairs": roof_stairs}
