@@ -196,6 +196,8 @@ def save() -> None:
         "max_searches_per_day": CONFIG["max_searches_per_day"],
         "vega": friend.view(),
         "sky_at": {"latitude": CONFIG["weather"]["latitude"], "longitude": CONFIG["weather"]["longitude"]},  # for the sun
+        "sky_now": sky_bodies(),
+        "sky_tonight": sky(),
         "support_url": CONFIG["support_url"],
         "support_text": CONFIG["support_text"],
     })
@@ -633,6 +635,21 @@ def sky(close_up: bool = False) -> str:
     if clouds >= 40:
         words.append("Clouds drift across it.")
     return " ".join(words)
+
+
+def sky_bodies() -> dict:
+    """Where the moon and planets really are right now, for the page to draw them."""
+    place, t = CONFIG["weather"], now().astimezone(timezone.utc)
+    t = astronomy.Time.Make(t.year, t.month, t.day, t.hour, t.minute, t.second)
+    observer = astronomy.Observer(place["latitude"], place["longitude"], 0)
+
+    def where(name: str) -> dict:
+        of_date = astronomy.Equator(astronomy.Body[name], t, observer, True, True)
+        up = astronomy.Horizon(t, observer, of_date.ra, of_date.dec, astronomy.Refraction.Normal)
+        return {"name": name, "alt": round(up.altitude, 1), "az": round(up.azimuth, 1)}
+
+    return {"moon": {**where("Moon"), "phase": round(astronomy.MoonPhase(t), 1)},
+            "planets": [{**where(name), "mag": round(astronomy.Illumination(astronomy.Body[name], t).mag, 1)} for name in PLANETS]}
 
 
 def feel_weather() -> None:

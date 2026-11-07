@@ -8,7 +8,8 @@
 <meta property="og:title" content="Ember">
 <meta property="og:description" content="A small AI living on a neon rooftop. It really is thinking, wishing and looking at the real sky.">
 <meta property="og:type" content="website">
-<meta property="og:image" content="https://xyldz.github.io/ember/icons/icon-512.png">
+<meta property="og:image" content="https://xyldz.github.io/ember/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#05060d">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
@@ -465,6 +466,50 @@
   #support { padding: 6px 14px; border-radius: var(--pill); background: var(--pop); color: var(--bg); font-weight: 700; text-decoration: none; white-space: nowrap; }
   #support[hidden] { display: none; }
 
+  /* A soft darkening round the edge of the world, so the eye settles in the middle */
+  #overlay::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 58%, rgba(4, 6, 18, .34) 100%); }
+
+  /* Names on the night sky, when you look up */
+  .sky-name { position: absolute; display: none; padding-left: 9px; transform: translateY(-50%); color: rgba(220, 228, 255, .78); font-size: 11px;
+    text-shadow: 0 0 6px #000; white-space: nowrap; }
+  .sky-name.con { padding: 0; transform: translate(-50%, -50%); color: rgba(150, 175, 255, .62); font: 600 9.5px/1 var(--label); letter-spacing: .18em; text-transform: uppercase; }
+  .sky-name.body { color: var(--warm); font-weight: 600; }
+  .sky-name.moon { padding-left: 26px; }
+  .stargazing .sky-name { display: block; }
+  .sky-card { position: absolute; top: 16px; left: 50%; z-index: 4; width: min(460px, calc(100% - 24px)); padding: 11px 16px; border-radius: var(--radius);
+    color: var(--soft); font-size: 12.5px; line-height: 1.5; transform: translateX(-50%); }
+  .sky-card[hidden] { display: none; }
+  .sky-card h2 { margin-bottom: 3px; color: var(--ember); }
+
+  /* Walking: where everyone is */
+  #world canvas.minimap { position: absolute; left: 16px; bottom: 16px; z-index: 4; width: 124px; height: 124px; border-radius: var(--radius); filter: none; pointer-events: none; }
+  #world canvas.minimap[hidden] { display: none; }
+
+  /* What happened since your last look */
+  .away { position: absolute; top: 186px; left: 16px; z-index: 4; width: 340px; padding: 12px 16px 14px; border-radius: var(--radius); pointer-events: auto;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, .35); animation: toast-in .6s cubic-bezier(.2, .8, .2, 1); }
+  .away[hidden], body.building .away { display: none; }
+  .away h2 { margin: 0; color: var(--warm); }
+  .away .close { width: 26px; height: 26px; font-size: 11px; }
+  .away p { display: -webkit-box; margin: 7px 0; overflow: hidden; color: var(--soft); font-size: 12.5px; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .away button.go-btn { margin-top: 4px; padding: 5px 12px; border: 1px solid var(--line); border-radius: var(--pill); background: none; color: var(--ink); font-size: 12px; cursor: pointer; }
+  .away button.go-btn:hover { border-color: var(--muted); }
+
+  /* Things answer when you touch them */
+  .cam button:active, .tabs button:active, .toast:active, .who-card:active, .go-btn:active { transform: scale(.96); }
+  @supports (interpolate-size: allow-keywords) { /* folds open smoothly, where the browser can */
+    :root { interpolate-size: allow-keywords; }
+    .fold::details-content, .wish-row::details-content { height: 0; overflow: clip; transition: height .24s ease, content-visibility .24s allow-discrete; }
+    .fold[open]::details-content, .wish-row[open]::details-content { height: auto; }
+  }
+  /* The toolbar's icons say what they do when you hover */
+  .cam button[data-tip] { position: relative; }
+  @media (hover: hover) {
+    .cam button[data-tip]:hover::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 12px); left: 50%; width: max-content; max-width: 240px;
+      padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--panel); color: var(--ink); font-size: 11.5px; font-weight: 500;
+      line-height: 1.4; text-align: center; white-space: normal; transform: translateX(-50%); pointer-events: none; animation: toast-in .15s ease-out; }
+  }
+
   /* Line icons on the toolbar: the same family as the tabs */
   .ico { flex: none; width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
   .cam button { display: inline-flex; align-items: center; gap: 6px; }
@@ -579,6 +624,10 @@
     .who-card { flex: 1 1 0; min-width: 0; }
     .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card, .drawer-open .walk-hint, .drawer-open .crosshair, .drawer-open .toasts { left: 50%; }
     .toasts { top: calc(88px + env(safe-area-inset-top)); }
+    .sky-card { top: calc(88px + env(safe-area-inset-top)); }
+    .away { top: calc(88px + env(safe-area-inset-top)); left: 8px; right: 8px; width: auto; }
+    #world canvas.minimap { left: auto; right: 8px; bottom: calc(132px + env(safe-area-inset-bottom)); width: 92px; height: 92px; }
+    .away p:nth-child(n + 4) { display: none; }
     #panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: min(80vh, 760px); border-bottom: 0;
       border-radius: var(--radius) var(--radius) 0 0; transform: translateY(105%); padding-bottom: env(safe-area-inset-bottom); }
     #panel::before { content: ""; display: block; width: 38px; height: 4px; margin: 8px auto 0; border-radius: 2px; background: var(--line); }
@@ -604,6 +653,13 @@
       <div id="bubble" class="bubble" hidden></div>
       <div id="vega-bubble" class="bubble vega" hidden></div>
       <div id="toasts" class="toasts" aria-live="polite"></div>
+      <div id="sky-card" class="sky-card glass" hidden><h2 id="sky-title"></h2><div id="sky-words"></div></div>
+      <div id="away" class="away glass" hidden>
+        <div class="place-top"><h2 id="away-title"></h2><button id="away-close" class="close" title="Close">✕</button></div>
+        <div id="away-lines"></div>
+        <button id="away-more" class="go-btn">Read the whole story</button>
+      </div>
+      <canvas id="minimap" class="minimap glass" width="248" height="248" hidden></canvas>
       <div class="hud">
         <div id="ember-card" class="who-card glass" data-who="ember" role="button" tabindex="0" title="Open Ember's story">
           <div id="avatar" class="avatar"></div>
@@ -628,7 +684,7 @@
         <button data-follow="walk" title="Walk the roof in first person: mouse to look, W A S D to move, E to look at a place, Esc lets go of the mouse"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="13" cy="4.5" r="1.8"/><path d="m10 21 2-6-3-2 1-5 4 2 3 2M12 15l3 2 1 4M10 8l-3 3"/></svg><span class="lbl">Walk</span></button>
         <i class="sep"></i>
         <button id="cam-reset" title="Back to the view of the whole roof"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.5-5.8L4 8.5M4 4v4.5h4.5"/></svg></button>
-        <button id="cam-up" title="Look up at the sky they're looking at, from the telescope deck"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 4 2.4 5.2 5.6.7-4.1 3.9 1 5.6-4.9-2.8-4.9 2.8 1-5.6L4 9.9l5.6-.7z"/></svg></button>
+        <button id="cam-up" title="Stand on the telescope deck and look up at the real sky they're looking at"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 4 2.4 5.2 5.6.7-4.1 3.9 1 5.6-4.9-2.8-4.9 2.8 1-5.6L4 9.9l5.6-.7z"/></svg></button>
         <button id="cam-sky"></button>
         <button id="cam-sound"></button>
         <button id="cam-theme" title="Change the look"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.4 0 2-1 1.6-2-.5-1.3.2-2.5 1.6-2.5H18a2.5 2.5 0 0 0 2.5-2.5C20.5 7.5 17 3.5 12 3.5z"/><circle cx="8" cy="11" r="1"/><circle cx="11.5" cy="7.5" r="1"/><circle cx="15.5" cy="9" r="1"/></svg></button>
@@ -775,11 +831,13 @@ if (innerWidth < innerHeight) { // a phone held upright: a wider lens, from high
 controls.enableDamping = true;
 controls.screenSpacePanning = false; // right-drag slides you across the roof, not up into the sky
 controls.zoomToCursor = true; // the wheel zooms towards whatever's under the pointer
-controls.maxPolarAngle = 2.2; // past level, so it can look up at the sky (steerCamera keeps it above the roof)
+controls.maxPolarAngle = 2.2; // past level, so it can tilt up at the sky (steerCamera keeps it above the roof)
 controls.minDistance = 2.5;
 controls.maxDistance = 40;
 
-const composer = new EffectComposer(renderer);
+// With post-processing the page's own antialiasing is lost, so the render target smooths the edges instead
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: IS_PHONE ? 2 : 4 }));
+composer.setPixelRatio(renderer.getPixelRatio());
 composer.addPass(new RenderPass(scene, camera));
 const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.4, 0.35, 0.55); // strength, radius, threshold
 composer.addPass(bloom);
@@ -811,9 +869,7 @@ const towerMaterials = []; // the city's windows: dimmer by day
 const ALWAYS_DAY_SUN = { altitude: 40, bearing: 225 };
 let sceneSky = null, skyMode = 'live', daylight = 0; // daylight: 0 at night, 1 in full day
 const sunDisc = new THREE.Mesh(new THREE.SphereGeometry(9, 24, 16), new THREE.MeshBasicMaterial({ color: 0xffe8b0, fog: false }));
-const moonDisc = new THREE.Mesh(new THREE.SphereGeometry(5, 24, 16), new THREE.MeshBasicMaterial({ color: 0xd9dcff, fog: false }));
-moonDisc.position.set(-0.55, 0.6, -0.62).setLength(300); // in the north-west, up over the telescope when you look up from the deck
-scene.add(sunDisc, moonDisc);
+scene.add(sunDisc);
 // The sky itself: down to a hazy horizon that the far towers melt into, with a glow round the sun, clouds drifting over,
 // and on a clear night the stars and the Milky Way
 const skyUniforms = { top: { value: new THREE.Color() }, horizon: { value: new THREE.Color() }, sunGlow: { value: new THREE.Color() },
@@ -842,9 +898,9 @@ const skyDome = new THREE.Mesh(new THREE.SphereGeometry(390, 32, 20), new THREE.
         float fade = night * smoothstep(0.03, 0.35, up); // the city's glow washes out the lowest stars
         vec3 grain = floor(d * 380.0);
         float star = fract(sin(dot(grain, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
-        colour += fade * smoothstep(0.994, 1.0, star) * (0.6 + 0.4 * sin(time * 1.5 + star * 5000.0)) * vec3(1.5, 1.55, 1.7);
+        colour += fade * smoothstep(0.994, 1.0, star) * (0.6 + 0.4 * sin(time * 1.5 + star * 5000.0)) * vec3(0.75, 0.78, 0.9);
         float band = exp(-pow(dot(d, normalize(vec3(0.5, 0.35, 0.8))) * 5.0, 2.0));
-        colour += fade * band * (0.015 + 0.06 * puffs(d.xy * 5.0 + d.z * 3.0)) * vec3(0.7, 0.75, 1.0);
+        colour += fade * band * (0.02 + 0.1 * puffs(d.xy * 5.0 + d.z * 3.0)) * vec3(0.7, 0.75, 1.0);
       }
       vec2 p = d.xz / (up + 0.2) * 1.4 + vec2(time * 0.008, time * 0.003);
       float cloud = smoothstep(1.0 - cover, 1.25 - cover, puffs(p)) * smoothstep(0.02, 0.25, up);
@@ -855,6 +911,185 @@ const skyDome = new THREE.Mesh(new THREE.SphereGeometry(390, 32, 20), new THREE.
 skyDome.frustumCulled = false;
 skyDome.renderOrder = -1;
 scene.add(skyDome);
+
+// The real night sky: the brightest stars where they really are over the roof right now, and their constellations.
+// The moon and planets come from Ember's own sky (state.sky_now). Each star: name, right ascension (hours), declination, magnitude.
+const STARS = [['Sirius', 6.752, -16.72, -1.46], ['Arcturus', 14.261, 19.18, -0.05], ['Vega', 18.616, 38.78, 0.03], ['Capella', 5.278, 46.0, 0.08],
+  ['Rigel', 5.242, -8.2, 0.13], ['Procyon', 7.655, 5.22, 0.34], ['Betelgeuse', 5.919, 7.41, 0.5], ['Altair', 19.846, 8.87, 0.76], ['Aldebaran', 4.599, 16.51, 0.86],
+  ['Antares', 16.49, -26.43, 0.96], ['Spica', 13.42, -11.16, 0.98], ['Pollux', 7.755, 28.03, 1.14], ['Fomalhaut', 22.961, -29.62, 1.16], ['Deneb', 20.69, 45.28, 1.25],
+  ['Regulus', 10.14, 11.97, 1.36], ['Adhara', 6.977, -28.97, 1.5], ['Castor', 7.577, 31.89, 1.58], ['Shaula', 17.56, -37.1, 1.62], ['Bellatrix', 5.419, 6.35, 1.64],
+  ['Elnath', 5.438, 28.61, 1.65], ['Alnilam', 5.604, -1.2, 1.69], ['Alnitak', 5.679, -1.94, 1.74], ['Alioth', 12.9, 55.96, 1.77], ['Mirfak', 3.405, 49.86, 1.79],
+  ['Dubhe', 11.062, 61.75, 1.79], ['Wezen', 7.14, -26.39, 1.84], ['KausAustralis', 18.403, -34.38, 1.85], ['Alkaid', 13.792, 49.31, 1.86], ['Menkalinan', 5.992, 44.95, 1.9],
+  ['Alhena', 6.629, 16.4, 1.93], ['Polaris', 2.53, 89.26, 1.98], ['Mirzam', 6.378, -17.96, 1.98], ['Alphard', 9.46, -8.66, 1.98], ['Hamal', 2.12, 23.46, 2.0],
+  ['Algieba', 10.333, 19.84, 2.01], ['Diphda', 0.726, -17.99, 2.04], ['Nunki', 18.921, -26.3, 2.05], ['Saiph', 5.796, -9.67, 2.06], ['Alpheratz', 0.14, 29.09, 2.07],
+  ['Mirach', 1.162, 35.62, 2.07], ['Kochab', 14.845, 74.16, 2.08], ['Rasalhague', 17.582, 12.56, 2.08], ['Algol', 3.136, 40.96, 2.12], ['Almach', 2.065, 42.33, 2.1],
+  ['Denebola', 11.818, 14.57, 2.14], ['Alphecca', 15.578, 26.71, 2.22], ['Sadr', 20.371, 40.26, 2.23], ['Schedar', 0.675, 56.54, 2.24], ['Eltanin', 17.943, 51.49, 2.24],
+  ['Mintaka', 5.533, -0.3, 2.25], ['Caph', 0.153, 59.15, 2.27], ['Mizar', 13.399, 54.93, 2.27], ['Dschubba', 16.006, -22.62, 2.29], ['Merak', 11.031, 56.38, 2.37],
+  ['Izar', 14.75, 27.07, 2.37], ['Enif', 21.736, 9.88, 2.38], ['Phecda', 11.897, 53.69, 2.44], ['Scheat', 23.063, 28.08, 2.44], ['Alderamin', 21.31, 62.59, 2.45],
+  ['Aludra', 7.402, -29.3, 2.45], ['Navi', 0.945, 60.72, 2.47], ['Markab', 23.079, 15.21, 2.48], ['Gienah', 20.77, 33.97, 2.48], ['Menkar', 3.038, 4.09, 2.54],
+  ['Zosma', 11.235, 20.52, 2.56], ['Acrab', 16.091, -19.81, 2.62], ['Sheratan', 1.911, 20.81, 2.64], ['Mahasim', 5.995, 37.21, 2.65], ['Muphrid', 13.911, 18.4, 2.68],
+  ['Ruchbah', 1.43, 60.24, 2.68], ['Hassaleh', 4.95, 33.17, 2.69], ['Tarazed', 19.771, 10.61, 2.72], ['Porrima', 12.694, -1.45, 2.74], ['Kornephoros', 16.504, 21.49, 2.77],
+  ['Rastaban', 17.507, 52.3, 2.79], ['Algenib', 0.221, 15.18, 2.84], ['Vindemiatrix', 13.036, 10.96, 2.85], ['Atik', 3.902, 31.88, 2.85], ['Alcyone', 3.791, 24.11, 2.87],
+  ['Tejat', 6.383, 22.51, 2.87], ['Fawaris', 19.75, 45.13, 2.87], ['Gomeisa', 7.453, 8.29, 2.89], ['Epsilon Per', 3.964, 40.01, 2.89], ['Tianguan', 5.627, 21.14, 3.0],
+  ['Seginus', 14.535, 38.31, 3.03], ['Pherkad', 15.345, 71.83, 3.05], ['Mebsuta', 6.732, 25.13, 3.06], ['Albireo', 19.512, 27.96, 3.18], ['Sulafat', 18.982, 32.69, 3.24],
+  ['Megrez', 12.257, 57.03, 3.31], ['Chertan', 11.237, 15.43, 3.33], ['Segin', 1.907, 63.67, 3.35], ['Homam', 22.691, 10.83, 3.41], ['Adhafera', 10.278, 23.42, 3.43],
+  ['Sheliak', 18.835, 33.36, 3.45], ['Eta Leo', 10.122, 16.76, 3.49], ['Nekkar', 15.032, 40.39, 3.5], ['Ain', 4.477, 19.18, 3.53], ['Wasat', 7.335, 21.98, 3.53],
+  ['Hyadum', 4.33, 15.63, 3.65], ['Alshain', 19.922, 6.41, 3.71], ['Mekbuda', 7.068, 20.57, 3.79], ['Mesarthim', 1.892, 19.29, 3.86], ['Rasalas', 9.879, 26.01, 3.88],
+  ['Epsilon UMi', 16.766, 82.04, 4.21], ['Zeta UMi', 15.734, 77.79, 4.29], ['Zeta Lyr', 18.746, 37.6, 4.3], ['Delta Lyr', 18.908, 36.9, 4.3], ['Yildun', 17.537, 86.59, 4.35], ['Eta UMi', 16.292, 75.76, 4.95]];
+const CONSTELLATIONS = {
+  Orion: 'Betelgeuse:Bellatrix Betelgeuse:Alnitak Bellatrix:Mintaka Mintaka:Alnilam Alnilam:Alnitak Alnitak:Saiph Mintaka:Rigel Rigel:Saiph',
+  'Canis Major': 'Sirius:Mirzam Sirius:Wezen Wezen:Adhara Wezen:Aludra', 'Canis Minor': 'Procyon:Gomeisa',
+  Taurus: 'Hyadum:Aldebaran Hyadum:Ain Ain:Elnath Aldebaran:Tianguan',
+  Gemini: 'Castor:Mebsuta Mebsuta:Tejat Pollux:Wasat Wasat:Mekbuda Mekbuda:Alhena Castor:Pollux',
+  Auriga: 'Capella:Menkalinan Menkalinan:Mahasim Mahasim:Elnath Elnath:Hassaleh Hassaleh:Capella',
+  Perseus: 'Mirfak:Algol Mirfak:Epsilon_Per Epsilon_Per:Atik', Cassiopeia: 'Caph:Schedar Schedar:Navi Navi:Ruchbah Ruchbah:Segin',
+  'The Plough': 'Dubhe:Merak Merak:Phecda Phecda:Megrez Megrez:Dubhe Megrez:Alioth Alioth:Mizar Mizar:Alkaid',
+  'Little Bear': 'Polaris:Yildun Yildun:Epsilon_UMi Epsilon_UMi:Zeta_UMi Zeta_UMi:Kochab Kochab:Pherkad Pherkad:Eta_UMi Eta_UMi:Zeta_UMi',
+  Cygnus: 'Deneb:Sadr Sadr:Albireo Sadr:Gienah Sadr:Fawaris', Lyra: 'Vega:Zeta_Lyr Zeta_Lyr:Delta_Lyr Delta_Lyr:Sulafat Sulafat:Sheliak Sheliak:Zeta_Lyr',
+  Aquila: 'Tarazed:Altair Altair:Alshain', Pegasus: 'Markab:Scheat Scheat:Alpheratz Alpheratz:Algenib Algenib:Markab Markab:Homam Homam:Enif',
+  Andromeda: 'Alpheratz:Mirach Mirach:Almach', Aries: 'Hamal:Sheratan Sheratan:Mesarthim',
+  Leo: 'Regulus:Eta_Leo Eta_Leo:Algieba Algieba:Adhafera Adhafera:Rasalas Algieba:Zosma Zosma:Denebola Denebola:Chertan Chertan:Regulus',
+  Virgo: 'Spica:Porrima Porrima:Vindemiatrix', Bootes: 'Arcturus:Izar Izar:Nekkar Nekkar:Seginus Seginus:Arcturus Arcturus:Muphrid',
+  Scorpius: 'Acrab:Dschubba Dschubba:Antares Antares:Shaula', Draco: 'Eltanin:Rastaban',
+};
+const RAD = Math.PI / 180, SKY_RADIUS = 360, RED_STARS = new Set(['Betelgeuse', 'Aldebaran', 'Antares', 'Arcturus', 'Pollux']);
+const starIndex = new Map(STARS.map(([name], i) => [name.replace(' ', '_'), i]));
+const skyGroup = new THREE.Group(); // always centred on the camera, like the dome: the stars are too far off to get any closer
+scene.add(skyGroup);
+const skyGeometry = new THREE.BufferGeometry(), skyTotal = STARS.length + 7; // and seven planets
+skyGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(skyTotal * 3), 3));
+skyGeometry.setAttribute('size', new THREE.BufferAttribute(Float32Array.from({ length: skyTotal }, (_, i) => (i < STARS.length ? Math.max(1.8, 5.6 - STARS[i][3] * 1.25) : 0)), 1));
+skyGeometry.setAttribute('tint', new THREE.BufferAttribute(new Float32Array(Array.from({ length: skyTotal }, (_, i) => (
+  i >= STARS.length ? [1.2, 1.05, 0.8] : RED_STARS.has(STARS[i][0]) ? [1.25, 0.9, 0.7] : [0.95, 1.0, 1.2])).flat()), 3));
+const skyPoints = new THREE.Points(skyGeometry, new THREE.ShaderMaterial({
+  uniforms: { night: skyUniforms.night, pixels: { value: renderer.getPixelRatio() } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  vertexShader: `attribute float size; attribute vec3 tint; uniform float pixels; varying vec3 colour;
+    void main() { colour = tint; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_PointSize = size * pixels; }`,
+  fragmentShader: `uniform float night; varying vec3 colour;
+    void main() { float d = length(gl_PointCoord - 0.5) * 2.0; gl_FragColor = vec4(colour * night * pow(max(1.0 - d, 0.0), 1.4) * 1.8, 1.0); }`,
+}));
+skyPoints.frustumCulled = false;
+const conLines = Object.values(CONSTELLATIONS).flatMap((pairs) => pairs.split(' ').flatMap((pair) => pair.split(':').map((name) => starIndex.get(name))));
+const skyLines = new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(conLines.length * 3), 3)),
+  new THREE.LineBasicMaterial({ color: 0x8aa4ff, transparent: true, opacity: 0, depthWrite: false, fog: false }));
+skyLines.frustumCulled = false;
+const moonCanvas = document.createElement('canvas');
+moonCanvas.width = moonCanvas.height = 128;
+const moonTexture = new THREE.CanvasTexture(moonCanvas);
+moonTexture.colorSpace = THREE.SRGBColorSpace;
+const moonDisc = new THREE.Sprite(new THREE.SpriteMaterial({ map: moonTexture, fog: false, depthWrite: false, transparent: true }));
+moonDisc.scale.setScalar(26);
+moonDisc.visible = false;
+const streak = new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3)),
+  new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, fog: false }));
+streak.frustumCulled = false;
+skyGroup.add(skyPoints, skyLines, moonDisc, streak);
+let moonUp = false, moonDrawnAt = -1, skyLabels = [];
+function drawMoon(phase) { // 0 new, 90 first quarter, 180 full, 270 last quarter
+  const ctx = moonCanvas.getContext('2d'), r = 58, k = Math.cos(phase * RAD), rand = seeded(5);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, 128, 128);
+  ctx.fillStyle = 'rgba(24, 28, 44, .75)';
+  ctx.beginPath(); ctx.arc(64, 64, r, 0, 7); ctx.fill();
+  if (phase > 180) { ctx.translate(128, 0); ctx.scale(-1, 1); } // waning: lit on the other side
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(64, 64, r, -Math.PI / 2, Math.PI / 2);
+  ctx.ellipse(64, 64, r * Math.abs(k), r, 0, Math.PI / 2, -Math.PI / 2, k > 0);
+  ctx.closePath();
+  ctx.fillStyle = '#eef0ff';
+  ctx.fill();
+  ctx.clip();
+  ctx.fillStyle = 'rgba(120, 128, 160, .32)'; // the dark seas on its face
+  for (let i = 0; i < 9; i++) { ctx.beginPath(); ctx.arc(30 + rand() * 68, 30 + rand() * 68, 6 + rand() * 13, 0, 7); ctx.fill(); }
+  ctx.restore();
+  moonTexture.needsUpdate = true;
+}
+function skySpot(altitude, azimuth, out) { // degrees, from north through east. North is -Z, east is +X
+  const a = altitude * RAD, z = azimuth * RAD;
+  return out.set(Math.cos(a) * Math.sin(z), Math.sin(a), -Math.cos(a) * Math.cos(z)).multiplyScalar(SKY_RADIUS);
+}
+function starSpot(hours, declination, siderealDegrees, out) {
+  const h = (siderealDegrees - hours * 15) * RAD, d = declination * RAD, lat = SKY_AT.latitude * RAD;
+  return out.set(-Math.cos(d) * Math.sin(h), Math.sin(lat) * Math.sin(d) + Math.cos(lat) * Math.cos(d) * Math.cos(h),
+    Math.sin(lat) * Math.cos(d) * Math.cos(h) - Math.cos(lat) * Math.sin(d)).multiplyScalar(SKY_RADIUS);
+}
+const skySpotNow = new THREE.Vector3();
+function updateSky(s) {
+  const days = Date.now() / 86400000 - 10957.5, sidereal = (280.46061837 + 360.98564736629 * days + SKY_AT.longitude) % 360;
+  const position = skyGeometry.attributes.position, lines = skyLines.geometry.attributes.position;
+  STARS.forEach(([, hours, declination], i) => position.setXYZ(i, ...starSpot(hours, declination, sidereal, skySpotNow).toArray()));
+  const planets = s.sky_now?.planets ?? [];
+  planets.forEach((planet, i) => {
+    position.setXYZ(STARS.length + i, ...skySpot(planet.alt, planet.az, skySpotNow).toArray());
+    skyGeometry.attributes.size.setX(STARS.length + i, planet.alt > 0 ? Math.max(2.2, 6.4 - planet.mag * 1.1) : 0);
+  });
+  conLines.forEach((star, i) => lines.setXYZ(i, position.getX(star), position.getY(star), position.getZ(star)));
+  position.needsUpdate = lines.needsUpdate = skyGeometry.attributes.size.needsUpdate = true;
+  const moonNow = s.sky_now?.moon;
+  moonUp = (moonNow?.alt ?? -1) > 0;
+  if (moonNow) {
+    skySpot(moonNow.alt, moonNow.az, moonDisc.position).setLength(SKY_RADIUS - 8);
+    if (Math.abs(moonNow.phase - moonDrawnAt) > 1) { moonDrawnAt = moonNow.phase; drawMoon(moonNow.phase); }
+  }
+  if (!skyLabels.length) { // the names, shown only while you're looking up
+    const label = (text, kind, find) => {
+      const el = document.createElement('div');
+      el.className = `sky-name ${kind}`;
+      el.textContent = text;
+      overlay.prepend(el);
+      skyLabels.push({ el, find, at: new THREE.Vector3() });
+    };
+    STARS.forEach(([name, , , mag], i) => { if (mag < 1.3 || name === 'Polaris') label(name, '', (at) => at.fromBufferAttribute(position, i)); });
+    for (const [name, pairs] of Object.entries(CONSTELLATIONS)) {
+      const members = [...new Set(pairs.split(/[ :]/).map((star) => starIndex.get(star)))];
+      label(name, 'con', (at) => {
+        at.set(0, 0, 0);
+        for (const star of members) at.x += position.getX(star), at.y += position.getY(star), at.z += position.getZ(star);
+        return at.setLength(SKY_RADIUS);
+      });
+    }
+    planets.forEach((planet, i) => label(planet.name, 'body', (at) => at.fromBufferAttribute(position, STARS.length + i)));
+    if (moonNow) label('Moon', 'body moon', (at) => at.copy(moonDisc.position));
+  }
+  for (const label of skyLabels) label.find(label.at);
+  $('sky-title').textContent = `What ${s.name} can see right now`;
+  $('sky-words').textContent = s.sky_tonight ?? '';
+}
+const gaze = new THREE.Vector3();
+let stargazing = false, shootingAt = 25, shot = null;
+function stepSky(t, dt) {
+  skyDome.position.copy(camera.position);
+  skyGroup.position.copy(camera.position);
+  const night = skyUniforms.night.value, looking = night > 0.2 && camera.getWorldDirection(gaze).y > 0.12;
+  if (looking !== stargazing) {
+    stargazing = looking;
+    $('overlay').classList.toggle('stargazing', looking);
+    $('sky-card').hidden = !looking || !latest?.sky_tonight;
+  }
+  skyLines.material.opacity += ((looking ? 0.38 : 0) - skyLines.material.opacity) * Math.min(1, dt * 2);
+  if (looking) {
+    for (const { el, at } of skyLabels) {
+      pinToScreen(el, gaze.copy(at).add(camera.position));
+      if (at.y < 6) el.style.visibility = 'hidden'; // under the horizon tonight
+    }
+  }
+  if (t > shootingAt && night > 0.3) { // now and then, a shooting star
+    shootingAt = t + 20 + Math.random() * 45;
+    const from = skySpot(35 + Math.random() * 40, Math.random() * 360, new THREE.Vector3());
+    shot = { from, to: skySpot(from.y / SKY_RADIUS * 50, Math.atan2(from.x, -from.z) / RAD + 14, new THREE.Vector3()), start: t };
+  }
+  if (shot) {
+    const k = (t - shot.start) / 0.8, head = gaze.lerpVectors(shot.from, shot.to, Math.min(1, k));
+    const line = streak.geometry.attributes.position;
+    line.setXYZ(0, head.x, head.y, head.z);
+    head.lerpVectors(shot.from, shot.to, Math.max(0, k - 0.3));
+    line.setXYZ(1, head.x, head.y, head.z);
+    line.needsUpdate = true;
+    streak.material.opacity = k < 1 ? 0.9 * night : 0;
+    if (k >= 1.3) shot = null;
+  }
+}
 
 function sunPosition(date, latitude, longitude) { // how high the sun is, and its compass bearing, in degrees
   const rad = Math.PI / 180, days = date.getTime() / 86400000 - 10957.5; // days since noon on 1 January 2000
@@ -901,7 +1136,8 @@ function applyDaylight(weatherCode = 0) {
   sunDisc.visible = sun.altitude > -4 && cloud < 0.6;
   sunDisc.position.copy(toSun).setLength(300);
   sunDisc.material.color.set(0xfff4d6).lerp(DUSK.sun, dusk);
-  moonDisc.visible = day < 0.5 && cloud < 0.6;
+  moonDisc.visible = day < 0.5 && cloud < 0.6 && moonUp;
+  moonDisc.material.opacity = 1 - day * 2;
   skyUniforms.top.value.copy(scene.background);
   skyUniforms.horizon.value.copy(scene.fog.color);
   skyUniforms.sunGlow.value.copy(moon.color).multiplyScalar(day);
@@ -959,6 +1195,35 @@ const withDefaults = (loaded = {}) => ({
 let ROOF = 12; // half the roof's width: the roof spans -ROOF..ROOF
 let baseFog = 0.011, baseLight = 1.3; // the weather and lightning change these for a moment, then go back
 const hex = (color) => new THREE.Color(color).getHex();
+
+let roofTexture = null, roofMaterial = null;
+function makeRoofTexture() { // concrete slabs with grit, old stains and dark seams, so the ground isn't one flat colour
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 512;
+  const ctx = canvas.getContext('2d'), rand = seeded(11);
+  ctx.fillStyle = '#9a9a9a';
+  ctx.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 9000; i++) {
+    const v = Math.round(110 + rand() * 90);
+    ctx.fillStyle = `rgba(${v}, ${v}, ${v}, .35)`;
+    ctx.fillRect(rand() * 512, rand() * 512, 1 + rand() * 2, 1 + rand() * 2);
+  }
+  for (let i = 0; i < 26; i++) {
+    const x = rand() * 512, y = rand() * 512, r = 20 + rand() * 70, stain = ctx.createRadialGradient(x, y, 0, x, y, r);
+    stain.addColorStop(0, `rgba(30, 30, 36, ${0.06 + rand() * 0.14})`);
+    stain.addColorStop(1, 'rgba(30, 30, 36, 0)');
+    ctx.fillStyle = stain;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  ctx.strokeStyle = 'rgba(30, 30, 36, .6)';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(0, 0, 512, 512);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return texture;
+}
 
 function makeWindowsTexture() {
   const canvas = document.createElement('canvas');
@@ -1102,7 +1367,10 @@ function buildScenery(sc) {
   controls.maxDistance = Math.max(40, ROOF * 3.4);
 
   // The roof: platform, grid and neon edges
-  put(new THREE.BoxGeometry(ROOF * 2, 1, ROOF * 2), mat(hex(roof.color), { roughness: 0.7, metalness: 0.25 }), 0, -0.5, 0, sceneryGroup);
+  roofTexture ??= makeRoofTexture();
+  roofTexture.repeat.setScalar(ROOF / 4);
+  roofMaterial = new THREE.MeshStandardMaterial({ map: roofTexture, color: new THREE.Color(roof.color).multiplyScalar(2.8), roughness: 0.75, metalness: 0.2 });
+  put(new THREE.BoxGeometry(ROOF * 2, 1, ROOF * 2), roofMaterial, 0, -0.5, 0, sceneryGroup);
   if (roof.grid) {
     const grid = new THREE.GridHelper(ROOF * 2, Math.round(ROOF * 2), hex(roof.grid_color), 0x1b2042);
     grid.position.y = 0.01;
@@ -1208,6 +1476,7 @@ function setWeather(weather) {
   scene.fog.density = code === 45 || code === 48 ? Math.max(0.03, baseFog) : baseFog;
   stormy = code >= 95;
   rainGeometry.setDrawRange(0, rainCount * 2);
+  if (roofMaterial) roofMaterial.roughness = rainCount > 300 && !snow ? 0.28 : 0.75; // the wet roof catches the lights
 }
 const WEATHER_ICONS = [[3, '☁️'], [48, '🌫️'], [57, '🌦️'], [67, '🌧️'], [77, '🌨️'], [82, '🌧️'], [86, '🌨️'], [99, '⛈️']];
 const weatherIcon = (code) => {
@@ -2002,7 +2271,7 @@ function addLantern(key, wish, who, color, from) {
   const reach = new THREE.Mesh(LANTERN_REACH); // unseen: it just makes the lantern easier to tap
   reach.visible = false;
   lantern.add(paper, cap, base, reach);
-  lantern.userData = { wish, who, x: (rand() - 0.5) * 30, y: 8.5 + rand() * 5, z: (rand() - 0.5) * 30, phase: rand() * 6.28 };
+  lantern.userData = { wish, who, color, x: (rand() - 0.5) * 30, y: 8.5 + rand() * 5, z: (rand() - 0.5) * 30, phase: rand() * 6.28 };
   lantern.position.copy(from ?? lanternSpot.set(lantern.userData.x, lantern.userData.y, lantern.userData.z));
   lanternGroup.add(lantern);
   lanterns.set(key, lantern);
@@ -2020,9 +2289,64 @@ function syncLanterns(s) {
   for (const [key, lantern] of lanterns) if (!lit.has(key)) lantern.userData.gone = true;
   lanternsShown = true;
 }
+// Moments worth a flourish: a burst of sparks when a wish comes true, a ripple round Ember with each new thought
+const flourishes = [];
+function sparkle(at, color) {
+  const count = 42, velocity = Array.from({ length: count }, () => new THREE.Vector3().randomDirection().multiplyScalar(1.5 + Math.random() * 3));
+  const points = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 3).map((_, i) => at.getComponent(i % 3)), 3)),
+    new THREE.PointsMaterial({ color, size: 0.2, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  scene.add(points);
+  flourishes.push({ object: points, born: performance.now(), life: 1.8, step(k, dt) {
+    const position = points.geometry.attributes.position;
+    velocity.forEach((v, i) => { v.y -= dt * 1.6; position.setXYZ(i, position.getX(i) + v.x * dt, position.getY(i) + v.y * dt, position.getZ(i) + v.z * dt); });
+    position.needsUpdate = true;
+    points.material.opacity = 1 - k;
+  } });
+}
+function ripple(color) {
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.92, 1, 40), new THREE.MeshBasicMaterial({ color, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.set(avatar.position.x, 0.08, avatar.position.z);
+  scene.add(ring);
+  flourishes.push({ object: ring, born: performance.now(), life: 1.5, step(k) { ring.scale.setScalar(0.5 + k * 3.5); ring.material.opacity = (1 - k) * 0.8; } });
+}
+function stepFlourishes(dt) {
+  for (let i = flourishes.length - 1; i >= 0; i--) {
+    const flourish = flourishes[i], k = (performance.now() - flourish.born) / 1000 / flourish.life;
+    if (k >= 1) {
+      scene.remove(flourish.object);
+      flourish.object.geometry.dispose();
+      flourish.object.material.dispose();
+      flourishes.splice(i, 1);
+    } else flourish.step(k, dt);
+  }
+}
+// By day a few birds wheel over the roof
+const birdShape = new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array([-0.55, 0.22, -0.08, 0, 0, 0.2, 0, 0, -0.2, 0.55, 0.22, -0.08, 0, 0, 0.2, 0, 0, -0.2]), 3));
+const birdColour = new THREE.MeshBasicMaterial({ color: 0x23283a, side: THREE.DoubleSide }); // plain: lit materials need normals these flat wings don't have
+const birds = Array.from({ length: IS_PHONE ? 6 : 10 }, () => {
+  const bird = new THREE.Mesh(birdShape, birdColour);
+  scene.add(bird);
+  return bird;
+});
+function stepBirds(t) {
+  birds.forEach((bird, i) => {
+    bird.visible = daylight > 0.4;
+    if (!bird.visible) return;
+    const a = t * 0.07 + i * 0.045, r = 19 + Math.sin(i * 2.4) * 2.5 + Math.sin(t * 0.05) * 3;
+    bird.position.set(Math.cos(a) * r, 11 + Math.sin(i * 1.7) * 1.2, Math.sin(a) * r);
+    bird.rotation.y = -a + Math.PI;
+    bird.scale.set(0.6, 0.2 + 0.4 * Math.abs(Math.sin(t * 7 + i * 1.3)), 0.6);
+  });
+}
 function stepLanterns(t, dt) {
   for (const [key, lantern] of lanterns) {
     const u = lantern.userData;
+    if (u.gone && !u.burst) { // it came true
+      u.burst = true;
+      sparkle(lantern.position, u.color);
+      play('chime');
+    }
     if (u.gone) {
       lantern.position.y += dt * 3;
       lantern.scale.multiplyScalar(1 - dt * 0.35);
@@ -2115,6 +2439,17 @@ function pinToScreen(el, worldPosition) {
   el.style.top = `${(-projected.y * 0.5 + 0.5) * worldEl.clientHeight}px`;
 }
 
+let slowFrames = 0;
+function keepItSmooth(dt) { // a weak machine that keeps dropping frames gets a slightly softer picture instead
+  slowFrames = dt > 1 / 26 && !document.hidden ? slowFrames + 1 : Math.max(0, slowFrames - 1);
+  if (slowFrames < 120 || renderer.getPixelRatio() <= 1) return;
+  slowFrames = 0;
+  const ratio = Math.max(1, renderer.getPixelRatio() - 0.25);
+  renderer.setPixelRatio(ratio);
+  composer.setPixelRatio(ratio);
+  skyPoints.material.uniforms.pixels.value = ratio;
+  resize();
+}
 function resize() {
   const w = worldEl.clientWidth, h = worldEl.clientHeight;
   if (!w || !h) return; // hidden for a moment (e.g. while the window is opening)
@@ -2145,6 +2480,25 @@ const walkKeys = new Set(), stick = { x: 0, y: 0 }, look = { yaw: 0, pitch: 0, d
 const WALK_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift']);
 let nearPlace = null, walkHelpUntil = 0, overviewFov = camera.fov, solids = [], solidsAt = -1, unlockedAt = 0;
 const solidBox = new THREE.Box3();
+let minimapTick = 0;
+function drawMinimap() { // north up: every place, Ember, Vega, and you
+  const canvas = $('minimap'), ctx = canvas.getContext('2d'), size = canvas.width, scale = size / (ROOF * 2.3), spot = (v) => size / 2 + v * scale;
+  const dot = (x, z, r, colour) => { ctx.beginPath(); ctx.arc(spot(x), spot(z), r, 0, 7); ctx.fillStyle = colour; ctx.fill(); };
+  ctx.clearRect(0, 0, size, size);
+  ctx.strokeStyle = 'rgba(255, 255, 255, .25)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(spot(-ROOF), spot(-ROOF), ROOF * 2 * scale, ROOF * 2 * scale);
+  for (const place of Object.values(places)) dot(place.x, place.z, 4, 'rgba(255, 255, 255, .42)');
+  dot(avatar.position.x, avatar.position.z, 10, latest?.form?.color ?? '#3ff0ff');
+  if (vega) dot(vega.root.position.x, vega.root.position.z, 9, '#ffb02e');
+  ctx.save();
+  ctx.translate(spot(walker.position.x), spot(walker.position.z));
+  ctx.rotate(-look.yaw);
+  ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(9, 10); ctx.lineTo(0, 5); ctx.lineTo(-9, 10); ctx.closePath();
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+  ctx.restore();
+}
 function startWalk() {
   walker.position.set(1.5, 0, 13); // in the square, looking up the street to the net café
   look.yaw = 0;
@@ -2158,6 +2512,7 @@ function startWalk() {
   solidsAt = -1;
   walkHelpUntil = performance.now() + 9000;
   $('stick').hidden = !matchMedia('(pointer: coarse)').matches;
+  $('minimap').hidden = false;
   if ($('stick').hidden) grabMouse();
 }
 function grabMouse() { // refused (e.g. in a frame): dragging still looks
@@ -2172,7 +2527,7 @@ function stopWalk() {
   camera.updateProjectionMatrix();
   walkKeys.clear();
   nearPlace = null;
-  $('walk-hint').hidden = $('stick').hidden = true;
+  $('walk-hint').hidden = $('stick').hidden = $('minimap').hidden = true;
   flyTo(HOME_VIEW.target, HOME_VIEW.camera); // back up to the whole roof
 }
 function turnView(dx, dy, speed) {
@@ -2309,6 +2664,8 @@ function stepWalker(dt, t) {
       : document.pointerLockElement ? 'Mouse to look · W A S D to move · Shift to run · Esc lets go of the mouse' : 'Click to look around with the mouse') : '';
   if (hint.textContent !== text) hint.textContent = text;
   hint.hidden = !text;
+  minimapTick = (minimapTick + 1) % 6;
+  if (!minimapTick) drawMinimap();
 }
 
 function animate() {
@@ -2317,6 +2674,7 @@ function animate() {
   if (IS_PHONE && sinceFrame < 1 / 30) return; // 30 frames a second is plenty on a phone, and saves battery
   const dt = Math.min(sinceFrame, 0.1), t = timer.elapsedTime;
   sinceFrame = 0;
+  keepItSmooth(dt);
   stepPulses(dt);
   stepWalker(dt, t);
 
@@ -2363,7 +2721,7 @@ function animate() {
   if (stormy && t > nextFlash) { flashLeft = 0.12; nextFlash = t + 4 + Math.random() * 10; setTimeout(() => play('thunder'), 500 + Math.random() * 2500); }
   flashLeft -= dt;
   skyUniforms.time.value = t;
-  skyDome.position.copy(camera.position); // always the same distance away, so it's never clipped
+  stepSky(t, dt);
   skyLight.intensity = flashLeft > 0 ? 7 : baseLight; // lightning
   for (let i = 0; i < rainCount; i++) {
     const o = i * 6, fall = rainSpeed * dt;
@@ -2410,6 +2768,8 @@ function animate() {
   if (tickerTexture) tickerTexture.offset.x = (tickerTexture.offset.x + (dt * 150) / tickerCanvas.width) % 1;
   movePigeons(t, dt);
   stepLanterns(t, dt);
+  stepFlourishes(dt);
+  stepBirds(t);
 
   steerCamera(dt);
   if (follow !== 'walk') controls.update();
@@ -3411,6 +3771,22 @@ function toast(text, icon = '', onClick = null) {
   setTimeout(() => pop.classList.add('out'), 7000);
   setTimeout(() => pop.remove(), 7600);
 }
+let welcomed = false;
+function welcome(s) { // once, as the page opens: what's changed since your last look, or how this works if it's your first
+  if (welcomed || BUILDING) return;
+  welcomed = true;
+  if (!seenBefore) return toast(`${s.name} and ${s.vega?.name ?? 'its friend'} are really living up here. Tap either card to read their story, or a lantern to read a wish.`);
+  const news = s.events.filter((e) => stampOf(e) > seenBefore), trades = news.filter((e) => e.kind === 'trade').length;
+  const picks = news.filter((e) => e.kind === 'diary' || TOASTED.has(e.kind) || /^(Set itself|Achieved)/.test(e.text)).slice(-4).reverse();
+  if (!picks.length && !trades) return;
+  const [day, time] = seenBefore.split(' ');
+  $('away-title').textContent = `Since ${day === s.today ? time : `${day} ${time}`}`;
+  $('away-lines').replaceChildren(...picks.map((e) => el('p', '', `${ICONS[e.kind] ?? '✨'} ${e.text}`)),
+    ...(trades ? [el('p', '', `${ICONS.trade} ${s.vega?.name ?? 'Its friend'} made ${trades} trade${trades === 1 ? '' : 's'}.`)] : []));
+  $('away').hidden = false;
+}
+$('away-close').addEventListener('click', () => { $('away').hidden = true; });
+$('away-more').addEventListener('click', () => { $('away').hidden = true; setWho('ember'); selectTab('today'); setDrawer(true); });
 let seenEvent = null;
 function announce(s) {
   const key = (e) => `${e.date} ${e.time} ${e.text}`, at = s.events.findLastIndex((e) => key(e) === seenEvent);
@@ -3422,8 +3798,12 @@ function announce(s) {
   }
 }
 
-let lastActivity = '', emberSaidAt = 0;
+let lastActivity = '', emberSaidAt = 0, lastThought = null;
 function render(s) {
+  if (s.thought_time !== lastThought) {
+    if (lastThought !== null && !BUILDING) ripple(hex(s.form?.color ?? '#3ff0ff')); // a new thought, while you're watching
+    lastThought = s.thought_time;
+  }
   document.title = `${s.name} · live`;
   $('name').textContent = s.name;
   $('activity').textContent = s.activity;
@@ -3448,6 +3828,7 @@ function render(s) {
   $('pill').textContent = s.asleep ? 'Asleep' : 'Awake';
 
   if (s.sky_at) Object.assign(SKY_AT, s.sky_at);
+  updateSky(s);
   applyDaylight(s.weather?.code);
   $('cam-vega').hidden = !vega;
 
@@ -3609,6 +3990,7 @@ async function refresh() {
     applyLive(s);
     render(s);
     announce(s);
+    welcome(s);
     maybeEndIntro();
     drawCandles();
   } catch (error) {
@@ -3675,6 +4057,7 @@ function selectTab(name) {
   document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
   feedKey = '';
   if (latest) renderFeed(latest);
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) $('feed').animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], 220);
 }
 document.querySelectorAll('.tabs button').forEach((button) => button.addEventListener('click', () => selectTab(button.dataset.tab)));
 document.querySelectorAll('details.fold').forEach((fold) => { // what you left open stays open next time
@@ -3730,7 +4113,14 @@ document.querySelectorAll('#cam [data-follow]').forEach((button) => button.addEv
   if (followed() && follow !== 'walk') flyTo(followed().clone().setY(1)); // walking sets its own camera
 }));
 $('cam-reset').addEventListener('click', () => { setFollow('free'); flyTo(HOME_VIEW.target, HOME_VIEW.camera); });
-$('cam-up').addEventListener('click', () => { setFollow('free'); flyTo(new THREE.Vector3(12, 8, -20), new THREE.Vector3(20, 1.4, -9)); flight.seconds = 1.8; });
+$('cam-up').addEventListener('click', () => {
+  const sky = latest?.sky_now, up = [sky?.moon, ...(sky?.planets ?? []).slice().sort((a, b) => a.mag - b.mag)].find((body) => body?.alt > 10);
+  setFollow('walk');
+  walker.position.set(16, 0, -11);
+  look.yaw = -(up?.az ?? 300) * RAD;
+  look.pitch = THREE.MathUtils.clamp((up?.alt ?? 45) * RAD, 0.3, 1.1);
+  if (daylight > 0.5) toast("The sun's up on your screen, so the stars are hiding. The sky button can make it night.");
+});
 const SKIES = { // the sky on your screen, and nobody else's: Ember and Vega stay under the real one
   live: { next: 'day', icon: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c3 3 3 14 0 17M12 3.5c-3 3-3 14 0 17"/>',
     says: 'The real sky over London, the one Ember and Vega are under. Click for always day on your screen' },
@@ -3740,12 +4130,13 @@ const SKIES = { // the sky on your screen, and nobody else's: Ember and Vega sta
     says: 'Always night, on your screen only. Click for the real sky over London', told: 'Always night, on your screen only.' },
 };
 const svgIcon = (body) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${body}</svg>`;
+function setTip(button, text) { button.dataset.tip = text; button.setAttribute('aria-label', text); }
+document.querySelectorAll('#cam button[title]').forEach((button) => { setTip(button, button.title); button.removeAttribute('title'); });
 function setSky(mode) {
   skyMode = mode;
   const button = $('cam-sky');
   button.innerHTML = svgIcon(SKIES[mode].icon);
-  button.title = SKIES[mode].says;
-  button.setAttribute('aria-label', SKIES[mode].says);
+  setTip(button, SKIES[mode].says);
   store.set('sky', mode);
   applyDaylight(latest?.weather?.code);
 }
@@ -3757,7 +4148,7 @@ const SOUND_ICONS = { on: '<path d="M4 10v4h3l5 4V6L7 10z"/><path d="M15.5 9a4 4
 function setSound(on) {
   soundOn = on;
   $('cam-sound').innerHTML = svgIcon(SOUND_ICONS[on ? 'on' : 'off']);
-  $('cam-sound').title = `Ambient sound (${on ? 'on' : 'off'})`;
+  setTip($('cam-sound'), `Ambient sound (${on ? 'on' : 'off'})`);
   $('cam-sound').classList.toggle('on', on);
   store.set('sound', on);
   if (on) startAmbience();
@@ -3792,7 +4183,7 @@ const THEMES = { neon: 'Sleek neon', lofi: 'Cosy lo-fi night', terminal: 'Retro 
 function setTheme(name) {
   const theme = name in THEMES ? name : 'neon', names = Object.keys(THEMES);
   document.documentElement.dataset.theme = theme;
-  $('cam-theme').title = `Look: ${THEMES[theme]}. Click for ${THEMES[names[(names.indexOf(theme) + 1) % names.length]]}`;
+  setTip($('cam-theme'), `Look: ${THEMES[theme]}. Click for ${THEMES[names[(names.indexOf(theme) + 1) % names.length]]}`);
   store.set('theme', theme);
 }
 $('cam-theme').addEventListener('click', () => {

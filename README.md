@@ -77,6 +77,8 @@ If a repository has no activity for 60 days GitHub pauses the schedule; just cli
   grabbed as you start and turns your view (Esc lets go, a click grabs it again). **W A S D** move and strafe, Shift
   runs, the arrow keys walk and turn, and **E** looks at the place you're next to. On a phone the stick moves, dragging
   looks and tapping a place opens it. Buildings are solid. Ember and Vega don't notice you: you're only looking in.
+- While you walk, a little map shows every place, Ember, Vega and you.
+- Coming back, a card lists what changed since your last look. New wishes, drawings and the like pop up as they happen.
 - Place names show for a few seconds when the page opens, then only for what you point at (or walk up to).
 - **The village**: the roof is 48 m across, and each place is a little house. From above their roofs are hidden, like a
   dollhouse, so you can see Ember and Vega inside; walk in and the roofs are back. Your own models fill a lot
@@ -89,14 +91,16 @@ If a repository has no activity for 60 days GitHub pauses the schedule; just cli
 - The roof fills the screen. Ember's and Vega's cards float in the top corner: tap one to open its story (today, diary,
   trades and the rest) in the drawer on the right, or the bottom of a phone.
 - The toolbar along the bottom: **Free** camera, follow **Ember**, follow **Vega**, **Walk**, back to the whole roof,
-  **look up** at the sky from the telescope deck, **the sky**: the real sky over London, always day or always night, on
+  **look up**: stand on the telescope deck facing the moon or the brightest planet, **the sky**: the real sky over London, always day or always night, on
   your screen only (Ember and Vega stay under the real one), **sound**: ambient sound (wind, rain, the city hum, traffic, birds
   by day, thunder with the lightning, a chime when Ember speaks and beeps when Vega does), **the look** (sleek neon,
   cosy lo-fi night or retro terminal; `?theme=lofi` in the address picks one too), **pin** a note, and **Story**:
   the drawer. The page remembers your choices. Older designs are kept in `DESIGN_LOG.md`.
 - **Day and night**: the sky follows the real sun over the place in `config.json` (London): sunrise colours, a hazy blue
   day with clouds drifting over, golden sunsets, and the neon taking over at night under the stars and the Milky Way.
-  Cloudy days are greyer. Add `?hour=13` to the address to see
+  Look up at night and the sky is the real one: the brightest stars and their constellations where they really are over
+  the roof, the moon in its real phase and the planets from Ember's own sky (`sky_now` in the state), with their names,
+  and what Ember can see in its own words. Cloudy days are greyer. Add `?hour=13` to the address to see
   another time of day. Builder mode always shows the night, which is what `site/scenery.json` describes.
 - **Made in Blender**: everything on the roof is modelled from code in `blender/`. `rooftop.py` makes the data
   rooftop village: the terminal in a little net café, the charging pod in Ember's home, the radio in a studio and the
