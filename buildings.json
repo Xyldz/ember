@@ -204,6 +204,24 @@
         "curiosity": 3
       },
       "grants_wish": "weatherproof shelf"
+    },
+    {
+      "id": "deck_bench",
+      "name": "Sheltered bench",
+      "pos": [
+        17.6,
+        -14
+      ],
+      "model": "deck_bench",
+      "rotation": -60,
+      "about": "A bench for two on the telescope deck, under a little lean-to whose tin roof rises towards the open front, so the rain stays off and the sky stays in view past the city's glow. Slats behind it keep the wind off, there's a cushion each and two mugs on a crate, and the rain runs down a chain into a water butt. Ember wished for it, so there would be somewhere dry to share the sky.",
+      "actions": [],
+      "boosts": {
+        "calm": 3,
+        "connection": 3,
+        "curiosity": 2
+      },
+      "grants_wish": "sheltered bench"
     }
   ],
   "empty_lots": [

@@ -1228,7 +1228,12 @@ const builders = {
   bench(x, z, group) { // a bench for two: Ember floats at the right-hand end, Vega parks at the left; asleep, Ember curls up on it
     withModel('models/bench.glb', x, z, group);
     addLight(x + 0.9, 2.4, z - 1.05, 0xffc27a, group, 5);
-    return { anchor: new THREE.Vector3(x - 0.7, 2.6, z - 0.7), sleep: { x, z: z - 0.7, y: 0.47 } };
+    return { anchor: new THREE.Vector3(x - 0.7, 2.6, z - 0.7), sleep: { x, z: z - 0.7, y: 0.47 }, sits: true };
+  },
+  deck_bench(x, z, group) { // Ember's first wish: somewhere dry to share the sky, for two
+    withModel('models/deck_bench.glb', x, z, group);
+    addLight(x - 0.7, 2.1, z - 0.2, 0xffc27a, group, 3);
+    return { anchor: new THREE.Vector3(x - 0.7, 3.3, z - 0.7), sleep: { x, z: z - 0.7, y: 0.47 }, sits: true };
   },
   railing(x, z, group) {
     withModel('models/railing.glb', x, z, group);
@@ -1636,10 +1641,11 @@ function setForm(form) {
 setForm(null);
 
 const goal = new THREE.Vector3(), homeSpot = new THREE.Vector3();
-let placed = false, asleep = false, floorY = 0, idleSince = 0, charge = 80, strolling = false, pause = 3;
+let placed = false, asleep = false, sitting = false, bodySize = 1, floorY = 0, idleSince = 0, charge = 80, strolling = false, pause = 3;
 
 function moveTo(place) {
-  const spot = asleep && place.sleep ? place.sleep : { x: place.x, z: place.z, y: 0 };
+  sitting = Boolean(place.sits);
+  const spot = (asleep || sitting) && place.sleep ? place.sleep : { x: place.x, z: place.z, y: 0 };
   floorY = spot.y;
   if (!placed) {
     avatar.position.set(spot.x, 1.15, spot.z);
@@ -2143,17 +2149,18 @@ function animate() {
     avatar.position.x += (dx / dist) * step;
     avatar.position.z += (dz / dist) * step;
     idleSince = t;
-  } else if (!asleep && t - idleSince > pause) { // potter about near where it is, never quite still
+  } else if (!asleep && !sitting && t - idleSince > pause) { // potter about near where it is, never quite still
     goal.copy(roamSpot(homeSpot, 2.5, avatar.position, t) ?? homeSpot);
     strolling = true;
     pause = 2 + Math.random() * 6;
     idleSince = t;
   }
-  const hover = (resting ? floorY + 0.55 : 1.15) + Math.sin(t * 1.6) * (resting ? 0.03 : 0.12);
+  const hover = (sitting && !moving ? 0.92 : resting ? floorY + 0.55 : 1.15) + Math.sin(t * 1.6) * (resting ? 0.03 : sitting ? 0.05 : 0.12);
   avatar.position.y += (hover - avatar.position.y) * Math.min(1, dt * 3);
   avatarBody.rotation.y += dt * (moving ? 1.8 : resting ? 0.15 : 0.5);
   avatarBody.rotation.x = Math.sin(t * 0.7) * 0.2;
-  avatarBody.scale.setScalar((resting ? 0.8 : 1) * (1 + Math.sin(t * (resting ? 1 : 2.4)) * 0.04));
+  bodySize += ((sitting && !moving ? 0.6 : resting ? 0.8 : 1) - bodySize) * Math.min(1, dt * 3); // tucks itself in to fit its half of a bench
+  avatarBody.scale.setScalar(bodySize * (1 + Math.sin(t * (resting ? 1 : 2.4)) * 0.04));
   shellMaterial.emissiveIntensity = resting ? 0.25 : 0.35 + (charge / 100) * 0.5; // dimmer when its charge is low
   motes.rotation.y += dt * (resting ? 0.3 : 1.4);
   avatarLight.intensity = resting ? 0.6 : 2;
@@ -2199,7 +2206,7 @@ function animate() {
       at.x += (dx / dist) * step;
       at.z += (dz / dist) * step;
     }
-    if (!rolling && !vegaAsleep && t > vega.wanderAt) { // trundles about near its spot, never quite still
+    if (!rolling && !vegaAsleep && !vega.sitting && t > vega.wanderAt) { // trundles about near its spot, never quite still
       vega.target.copy(roamSpot(vega.home, 2, at, t) ?? vega.home);
       vega.wanderAt = t + 4 + Math.random() * 7;
     }
@@ -3290,6 +3297,7 @@ function render(s) {
     const { at, facing } = vegaSpot(vegaPlace);
     if (!vega.home.equals(at)) { vega.home.copy(at); vega.target.copy(at); } // somewhere new: it heads there (and potters about it)
     vega.facing = facing;
+    vega.sitting = Boolean(vegaPlace.sits);
     if (vega.fresh) { vega.root.position.copy(at); vega.root.rotation.y = facing; vega.fresh = false; }
   }
   drawTicker(v);

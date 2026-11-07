@@ -100,7 +100,8 @@ If a repository has no activity for 60 days GitHub pauses the schedule; just cli
   rooftop village: the terminal in a little net café, the charging pod in Ember's home, the radio in a studio and the
   art wall in a gallery (the page paints Ember's four newest works into its frames: drawings, poems, tunes as sheet
   music), each a small house with a doorway, lit windows and a neon sign, plus the lookout railing, the bench where Ember
-  and Vega sit together, Vega's candlestick board (the page draws live candles on it) and star chart shelf, street lamps, planters and
+  and Vega sit together, Vega's candlestick board (the page draws live candles on it) and star chart shelf,
+  Ember's sheltered bench at the telescope deck, street lamps, planters and
   the roof clutter: air conditioners, a water tank, a dish, vents, crates, pipes and a stairwell, which are props in
   `site/scenery.json` you can move in builder mode. Run `blender -b -P rooftop.py -- --render --export` after changing
   it; it also saves `rooftop.blend`, the whole roof laid out, to open and look around.

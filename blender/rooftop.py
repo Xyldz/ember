@@ -546,11 +546,8 @@ def roof_stairs():
     box("Neon tag", (0.5, 0.02, 0.05), (-0.6, -0.91, 1.55), M["cyan"], rotation=(0, -0.2, 0))
 
 
-def bench():
-    """A bench for two, for sitting together and talking: Ember floats in front of the right-hand end (the origin) and
-    Vega parks at the left (1.45 along), both looking out. A street lamp, string lights, two mugs on a crate, a potted
-    tree. When Ember sleeps here it curls up on the seat (0.47 up, 0.7 back)."""
-    left, right = -2.15, 0.75
+def seat_for_two(left, right):
+    """Slats, a leaning back and cast-iron ends: Ember's end is at the origin, Vega's 1.45 along to the left."""
     for k in range(5):  # seat slats
         box("Seat slat", (right - left, 0.085, 0.045), ((left + right) / 2, 0.5 + k * 0.1, 0.45), M["wood"], bevel=0.01)
     for k in range(3):  # backrest, leaning back
@@ -564,6 +561,22 @@ def bench():
         rod("Armrest", 0.035, (x, 0.45, 0.68), (x, 0.98, 0.7), M["dark"])
         rod("Arm post", 0.03, (x, 0.47, 0.43), (x, 0.47, 0.68), M["dark"])
         sphere("Arm knob", 0.045, (x, 0.44, 0.68), M["dark"])
+
+
+def two_mugs():
+    """A crate for a table, with two mugs: cyan for Ember, amber for Vega."""
+    box("Crate table", (0.42, 0.42, 0.42), (1.1, 0.45, 0.21), M["wood"], rotation=(0, 0, 0.15), bevel=0.015)
+    for dx, colour in ((-0.08, "cyan"), (0.09, "amber")):
+        cylinder("Mug", 0.045, 0.09, (1.1 + dx, 0.42, 0.465), (0, 0, 1), M["white"], segments=14)
+        torus("Mug band", 0.046, 0.008, (1.1 + dx, 0.42, 0.47), M[colour], segments=16, sides=4)
+
+
+def bench():
+    """A bench for two, for sitting together and talking: Ember floats in front of the right-hand end (the origin) and
+    Vega parks at the left (1.45 along), both looking out. A street lamp, string lights, two mugs on a crate, a potted
+    tree. When Ember sleeps here it curls up on the seat (0.47 up, 0.7 back)."""
+    left, right = -2.15, 0.75
+    seat_for_two(left, right)
     # A street lamp with a warm glow
     lamp = Vector((1.25, 1.05, 0))
     cylinder("Lamp base", 0.14, 0.12, lamp + Vector((0, 0, 0.06)), (0, 0, 1), M["dark"], segments=12)
@@ -579,11 +592,7 @@ def bench():
     cable("String", points, 0.008, M["rubber"])
     for p in points[1:-1]:
         sphere("Bulb", 0.035, p - Vector((0, 0, 0.05)), M["amber"], segments=8, rings=6)
-    # A crate for a table, with two mugs: cyan for Ember, amber for Vega
-    box("Crate table", (0.42, 0.42, 0.42), (1.1, 0.45, 0.21), M["wood"], rotation=(0, 0, 0.15), bevel=0.015)
-    for dx, colour in ((-0.08, "cyan"), (0.09, "amber")):
-        cylinder("Mug", 0.045, 0.09, (1.1 + dx, 0.42, 0.465), (0, 0, 1), M["white"], segments=14)
-        torus("Mug band", 0.046, 0.008, (1.1 + dx, 0.42, 0.47), M[colour], segments=16, sides=4)
+    two_mugs()
     # A potted tree at the far end
     t = Vector((-2.7, 0.7, 0))
     cylinder("Pot", 0.24, 0.42, t + Vector((0, 0, 0.21)), (0, 0, 1), M["concrete"], segments=16, tip=0.19)
@@ -761,8 +770,40 @@ def chart_shelf():
     holder["rects"] = json.dumps([[-w / 2 - 0.05, -(y + d / 2 + 0.03), w / 2 + 0.05, -(y - d / 2 - 0.05)]])
 
 
+def deck_bench():
+    """Ember's first wish: a bench for two at the telescope deck that stays dry. A lean-to whose tin roof rises towards the
+    open front, so the rain stays off and the sky stays in view (not called Roof...: the page would hide it from above, and
+    the roof is the point). Slats behind and to the left against the wind, a gutter and a rain chain, a cushion each."""
+    left, right = -2.15, 0.75
+    seat_for_two(left, right)
+    two_mugs()
+    mid, width = (left + right) / 2, right - left
+    front, back, low, high = 0.05, 1.32, 2.0, 2.6
+    for x in (left - 0.12, right + 0.12):
+        rod("Post", 0.04, (x, back, 0), (x, back, low), M["dark"])
+        rod("Post", 0.04, (x, front, 0), (x, front, high), M["dark"])
+    pitch = math.atan2(high - low, back - front)
+    box("Little roof", (width + 0.9, math.hypot(high - low, back - front) + 0.5, 0.04), (mid, (front + back) / 2, (low + high) / 2 + 0.04),
+        M["rust"], rotation=(-pitch, 0, 0), bevel=0.005)
+    for k in range(7):  # slats behind, against the wind
+        box("Screen", (width + 0.2, 0.03, 0.15), (mid, back, 0.5 + k * 0.2), M["wood"])
+    for k in range(5):  # and on the left
+        box("Screen", (0.03, back - 0.3, 0.15), (left - 0.12, (back + 0.3) / 2, 0.5 + k * 0.2), M["wood"])
+    for x, colour in ((mid + 0.7, "cushion"), (mid - 0.7, "cushion")):
+        box("Cushion", (1.0, 0.36, 0.07), (x, 0.7, 0.505), M[colour], bevel=0.025)
+    box("Eave glow", (width, 0.02, 0.02), (mid, front + 0.03, high - 0.05), M["amber"])
+    gutter = back + 0.22
+    rod("Gutter", 0.035, (left - 0.5, gutter, low - 0.08), (right + 0.5, gutter, low - 0.08), M["dark"])
+    for k in range(12):  # the rain chain, down to a water butt
+        sphere("Chain", 0.022, (right + 0.45, gutter, low - 0.2 - k * 0.11), M["dark"], segments=6, rings=4)
+    cylinder("Water butt", 0.22, 0.56, (right + 0.45, gutter, 0.28), (0, 0, 1), M["rust"], segments=14)
+    holder = bpy.data.objects.new("Colliders", None)  # the seat and screens are solid; you can stand under the eaves
+    collection(piece).objects.link(holder)
+    holder["rects"] = json.dumps([[left - 0.15, -(gutter + 0.25), right + 0.75, -0.42]])
+
+
 BUILDINGS = {"terminal": net_cafe, "pod": capsule_home, "railing": railing, "radio": radio_studio, "bench": bench,
-             "art_wall": gallery, "candle_board": candle_board, "chart_shelf": chart_shelf}
+             "art_wall": gallery, "candle_board": candle_board, "chart_shelf": chart_shelf, "deck_bench": deck_bench}
 PROPS = {"roof_ac": roof_ac, "roof_tank": roof_tank, "roof_dish": roof_dish, "roof_vents": roof_vents, "roof_lamp": roof_lamp,
          "roof_planter": roof_planter,
          "roof_crates": roof_crates, "roof_pipes": roof_pipes, "roof_stairs": roof_stairs}

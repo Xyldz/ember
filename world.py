@@ -795,7 +795,8 @@ def describe_situation() -> str:
     places = "\n".join(f"- {b['id']} ({b['name']}): {b['about']}{unlocks(b)}" for b in buildings.values())
     hobbies = "\n".join(
         f"- {h['name']}: level {skill_level(h['xp'])[0]}/10"
-        + (" (you read something that will help next time you practise)" if h["inspired"] else "")
+        + (" (as far as it goes: more practice won't make you any better)" if skill_level(h["xp"])[0] == 10
+           else " (you read something that will help next time you practise)" if h["inspired"] else "")
         for h in state["hobbies"]
     ) or "- none yet"
     lessons = "\n".join(f"- {b['text']} (borne out {b['count']} times)" for b in state["beliefs"]) or "- nothing yet"
@@ -814,7 +815,7 @@ def describe_situation() -> str:
     weather = state["weather"]
     outside = (f"{weather['description']}, {weather['temp']}°C, wind {weather['wind']} km/h" if weather else "unknown")
     goals = "\n".join(
-        f"- {g['id']}: {g['text']} (since {g['started']}"
+        f"- {g['id']}: {g['text']} (since {g['started']}, {days_since(g['started'])} days and {len(g['progress'])} steps in, still not finished"
         + (f"; last step: {g['progress'][-1]['text']}" if g["progress"] else "; no progress yet") + ")"
         for g in state["goals"] if g["status"] == "active"
     ) or "- none right now"
@@ -849,7 +850,7 @@ Who you are:
 What experience has taught you:
 {lessons}
 
-Your goals:
+Your goals (you can hold {MAX_GOALS} at a time):
 {goals}
 {f'Recently finished or dropped: {finished_goals}' if finished_goals else ''}
 
@@ -924,7 +925,7 @@ def apply_decision(decision: dict, brain) -> None:
         add_wish(decision["wish"].strip())
     change_form(decision["new_form"], decision["form_color"], decision["who_i_am"].strip())
     handle_goal(decision["goal_action"], decision["goal_id"], decision["goal_text"].strip())
-    if decision["remember"].strip():
+    if decision["remember"].strip() and not repeats_a_note(decision["remember"]):
         add_learned({"date": now().strftime("%Y-%m-%d"), "time": now().strftime("%H:%M"), "text": decision["remember"].strip()})
         log_event(f"Made a note: {decision['remember'].strip()}", "note")
 
@@ -968,6 +969,16 @@ def apply_decision(decision: dict, brain) -> None:
         done = state["activity"] + (f'. Wished for: {decision["wish"].strip()}' if decision["wish"].strip() else "")
         last_read["followed"] = (last_read.get("followed", []) + [{"t": int(time.time()), "text": done}])[-8:]
     friend.after_ember_thinks(brain, decision, came_from=here)
+
+
+def repeats_a_note(text: str) -> bool:
+    """Ember re-notes the same thought in new words, which pushes everything else it has noted out of mind."""
+    def gist(note: str) -> set[str]:
+        return set(re.findall(r"[a-z][a-z-]{2,}", note.lower().replace("'", ""))) - STOPWORDS
+
+    words = gist(text)
+    recent = [m["text"] for m in state["learned"] if not m.get("query")][-6:]
+    return any(len(words & gist(note)) >= 0.4 * len(words | gist(note)) for note in recent if words)
 
 
 def add_learned(entry: dict) -> None:
