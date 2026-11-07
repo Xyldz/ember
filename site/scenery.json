@@ -30,7 +30,7 @@
     "near": 36,
     "far": 121,
     "min_height": 40,
-    "max_height": 140,
+    "max_height": 98,
     "window_glow": 0.5,
     "antennas": 0.3,
     "colors": [

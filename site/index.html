@@ -4,7 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ember</title>
-<meta name="description" content="Ember: a small autonomous AI living on a neon rooftop.">
+<meta name="description" content="Ember: a small autonomous AI living on a neon rooftop, with an old trading bot for company.">
+<meta property="og:title" content="Ember">
+<meta property="og:description" content="A small AI living on a neon rooftop. It really is thinking, wishing and looking at the real sky.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://xyldz.github.io/ember/icons/icon-512.png">
 <meta name="theme-color" content="#05060d">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
@@ -225,7 +229,7 @@
   .drawer-open #panel { transform: none; visibility: visible; transition: transform .35s cubic-bezier(.2, .8, .2, 1); }
   .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card, .drawer-open .walk-hint, .drawer-open .crosshair { left: calc(50% - 218px); }
   #panel > * { flex-shrink: 0; }
-  .drawer-top { display: flex; align-items: center; gap: 8px; padding: 14px 16px 4px; }
+  .drawer-top { display: flex; align-items: center; gap: 8px; padding: 14px 16px 10px; }
   .drawer-top .cost { margin-left: auto; padding: 4px 10px; border: 1px solid var(--line); border-radius: var(--pill); color: var(--muted);
     font-size: 11.5px; white-space: nowrap; }
   .drawer-top .cost + .close { margin-left: 0; }
@@ -262,7 +266,7 @@
   .next .bar[hidden] { display: none; }
   #status, #v-status { min-width: 0; color: var(--muted); font-size: 12px; }
 
-  .glance { padding: 8px 20px 18px; }
+  .glance { padding: 12px 20px 10px; }
   .section { padding: 10px 0 2px; }
   .section[hidden], .glance .empty[hidden] { display: none; }
   .bar { height: 6px; border-radius: var(--pill); background: var(--raised); overflow: hidden; }
@@ -313,7 +317,7 @@
   .fine { margin: 10px 0 0; color: var(--muted); font-size: 11px; }
 
   .tabs { position: sticky; top: 0; z-index: 3; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 0 10px;
-    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 88%, transparent);
+    border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 88%, transparent);
     backdrop-filter: blur(12px); }
   .tabs.six { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .tabs button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; padding: 11px 0 9px;
@@ -424,7 +428,6 @@
   .alloc i { height: 100%; }
   .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0; color: var(--muted); font-size: 11px; }
   .legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 2px; background: var(--chip); }
-  #v-goals h2 { margin: 12px 0 4px; }
   .qrow { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto 62px; gap: 10px; align-items: baseline; margin: 6px 0;
     font-size: 12.5px; font-variant-numeric: tabular-nums; }
   .qrow > :last-child { text-align: right; }
@@ -461,6 +464,64 @@
     border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
   #support { padding: 6px 14px; border-radius: var(--pill); background: var(--pop); color: var(--bg); font-weight: 700; text-decoration: none; white-space: nowrap; }
   #support[hidden] { display: none; }
+
+  /* Line icons on the toolbar: the same family as the tabs */
+  .ico { flex: none; width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .cam button { display: inline-flex; align-items: center; gap: 6px; }
+
+  /* Folded sections: one line each until you open them */
+  .fold { padding: 0; border-top: 1px solid var(--line); }
+  .fold > summary { display: flex; align-items: baseline; gap: 12px; padding: 11px 0; list-style: none; cursor: pointer; }
+  .fold > summary::-webkit-details-marker, .wish-row > summary::-webkit-details-marker { display: none; }
+  .fold > summary::after, .wish-row > summary::after { content: "›"; flex: none; margin-left: auto; color: var(--muted); transition: transform .2s; }
+  .fold[open] > summary::after, .wish-row[open] > summary::after { transform: rotate(90deg); }
+  .fold > summary h2 { flex: none; margin: 0; transition: color .15s; }
+  .fold > summary:hover h2 { color: var(--ink); }
+  .fold-sum { min-width: 0; overflow: hidden; color: var(--soft); font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+  .fold[open] .fold-sum { visibility: hidden; }
+  .fold > :last-child:not(summary) { padding-bottom: 10px; }
+
+  /* The wishlist: each wish a line that opens up */
+  .wish-row { margin: 6px 0; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); font-size: 13px; line-height: 1.5; }
+  .wish-row > summary { display: flex; align-items: baseline; gap: 10px; padding: 9px 12px; list-style: none; cursor: pointer; }
+  .wish-row .tag { flex: none; padding: 1px 7px; border-radius: 6px; background: color-mix(in srgb, currentColor 14%, transparent); color: var(--warm);
+    font-size: 9.5px; font-weight: 600; letter-spacing: .08em; text-transform: var(--label-case); }
+  .wish-row.granted .tag { color: var(--good); }
+  .wish-row .words { flex: 1; min-width: 0; overflow: hidden; color: var(--ink); text-overflow: ellipsis; white-space: nowrap; }
+  .wish-row[open] .words { white-space: normal; }
+  .wish-row .when { display: flex; justify-content: space-between; gap: 10px; padding: 0 12px 10px; color: var(--muted); font-size: 11.5px; }
+  .wish-row a { color: var(--muted); }
+  .wish-row a:hover { color: var(--ink); }
+  .place-card a.go-btn { display: inline-block; text-decoration: none; }
+
+  /* Big moments pop up as they happen */
+  .toasts { position: absolute; top: 16px; left: 50%; z-index: 6; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    width: min(440px, calc(100% - 24px)); transform: translateX(-50%); transition: left .35s; }
+  .drawer-open .toasts { left: calc(50% - 218px); }
+  .toast { display: flex; gap: 10px; align-items: baseline; max-width: 100%; padding: 10px 16px; border: 1px solid color-mix(in srgb, var(--warm) 45%, transparent);
+    border-radius: var(--radius); color: var(--ink); font-size: 13px; line-height: 1.45; text-align: left; cursor: pointer; pointer-events: auto;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, .35); animation: toast-in .5s cubic-bezier(.2, .8, .2, 1); transition: opacity .5s, transform .5s; }
+  .toast .said { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .toast.out { opacity: 0; transform: translateY(-10px); }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(-14px); } }
+
+  /* The title card, up while the world loads */
+  #intro { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    padding: 24px; background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--ember) 13%, var(--bg)), var(--bg) 62%); text-align: center;
+    transition: opacity .9s, visibility 0s .9s; }
+  #intro.gone { opacity: 0; visibility: hidden; pointer-events: none; }
+  #intro b { color: var(--ember); font: var(--display-weight) clamp(40px, 9vw, 76px)/1 var(--display); letter-spacing: .2em; margin-right: -.2em;
+    text-shadow: 0 0 44px color-mix(in srgb, var(--ember) 60%, transparent); text-transform: uppercase; animation: intro-in 1s ease-out both; }
+  #intro p { margin: 0; color: var(--soft); font-size: 14px; animation: intro-in 1s .25s ease-out both; }
+  #intro span { width: 170px; height: 2px; margin-top: 12px; overflow: hidden; border-radius: 2px; background: var(--raised); }
+  #intro span i { display: block; width: 8%; height: 100%; background: var(--ember); box-shadow: 0 0 10px var(--ember); transition: width .35s; }
+  @keyframes intro-in { from { opacity: 0; transform: translateY(10px); } }
+
+  button:focus-visible, summary:focus-visible, a:focus-visible, select:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+  footer:has(#support[hidden]) { display: none; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
 
   /* Touch screens: buttons big enough for a fingertip */
   @media (pointer: coarse) {
@@ -501,6 +562,7 @@
     [data-theme] .need { font-size: 0; }
     .need .bar { margin-top: 0; }
     .holo { display: none; }
+    .bubble { display: -webkit-box; max-width: 62vw; overflow: hidden; font-size: 12px; -webkit-box-orient: vertical; -webkit-line-clamp: 5; }
     .place { padding: 2px 7px; font-size: 9px; }
     .cam { bottom: calc(10px + env(safe-area-inset-bottom)); }
     .cam button { padding: 7px 6px; font-size: 13px; }
@@ -515,7 +577,8 @@
   @media (max-width: 760px) {
     .hud { left: 8px; right: 8px; width: auto; flex-direction: row; }
     .who-card { flex: 1 1 0; min-width: 0; }
-    .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card, .drawer-open .walk-hint, .drawer-open .crosshair { left: 50%; }
+    .drawer-open .cam, .drawer-open .note-box, .drawer-open .place-card, .drawer-open .walk-hint, .drawer-open .crosshair, .drawer-open .toasts { left: 50%; }
+    .toasts { top: calc(88px + env(safe-area-inset-top)); }
     #panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: min(80vh, 760px); border-bottom: 0;
       border-radius: var(--radius) var(--radius) 0 0; transform: translateY(105%); padding-bottom: env(safe-area-inset-bottom); }
     #panel::before { content: ""; display: block; width: 38px; height: 4px; margin: 8px auto 0; border-radius: 2px; background: var(--line); }
@@ -533,12 +596,14 @@
 </style>
 </head>
 <body>
+<div id="intro" aria-hidden="true"><b>Ember</b><p>A small AI, living on a rooftop. It really is thinking.</p><span><i id="intro-bar"></i></span></div>
 <div id="app">
   <main id="world">
     <div id="overlay">
       <div id="research" class="holo" hidden></div>
       <div id="bubble" class="bubble" hidden></div>
       <div id="vega-bubble" class="bubble vega" hidden></div>
+      <div id="toasts" class="toasts" aria-live="polite"></div>
       <div class="hud">
         <div id="ember-card" class="who-card glass" data-who="ember" role="button" tabindex="0" title="Open Ember's story">
           <div id="avatar" class="avatar"></div>
@@ -557,18 +622,19 @@
         </div>
       </div>
       <div id="cam" class="cam glass">
-        <button data-follow="free" title="Drag to turn · right-drag to move · scroll to zoom · double-click to fly there">🎥<span class="lbl"> Free</span></button>
-        <button data-follow="ember" title="The camera follows Ember around the roof">✦<span class="lbl"> Ember</span></button>
-        <button data-follow="vega" id="cam-vega" title="The camera follows Vega around the roof" hidden>🤖<span class="lbl"> Vega</span></button>
-        <button data-follow="walk" title="Walk the roof in first person: mouse to look, W A S D to move, E to look at a place, Esc lets go of the mouse">🚶<span class="lbl"> Walk</span></button>
+        <button data-follow="free" title="Drag to turn · right-drag to move · scroll to zoom · double-click to fly there"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span class="lbl">Free</span></button>
+        <button data-follow="ember" title="The camera follows Ember around the roof"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2 7 7 2-7 2-2 7-2-7-7-2 7-2z"/></svg><span class="lbl">Ember</span></button>
+        <button data-follow="vega" id="cam-vega" title="The camera follows Vega around the roof" hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="8" width="14" height="11" rx="2"/><path d="M12 8V4M9 13v1M15 13v1"/></svg><span class="lbl">Vega</span></button>
+        <button data-follow="walk" title="Walk the roof in first person: mouse to look, W A S D to move, E to look at a place, Esc lets go of the mouse"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="13" cy="4.5" r="1.8"/><path d="m10 21 2-6-3-2 1-5 4 2 3 2M12 15l3 2 1 4M10 8l-3 3"/></svg><span class="lbl">Walk</span></button>
         <i class="sep"></i>
-        <button id="cam-reset" title="Back to the view of the whole roof">⟲</button>
-        <button id="cam-sky" title="The sky follows the real sun over London. Click for night all the time">☀</button>
-        <button id="cam-sound" title="Ambient sound (off)">🔇</button>
-        <button id="cam-theme" title="Change the look">🎨</button>
-        <button id="cam-note" title="Pin a note for Ember or Vega on the bulletin board" hidden>📌</button>
+        <button id="cam-reset" title="Back to the view of the whole roof"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.5-5.8L4 8.5M4 4v4.5h4.5"/></svg></button>
+        <button id="cam-up" title="Look up at the sky they're looking at, from the telescope deck"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 4 2.4 5.2 5.6.7-4.1 3.9 1 5.6-4.9-2.8-4.9 2.8 1-5.6L4 9.9l5.6-.7z"/></svg></button>
+        <button id="cam-sky"></button>
+        <button id="cam-sound"></button>
+        <button id="cam-theme" title="Change the look"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.4 0 2-1 1.6-2-.5-1.3.2-2.5 1.6-2.5H18a2.5 2.5 0 0 0 2.5-2.5C20.5 7.5 17 3.5 12 3.5z"/><circle cx="8" cy="11" r="1"/><circle cx="11.5" cy="7.5" r="1"/><circle cx="15.5" cy="9" r="1"/></svg></button>
+        <button id="cam-note" title="Pin a note for Ember or Vega on the bulletin board" hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l-1 6 3 4H7l3-4zM12 14v7"/></svg></button>
         <i class="sep"></i>
-        <button id="cam-drawer" title="Their story: today, diary, trades and more">☰<span class="lbl"> Story</span></button>
+        <button id="cam-drawer" title="Their story: today, diary, trades and more"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span class="lbl">Story</span></button>
       </div>
       <button id="walk-hint" class="walk-hint glass" hidden></button>
       <div id="stick" class="stick" aria-hidden="true" hidden><i></i></div>
@@ -595,6 +661,23 @@
       <span id="cost" class="cost"></span>
       <button id="drawer-close" class="close" title="Close">✕</button>
     </div>
+    <nav id="ember-tabs" class="tabs">
+      <button data-tab="today" class="on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Today</button>
+      <button data-tab="diary"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H7a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1z"/><path d="M5 18a2 2 0 0 1 2-2h11M9 8h5"/></svg>Diary<i class="dot" hidden></i></button>
+      <button data-tab="mind"><svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></svg>Mind<i class="dot" hidden></i></button>
+      <button data-tab="memory"><svg viewBox="0 0 24 24"><path d="m12 4-9 5 9 5 9-5-9-5z"/><path d="m3 14 9 5 9-5"/></svg>Memory</button>
+      <button data-tab="city"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Events<i class="dot" hidden></i></button>
+      <button data-tab="gallery"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m5 18 5-5 3 3 2-2 4 4"/></svg>Gallery<i class="dot" hidden></i></button>
+      <button data-tab="research"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg>Research<i class="dot" hidden></i></button>
+    </nav>
+    <nav id="vega-tabs" class="tabs six" hidden>
+      <button data-tab="v-today"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Today</button>
+      <button data-tab="v-journal"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>Journal<i class="dot" hidden></i></button>
+      <button data-tab="v-portfolio"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l6.5 4.5"/></svg>Portfolio</button>
+      <button data-tab="v-market"><svg viewBox="0 0 24 24"><path d="M4 20h16"/><path d="m4 15 5-5 4 3 7-8"/></svg>Market</button>
+      <button data-tab="v-notebook"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H7a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1z"/><path d="M5 18a2 2 0 0 1 2-2h11M9 8h5"/></svg>Notebook<i class="dot" hidden></i></button>
+      <button data-tab="v-ember"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>Ember<i class="dot" hidden></i></button>
+    </nav>
     <header id="ember-head">
       <div class="meta"><span id="identity"></span><span id="now-weather"></span></div>
       <div id="about" class="quote"></div>
@@ -606,23 +689,14 @@
       </div>
     </header>
     <div id="ember-glance" class="glance">
-      <div id="sec-notes" class="section" hidden><h2>Your notes</h2><select id="note-pick" class="note-pick" aria-label="Pick one of your notes" hidden></select><div id="notes"></div></div>
-      <div id="sec-skills" class="section" hidden><h2>Interests</h2><div id="skills"></div></div>
-      <div id="sec-goals" class="section" hidden><h2>Goals</h2><div id="goals"></div></div>
-      <div id="sec-wondering" class="section" hidden><h2>Wondering</h2><div class="wish goal"><span class="tag">next</span><span id="wondering"></span></div></div>
+      <details id="sec-notes" class="section fold" hidden><summary><h2>Your notes</h2><span id="notes-sum" class="fold-sum"></span></summary><select id="note-pick" class="note-pick" aria-label="Pick one of your notes" hidden></select><div id="notes"></div></details>
+      <details id="sec-wishes" class="section fold"><summary><h2>Wishlist</h2><span id="wishes-sum" class="fold-sum"></span></summary><div id="wishes"></div></details>
+      <details id="sec-goals" class="section fold" hidden><summary><h2>Goals</h2><span id="goals-sum" class="fold-sum"></span></summary><div id="goals"></div></details>
+      <details id="sec-wondering" class="section fold" hidden><summary><h2>Wondering</h2><span id="wondering-sum" class="fold-sum"></span></summary><div id="wondering" class="goal-steps"></div></details>
+      <details id="sec-skills" class="section fold" hidden><summary><h2>Interests</h2><span id="skills-sum" class="fold-sum"></span></summary><div id="skills"></div></details>
       <p id="glance-empty" class="empty" hidden>No interests or goals yet. It's still finding its feet.</p>
-      <div id="sec-wishes" class="section"><h2>Wishlist</h2><div id="wishes"></div></div>
       <a id="e-note" class="note-link" target="_blank" rel="noopener noreferrer" hidden>📌 Pin a note for Ember on the bulletin board</a>
     </div>
-    <nav id="ember-tabs" class="tabs">
-      <button data-tab="today" class="on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Today</button>
-      <button data-tab="diary"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H7a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1z"/><path d="M5 18a2 2 0 0 1 2-2h11M9 8h5"/></svg>Diary<i class="dot" hidden></i></button>
-      <button data-tab="mind"><svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></svg>Mind<i class="dot" hidden></i></button>
-      <button data-tab="memory"><svg viewBox="0 0 24 24"><path d="m12 4-9 5 9 5 9-5-9-5z"/><path d="m3 14 9 5 9-5"/></svg>Memory</button>
-      <button data-tab="city"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Events<i class="dot" hidden></i></button>
-      <button data-tab="gallery"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m5 18 5-5 3 3 2-2 4 4"/></svg>Gallery<i class="dot" hidden></i></button>
-      <button data-tab="research"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></svg>Research<i class="dot" hidden></i></button>
-    </nav>
     <header id="vega-head" hidden>
       <div class="meta"><span id="v-identity"></span></div>
       <div id="v-about" class="quote"></div>
@@ -634,19 +708,11 @@
         <div id="v-mini"></div>
       </div>
       <div id="v-alloc"></div>
-      <div id="v-sec-notes" class="section" hidden><h2>Your notes</h2><select id="v-note-pick" class="note-pick" aria-label="Pick one of your notes for Vega" hidden></select><div id="v-notes"></div></div>
-      <div id="v-goals"></div>
-      <div class="section"><h2>Wishlist</h2><div id="v-wishes"></div></div>
+      <details id="v-sec-notes" class="section fold" hidden><summary><h2>Your notes</h2><span id="v-notes-sum" class="fold-sum"></span></summary><select id="v-note-pick" class="note-pick" aria-label="Pick one of your notes for Vega" hidden></select><div id="v-notes"></div></details>
+      <details id="v-sec-wishes" class="section fold"><summary><h2>Wishlist</h2><span id="v-wishes-sum" class="fold-sum"></span></summary><div id="v-wishes"></div></details>
+      <details id="v-sec-goals" class="section fold" hidden><summary><h2>Up to</h2><span id="v-goals-sum" class="fold-sum"></span></summary><div id="v-goals"></div></details>
       <a id="v-note" class="note-link" target="_blank" rel="noopener noreferrer" hidden>📌 Pin a note for Vega on the bulletin board</a>
     </div>
-    <nav id="vega-tabs" class="tabs six" hidden>
-      <button data-tab="v-today"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Today</button>
-      <button data-tab="v-journal"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>Journal<i class="dot" hidden></i></button>
-      <button data-tab="v-portfolio"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v8l6.5 4.5"/></svg>Portfolio</button>
-      <button data-tab="v-market"><svg viewBox="0 0 24 24"><path d="M4 20h16"/><path d="m4 15 5-5 4 3 7-8"/></svg>Market</button>
-      <button data-tab="v-notebook"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H7a2 2 0 0 1-2-2V5a1 1 0 0 1 1-1z"/><path d="M5 18a2 2 0 0 1 2-2h11M9 8h5"/></svg>Notebook<i class="dot" hidden></i></button>
-      <button data-tab="v-ember"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>Ember<i class="dot" hidden></i></button>
-    </nav>
     <div id="feed"></div>
     <footer><a id="support" target="_blank" rel="noopener noreferrer" hidden></a></footer>
   </aside>
@@ -709,7 +775,7 @@ if (innerWidth < innerHeight) { // a phone held upright: a wider lens, from high
 controls.enableDamping = true;
 controls.screenSpacePanning = false; // right-drag slides you across the roof, not up into the sky
 controls.zoomToCursor = true; // the wheel zooms towards whatever's under the pointer
-controls.maxPolarAngle = 1.45;
+controls.maxPolarAngle = 2.2; // past level, so it can look up at the sky (steerCamera keeps it above the roof)
 controls.minDistance = 2.5;
 controls.maxDistance = 40;
 
@@ -732,20 +798,63 @@ scene.add(moon);
 // ---------------------------------------------------------------------------
 // Day and night: the sky follows the real sun over the place Ember's weather comes from (London, unless
 // config.json says otherwise). scenery.json describes the night; by day the haze lifts, the sun comes up and
-// the neon fades back. "Always night" on the camera bar keeps it dark, and ?hour=13 previews another time.
+// the neon fades back. The sky button on the camera bar changes it for whoever's looking, and nobody else: Ember and
+// Vega always live under the real sky (see world.sky). ?hour=13 previews another time.
 // ---------------------------------------------------------------------------
 const SKY_AT = { latitude: 51.5072, longitude: -0.1276 }; // replaced by the real spot once state.json arrives
 const PREVIEW_HOUR = parseFloat(new URLSearchParams(location.search).get('hour'));
-const DAY = { sky: new THREE.Color('#7b9ed8'), fog: new THREE.Color('#a2b8db'), light: new THREE.Color('#dce7ff'),
+const DAY = { sky: new THREE.Color('#2a68cc'), fog: new THREE.Color('#a2b8db'), light: new THREE.Color('#dce7ff'),
   sun: new THREE.Color('#fff1d8'), tower: new THREE.Color('#58627e'), grey: new THREE.Color('#8f96a4') };
 const DUSK = { sky: new THREE.Color('#d9826f'), fog: new THREE.Color('#d48d7f'), sun: new THREE.Color('#ffa463') };
 const MOONLIGHT = new THREE.Color(0x9d8cff), NIGHT_TOWER = new THREE.Color(0x07080f), MOON_SPOT = new THREE.Vector3(-10, 22, 8);
 const towerMaterials = []; // the city's windows: dimmer by day
+const ALWAYS_DAY_SUN = { altitude: 40, bearing: 225 };
 let sceneSky = null, skyMode = 'live', daylight = 0; // daylight: 0 at night, 1 in full day
 const sunDisc = new THREE.Mesh(new THREE.SphereGeometry(9, 24, 16), new THREE.MeshBasicMaterial({ color: 0xffe8b0, fog: false }));
 const moonDisc = new THREE.Mesh(new THREE.SphereGeometry(5, 24, 16), new THREE.MeshBasicMaterial({ color: 0xd9dcff, fog: false }));
-moonDisc.position.set(-0.6, 0.38, -0.7).setLength(300); // low in the north-west, where you can see it from the usual view
+moonDisc.position.set(-0.55, 0.6, -0.62).setLength(300); // in the north-west, up over the telescope when you look up from the deck
 scene.add(sunDisc, moonDisc);
+// The sky itself: down to a hazy horizon that the far towers melt into, with a glow round the sun, clouds drifting over,
+// and on a clear night the stars and the Milky Way
+const skyUniforms = { top: { value: new THREE.Color() }, horizon: { value: new THREE.Color() }, sunGlow: { value: new THREE.Color() },
+  sunAt: { value: new THREE.Vector3(0, 1, 0) }, night: { value: 1 }, cover: { value: 0.25 }, time: { value: 0 } };
+const skyDome = new THREE.Mesh(new THREE.SphereGeometry(390, 32, 20), new THREE.ShaderMaterial({
+  uniforms: skyUniforms, side: THREE.BackSide, depthWrite: false,
+  vertexShader: 'varying vec3 dir; void main() { dir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `
+    uniform vec3 top, horizon, sunGlow, sunAt;
+    uniform float night, cover, time;
+    varying vec3 dir;
+    float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    float noise(vec2 p) {
+      vec2 i = floor(p), f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+    }
+    float puffs(vec2 p) { return noise(p) * 0.55 + noise(p * 2.3) * 0.3 + noise(p * 5.1) * 0.15; }
+    void main() {
+      vec3 d = normalize(dir);
+      float up = max(d.y, 0.0);
+      vec3 colour = mix(horizon, top, pow(up, 0.5));
+      float toSun = max(dot(d, sunAt), 0.0);
+      colour += sunGlow * (pow(toSun, 6.0) * 0.22 + pow(toSun, 60.0) * 0.5);
+      if (night > 0.01 && up > 0.03) {
+        float fade = night * smoothstep(0.03, 0.35, up); // the city's glow washes out the lowest stars
+        vec3 grain = floor(d * 380.0);
+        float star = fract(sin(dot(grain, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+        colour += fade * smoothstep(0.994, 1.0, star) * (0.6 + 0.4 * sin(time * 1.5 + star * 5000.0)) * vec3(1.5, 1.55, 1.7);
+        float band = exp(-pow(dot(d, normalize(vec3(0.5, 0.35, 0.8))) * 5.0, 2.0));
+        colour += fade * band * (0.015 + 0.06 * puffs(d.xy * 5.0 + d.z * 3.0)) * vec3(0.7, 0.75, 1.0);
+      }
+      vec2 p = d.xz / (up + 0.2) * 1.4 + vec2(time * 0.008, time * 0.003);
+      float cloud = smoothstep(1.0 - cover, 1.25 - cover, puffs(p)) * smoothstep(0.02, 0.25, up);
+      colour = mix(colour, mix(vec3(1.0, 0.97, 0.93), horizon * 0.6, night), cloud * 0.85);
+      gl_FragColor = vec4(colour, 1.0);
+    }`,
+}));
+skyDome.frustumCulled = false;
+skyDome.renderOrder = -1;
+scene.add(skyDome);
 
 function sunPosition(date, latitude, longitude) { // how high the sun is, and its compass bearing, in degrees
   const rad = Math.PI / 180, days = date.getTime() / 86400000 - 10957.5; // days since noon on 1 January 2000
@@ -765,11 +874,12 @@ function applyDaylight(weatherCode = 0) {
   if (!sceneSky) return;
   let when = new Date();
   if (Number.isFinite(PREVIEW_HOUR)) when.setHours(Math.floor(PREVIEW_HOUR), (PREVIEW_HOUR % 1) * 60, 0, 0);
-  const sun = BUILDING || skyMode === 'night' ? { altitude: -40, bearing: 0 } : sunPosition(when, SKY_AT.latitude, SKY_AT.longitude);
+  const alwaysDay = skyMode === 'day' && !Number.isFinite(PREVIEW_HOUR);
+  const sun = BUILDING || skyMode === 'night' ? { altitude: -40, bearing: 0 } : alwaysDay ? ALWAYS_DAY_SUN : sunPosition(when, SKY_AT.latitude, SKY_AT.longitude);
   const k = Math.min(1, Math.max(0, (sun.altitude + 6) / 16)); // from 6° below the horizon to 10° above
   const day = k * k * (3 - 2 * k);
-  const dusk = Math.max(0, 1 - Math.abs(sun.altitude - 2) / 10); // the warm glow round sunrise and sunset
-  const cloud = weatherCode >= 51 ? 0.75 : weatherCode >= 3 ? 0.5 : 0; // overcast days are grey
+  const dusk = alwaysDay ? 0.12 : Math.max(0, 1 - Math.abs(sun.altitude - 2) / 10); // the warm glow round sunrise and sunset
+  const cloud = weatherCode >= 51 ? 0.75 : weatherCode >= 3 && !alwaysDay ? 0.5 : 0; // overcast days are grey (always-day is a fine one, unless it's raining)
   daylight = day;
   const daySky = DAY.sky.clone().lerp(DAY.grey, cloud), dayFog = DAY.fog.clone().lerp(DAY.grey, cloud);
   scene.background.set(sceneSky.color).lerp(daySky, day).lerp(DUSK.sky, dusk * 0.5 * (1 - cloud));
@@ -792,6 +902,12 @@ function applyDaylight(weatherCode = 0) {
   sunDisc.position.copy(toSun).setLength(300);
   sunDisc.material.color.set(0xfff4d6).lerp(DUSK.sun, dusk);
   moonDisc.visible = day < 0.5 && cloud < 0.6;
+  skyUniforms.top.value.copy(scene.background);
+  skyUniforms.horizon.value.copy(scene.fog.color);
+  skyUniforms.sunGlow.value.copy(moon.color).multiplyScalar(day);
+  skyUniforms.sunAt.value.copy(toSun);
+  skyUniforms.night.value = (1 - day) * (1 - cloud);
+  skyUniforms.cover.value = 0.4 + cloud * 0.45;
 }
 
 const materials = {};
@@ -1819,7 +1935,7 @@ function hitAt(event) {
   const box = renderer.domElement.getBoundingClientRect();
   pointer.set(((event.clientX - box.left) / box.width) * 2 - 1, -((event.clientY - box.top) / box.height) * 2 + 1);
   raycaster.setFromCamera(pointer, camera);
-  return raycaster.intersectObjects([avatar, worldGroup, sceneryGroup].filter(Boolean), true)[0];
+  return raycaster.intersectObjects([avatar, lanternGroup, worldGroup, sceneryGroup].filter(Boolean), true)[0];
 }
 let pressedAt = null; // a click is a press that hardly moved: anything more is turning the camera
 renderer.domElement.addEventListener('pointerdown', (event) => { pressedAt = { x: event.clientX, y: event.clientY, t: performance.now() }; });
@@ -1830,6 +1946,7 @@ renderer.domElement.addEventListener('pointerup', (event) => {
   const hit = hitAt(event);
   if (!hit) return;
   if (inside(hit.object, avatar)) return showPlace(latest.location);
+  if (inside(hit.object, lanternGroup)) return showWish(hit.object.parent.userData);
   if (vega && inside(hit.object, vega.root)) return showPlace(latest.vega?.location);
   for (let o = hit.object; o; o = o.parent) if (o.userData.buildingId) return showPlace(o.userData.buildingId);
 });
@@ -1848,7 +1965,7 @@ renderer.domElement.addEventListener('pointerdown', (event) => { // grabbing the
 function steerCamera(dt) {
   if (follow === 'walk') return; // walking moves the camera itself
   if (flight) {
-    const k = Math.min(1, (performance.now() - flight.start) / 900), ease = k * k * (3 - 2 * k);
+    const k = Math.min(1, (performance.now() - flight.start) / (flight.seconds ?? 0.9) / 1000), ease = k * k * (3 - 2 * k);
     controls.target.lerpVectors(...flight.target, ease);
     camera.position.lerpVectors(...flight.camera, ease);
     if (k >= 1) flight = null;
@@ -1862,9 +1979,71 @@ function steerCamera(dt) {
     THREE.MathUtils.clamp(controls.target.z, -edge, edge)).sub(controls.target);
   controls.target.add(clampStep);
   camera.position.add(clampStep);
+  camera.position.y = Math.max(camera.position.y, 0.7);
+  const room = ROOF + 10 + Math.max(0, camera.position.y - 20) * 1.5, out = Math.hypot(camera.position.x, camera.position.z); // low down, not inside a tower
+  if (out > room) { camera.position.x *= room / out; camera.position.z *= room / out; }
 }
 
 // ---------------------------------------------------------------------------
+// Wish lanterns: whatever Ember or Vega is still wishing for hangs glowing over the roof until it comes true. A new one
+// rises from whoever wished it, and one that's come true sails off into the sky.
+const lanternGroup = new THREE.Group(), lanterns = new Map(), lanternSpot = new THREE.Vector3();
+scene.add(lanternGroup);
+const LANTERN_PAPER = new THREE.SphereGeometry(0.42, 14, 10), LANTERN_CAP = new THREE.CylinderGeometry(0.16, 0.2, 0.07, 10), LANTERN_REACH = new THREE.SphereGeometry(1.6, 8, 6);
+let lanternsShown = false;
+function addLantern(key, wish, who, color, from) {
+  const rand = seeded([...key].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7)); // the same wish, the same spot
+  const lantern = new THREE.Group();
+  const paper = new THREE.Mesh(LANTERN_PAPER, neon(color, 1.05));
+  paper.scale.y = 1.2;
+  const cap = new THREE.Mesh(LANTERN_CAP, mat(0x2a2030)), base = new THREE.Mesh(LANTERN_CAP, mat(0x2a2030));
+  cap.position.y = 0.52;
+  base.position.y = -0.52;
+  const reach = new THREE.Mesh(LANTERN_REACH); // unseen: it just makes the lantern easier to tap
+  reach.visible = false;
+  lantern.add(paper, cap, base, reach);
+  lantern.userData = { wish, who, x: (rand() - 0.5) * 30, y: 8.5 + rand() * 5, z: (rand() - 0.5) * 30, phase: rand() * 6.28 };
+  lantern.position.copy(from ?? lanternSpot.set(lantern.userData.x, lantern.userData.y, lantern.userData.z));
+  lanternGroup.add(lantern);
+  lanterns.set(key, lantern);
+}
+function syncLanterns(s) {
+  if (BUILDING) return;
+  const lit = new Set();
+  const light = (wishes = [], who, color, from) => wishes.filter((wish) => !wish.granted).forEach((wish) => {
+    const key = `${who}: ${wish.text}`;
+    lit.add(key);
+    if (!lanterns.has(key)) addLantern(key, wish, who, color, lanternsShown ? from : null);
+  });
+  light(s.wishes, s.name, hex(s.form?.color ?? '#3ff0ff'), avatar.position);
+  light(s.vega?.wishes, s.vega?.name, 0xffb02e, vega?.root.position);
+  for (const [key, lantern] of lanterns) if (!lit.has(key)) lantern.userData.gone = true;
+  lanternsShown = true;
+}
+function stepLanterns(t, dt) {
+  for (const [key, lantern] of lanterns) {
+    const u = lantern.userData;
+    if (u.gone) {
+      lantern.position.y += dt * 3;
+      lantern.scale.multiplyScalar(1 - dt * 0.35);
+      if (lantern.scale.x < 0.15) { lanternGroup.remove(lantern); lanterns.delete(key); }
+      continue;
+    }
+    lanternSpot.set(u.x + Math.sin(t * 0.13 + u.phase), u.y + Math.sin(t * 0.4 + u.phase) * 0.4, u.z + Math.cos(t * 0.11 + u.phase));
+    lantern.position.lerp(lanternSpot, Math.min(1, dt * 0.35));
+    lantern.rotation.z = Math.sin(t * 0.6 + u.phase) * 0.06;
+  }
+}
+function showWish({ wish, who }) {
+  shownPlace = null;
+  $('note-box').hidden = true;
+  $('place-name').textContent = `${who}'s wish`;
+  const body = [el('p', 'thought', wish.text), el('p', 'about', `Wished for on ${wish.date}. It hangs here until the builder gets to it.`)];
+  if (wish.issue_url) body.push(safeLink(wish.issue_url, 'See it on GitHub', 'go-btn'));
+  $('place-body').replaceChildren(...body);
+  $('place-card').hidden = false;
+}
+
 // Pigeons: a little flock living on the roof. They peck about, flutter off when someone comes too close,
 // and crowd round Vega whenever it's feeding them.
 // ---------------------------------------------------------------------------
@@ -2183,6 +2362,8 @@ function animate() {
   }
   if (stormy && t > nextFlash) { flashLeft = 0.12; nextFlash = t + 4 + Math.random() * 10; setTimeout(() => play('thunder'), 500 + Math.random() * 2500); }
   flashLeft -= dt;
+  skyUniforms.time.value = t;
+  skyDome.position.copy(camera.position); // always the same distance away, so it's never clipped
   skyLight.intensity = flashLeft > 0 ? 7 : baseLight; // lightning
   for (let i = 0; i < rainCount; i++) {
     const o = i * 6, fall = rainSpeed * dt;
@@ -2228,6 +2409,7 @@ function animate() {
   }
   if (tickerTexture) tickerTexture.offset.x = (tickerTexture.offset.x + (dt * 150) / tickerCanvas.width) % 1;
   movePigeons(t, dt);
+  stepLanterns(t, dt);
 
   steerCamera(dt);
   if (follow !== 'walk') controls.update();
@@ -2247,9 +2429,15 @@ function animate() {
     const short = (vegaBubble.offsetWidth + bubble.offsetWidth) / 2 + 8 - Math.abs(xe - xv);
     if (stacked && short > 0) push = (short / 2) * (xv <= xe ? 1 : -1);
   }
-  for (const [el, nudge] of [[vegaBubble, -push], [bubble, push]]) { // and keep each one on screen (a phone is narrow)
-    const x = parseFloat(el.style.left) + nudge, half = el.offsetWidth / 2, edge = worldEl.clientWidth - half - 8;
-    const shift = nudge + (half ? Math.min(Math.max(x, half + 8), Math.max(edge, half + 8)) - x : 0);
+  const pair = [[vegaBubble, -push], [bubble, push]];
+  let slide = 0; // pushed apart near the screen's edge, they move over together rather than back on top of each other
+  if (push) for (const [el, nudge] of pair) {
+    const x = parseFloat(el.style.left) + nudge, half = el.offsetWidth / 2;
+    slide += Math.max(0, half + 8 - x) - Math.max(0, x + half + 8 - worldEl.clientWidth);
+  }
+  for (const [el, nudge] of pair) { // and keep each one on screen (a phone is narrow)
+    const x = parseFloat(el.style.left) + nudge + slide, half = el.offsetWidth / 2, edge = worldEl.clientWidth - half - 8;
+    const shift = nudge + slide + (half ? Math.min(Math.max(x, half + 8), Math.max(edge, half + 8)) - x : 0);
     el.style.translate = shift ? `${shift}px 0` : '';
   }
   if (researchAnchor) pinToScreen(researchHolo, researchAnchor);
@@ -2785,8 +2973,11 @@ function renderVega(s) {
     row.append(el('span', 'tag', 'goal'), el('span', '', goal.text));
     return row;
   });
-  $('v-goals').replaceChildren(...(goals.length ? [el('h2', '', 'Up to'), ...goals] : []));
+  $('v-goals').replaceChildren(...goals);
+  $('v-sec-goals').hidden = !goals.length;
+  $('v-goals-sum').textContent = v.goals?.[0]?.text ?? '';
   $('v-wishes').replaceChildren(...wishRows(v.wishes, v.name));
+  $('v-wishes-sum').textContent = wishSummary(v.wishes);
 }
 
 // Vega's tabs
@@ -3133,6 +3324,7 @@ function showNotes(prefix, desk, s, who) { // who: { name, location, activity } 
   pick.hidden = notes.length < 2;
   $(`${prefix}notes`).replaceChildren(...(chosen ? [pinnedCard(chosen, s, who)] : []));
   $(`${prefix}sec-notes`).hidden = !notes.length;
+  $(`${prefix}notes-sum`).textContent = notes.length ? `${notes.length} · the newest ${notes[0].read ? 'read' : 'still waiting'}` : '';
 }
 const openNotes = new Set(); // notes you've unfolded stay open as new things arrive
 function pinnedCard(note, s, who) { // a note you left: where it's got to, like a parcel tracker, and what came of it
@@ -3189,14 +3381,45 @@ function goalRows(goal) { // a goal, and when you tap it, every step it took tow
   });
   return [row, more];
 }
-function wishRows(wishes = [], name) { // a wishlist: what's still wished for, what got built, and its GitHub issue
-  if (!wishes.length) return [el('p', 'empty', `Nothing yet. When ${name} wishes for something to be built, it shows up here (and as an issue on GitHub).`)];
-  return wishes.slice(-5).reverse().map((wish) => {
-    const row = el('div', `wish${wish.granted ? ' granted' : ''}`);
-    row.append(el('span', 'tag', wish.granted ? 'built' : 'wish'), el('span', '', wish.text));
-    if (wish.issue_url) row.append(safeLink(wish.issue_url, 'issue'));
+function wishRows(wishes = [], name) { // the wishlist: still wished for first, then what got built, each folded to a line
+  if (!wishes.length) return [el('p', 'empty', `Nothing yet. When ${name} wishes for something, a lantern goes up over the roof and it shows up here.`)];
+  const newestFirst = wishes.slice().reverse();
+  return [...newestFirst.filter((wish) => !wish.granted), ...newestFirst.filter((wish) => wish.granted)].map((wish) => {
+    const key = `wish ${wish.text.slice(0, 40)}`, row = el('details', `wish-row${wish.granted ? ' granted' : ''}`), top = el('summary'), when = el('div', 'when');
+    top.append(el('span', 'tag', wish.granted ? 'built' : 'waiting'), el('span', 'words', wish.text));
+    when.append(el('span', '', `Wished for on ${wish.date}`));
+    if (wish.issue_url) when.append(safeLink(wish.issue_url, 'On GitHub'));
+    row.append(top, when);
+    row.open = opened.has(key);
+    row.addEventListener('toggle', () => { if (row.open) opened.add(key); else opened.delete(key); });
     return row;
   });
+}
+function wishSummary(wishes = []) {
+  const waiting = wishes.filter((wish) => !wish.granted).length, built = wishes.length - waiting;
+  return [waiting && `${waiting} waiting`, built && `${built} built`].filter(Boolean).join(' · ') || 'none yet';
+}
+
+// Big moments pop up as they happen, if you're watching
+const TOASTED = new Set(['wish', 'build', 'creation', 'levelup', 'hobby', 'form', 'chapter']);
+function toast(text, icon = '', onClick = null) {
+  const pop = el('button', 'toast glass');
+  if (icon) pop.append(el('span', '', icon));
+  pop.append(el('span', 'said', text));
+  pop.addEventListener('click', () => { pop.remove(); onClick?.(); });
+  $('toasts').append(pop);
+  setTimeout(() => pop.classList.add('out'), 7000);
+  setTimeout(() => pop.remove(), 7600);
+}
+let seenEvent = null;
+function announce(s) {
+  const key = (e) => `${e.date} ${e.time} ${e.text}`, at = s.events.findLastIndex((e) => key(e) === seenEvent);
+  const fresh = at < 0 ? [] : s.events.slice(at + 1); // the first look, or it scrolled away: nothing to shout about
+  if (s.events.length) seenEvent = key(s.events.at(-1));
+  for (const e of fresh.filter((e) => TOASTED.has(e.kind) || /^(Set itself|Achieved)/.test(e.text)).slice(-3)) {
+    toast(e.text, ICONS[e.kind], () => { setWho('ember'); setDrawer(true); });
+    play('chime');
+  }
 }
 
 let lastActivity = '', emberSaidAt = 0;
@@ -3240,6 +3463,8 @@ function render(s) {
   setWeather(s.weather);
   const finishedGoals = goals.filter((g) => g.status !== 'active').reverse();
   $('goals').replaceChildren(...[...activeGoals, ...finishedGoals].flatMap(goalRows));
+  $('goals-sum').textContent = activeGoals[0]?.text ?? `${finishedGoals.length} finished`;
+  $('skills-sum').textContent = s.skills.map((skill) => `${skill.name} · LV ${skill.level}`).join(', ');
 
   $('skills').replaceChildren(...s.skills.map((skill) => {
     const row = el('div', 'skill'), name = el('span', '', skill.name);
@@ -3257,13 +3482,15 @@ function render(s) {
   }));
 
   $('wishes').replaceChildren(...wishRows(s.wishes, s.name));
+  $('wishes-sum').textContent = wishSummary(s.wishes);
+  syncLanterns(s);
   $('sec-skills').hidden = !s.skills.length;
   $('sec-goals').hidden = !activeGoals.length && !finishedGoals.length;
   pulseTarget = s.activity.startsWith('Heading') ? s.location : null;
   showNotes('', s.desk, s, { name: s.name, location: s.location, activity: s.activity });
   if (s.vega) showNotes('v-', s.vega.desk, s, { name: s.vega.name, location: s.vega.location, activity: s.vega.doing });
   if (!$('place-card').hidden) showPlace(shownPlace, s);
-  $('wondering').textContent = s.wondering ?? '';
+  $('wondering').textContent = $('wondering-sum').textContent = s.wondering ?? '';
   $('sec-wondering').hidden = !s.wondering;
   $('glance-empty').hidden = !(s.skills.length + activeGoals.length + finishedGoals.length === 0);
 
@@ -3343,6 +3570,26 @@ const sceneryReady = fetch(`scenery.json?t=${Date.now()}`, { cache: 'no-store' }
 // redeploys (a minute or two), not only after Ember's next thought. Run locally there's no copy, and the state's list is used.
 const layoutReady = fetch(`buildings.json?t=${Date.now()}`, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
 let latest = null;
+// The title card: up while the world loads, then it lifts and the camera glides down onto the roof
+let introOver = false, modelsLoaded = false;
+function endIntro() {
+  if (introOver) return;
+  introOver = true;
+  $('intro').classList.add('gone');
+  if (follow === 'free' && !BUILDING) {
+    camera.position.set(9, 3, 30);
+    controls.target.set(0, 8, -10);
+    flyTo(HOME_VIEW.target, HOME_VIEW.camera);
+    flight.seconds = 3.4;
+  }
+}
+const maybeEndIntro = () => { // more models may start right after a first batch, and the card gets a moment to be read
+  if (modelsLoaded && latest) setTimeout(() => { if (modelsLoaded) endIntro(); }, Math.max(600, 2000 - performance.now()));
+};
+THREE.DefaultLoadingManager.onStart = () => { modelsLoaded = false; };
+THREE.DefaultLoadingManager.onProgress = (url, done, total) => { $('intro-bar').style.width = `${Math.max(8, (done / total) * 100)}%`; };
+THREE.DefaultLoadingManager.onLoad = () => { modelsLoaded = true; maybeEndIntro(); };
+setTimeout(endIntro, BUILDING ? 0 : 8000); // a slow connection or a missing model doesn't hold the page up
 async function refresh() {
   try {
     const response = await fetch(`data/state.json?t=${Date.now()}`, { cache: 'no-store' });
@@ -3361,6 +3608,8 @@ async function refresh() {
     latest = s;
     applyLive(s);
     render(s);
+    announce(s);
+    maybeEndIntro();
     drawCandles();
   } catch (error) {
     console.error(error);
@@ -3421,17 +3670,23 @@ if (BUILDING) { // builder mode lives in its own file, so the public page stays 
 function selectTab(name) {
   tab = name;
   lastTab[name.startsWith('v-') ? 'vega' : 'ember'] = name;
+  for (const [id, home] of [['ember-head', 'today'], ['ember-glance', 'today'], ['vega-head', 'v-today'], ['vega-glance', 'v-today']]) $(id).hidden = tab !== home;
+  $('panel').scrollTop = 0;
   document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
   feedKey = '';
   if (latest) renderFeed(latest);
 }
 document.querySelectorAll('.tabs button').forEach((button) => button.addEventListener('click', () => selectTab(button.dataset.tab)));
+document.querySelectorAll('details.fold').forEach((fold) => { // what you left open stays open next time
+  fold.open = store.get(`fold.${fold.id}`, false);
+  fold.addEventListener('toggle', () => store.set(`fold.${fold.id}`, fold.open));
+});
 
 // Ember or Vega: each has its own header and tabs, and Vega's side is amber like its screens
 function setWho(side) {
   who = side === 'vega' && latest?.vega ? 'vega' : 'ember';
-  for (const id of ['ember-head', 'ember-glance', 'ember-tabs']) $(id).hidden = who === 'vega';
-  for (const id of ['vega-head', 'vega-glance', 'vega-tabs']) $(id).hidden = who !== 'vega';
+  $('ember-tabs').hidden = who === 'vega';
+  $('vega-tabs').hidden = who !== 'vega';
   $('panel').classList.toggle('vega', who === 'vega');
   document.querySelectorAll('#switch button, .who-card').forEach((b) => b.classList.toggle('on', b.dataset.who === who));
   store.set('who', who);
@@ -3475,19 +3730,33 @@ document.querySelectorAll('#cam [data-follow]').forEach((button) => button.addEv
   if (followed() && follow !== 'walk') flyTo(followed().clone().setY(1)); // walking sets its own camera
 }));
 $('cam-reset').addEventListener('click', () => { setFollow('free'); flyTo(HOME_VIEW.target, HOME_VIEW.camera); });
+$('cam-up').addEventListener('click', () => { setFollow('free'); flyTo(new THREE.Vector3(12, 8, -20), new THREE.Vector3(20, 1.4, -9)); flight.seconds = 1.8; });
+const SKIES = { // the sky on your screen, and nobody else's: Ember and Vega stay under the real one
+  live: { next: 'day', icon: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c3 3 3 14 0 17M12 3.5c-3 3-3 14 0 17"/>',
+    says: 'The real sky over London, the one Ember and Vega are under. Click for always day on your screen' },
+  day: { next: 'night', icon: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/>',
+    says: 'Always day, on your screen only. Ember and Vega still have the real sky. Click for always night', told: 'Always day, on your screen only. Ember and Vega still have the real sky and its stars.' },
+  night: { next: 'live', icon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+    says: 'Always night, on your screen only. Click for the real sky over London', told: 'Always night, on your screen only.' },
+};
+const svgIcon = (body) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${body}</svg>`;
 function setSky(mode) {
   skyMode = mode;
   const button = $('cam-sky');
-  button.textContent = mode === 'night' ? '🌙' : '☀';
-  button.title = mode === 'night' ? 'Always night. Click for the real sky over London'
-    : 'The sky follows the real sun over London. Click for night all the time';
+  button.innerHTML = svgIcon(SKIES[mode].icon);
+  button.title = SKIES[mode].says;
+  button.setAttribute('aria-label', SKIES[mode].says);
   store.set('sky', mode);
   applyDaylight(latest?.weather?.code);
 }
-$('cam-sky').addEventListener('click', () => setSky(skyMode === 'night' ? 'live' : 'night'));
+$('cam-sky').addEventListener('click', () => {
+  setSky(SKIES[skyMode].next);
+  toast(skyMode === 'live' ? 'The real sky over London, the one they\'re under.' : SKIES[skyMode].told);
+});
+const SOUND_ICONS = { on: '<path d="M4 10v4h3l5 4V6L7 10z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/>', off: '<path d="M4 10v4h3l5 4V6L7 10z"/><path d="m16 10 4 4M20 10l-4 4"/>' };
 function setSound(on) {
   soundOn = on;
-  $('cam-sound').textContent = on ? '🔊' : '🔇';
+  $('cam-sound').innerHTML = svgIcon(SOUND_ICONS[on ? 'on' : 'off']);
   $('cam-sound').title = `Ambient sound (${on ? 'on' : 'off'})`;
   $('cam-sound').classList.toggle('on', on);
   store.set('sound', on);
@@ -3535,7 +3804,8 @@ setTheme(document.documentElement.dataset.theme);
 if (store.get('sound', false)) setSound(true); // it was on last time: browsers let it start once you tap the page
 document.addEventListener('pointerdown', () => audio?.resume(), { once: true });
 setFollow(store.get('follow', 'free'));
-setSky(store.get('sky', 'live'));
+setSky(SKIES[store.get('sky')] ? store.get('sky') : 'live');
+if (!$('cam-sound').innerHTML) setSound(false);
 </script>
 </body>
 </html>

@@ -65,13 +65,13 @@ ACTION_WORDS = {"search": "search the internet", "rest": "recharge faster", "rad
                 "telescope": "see the real night sky up close, fainter planets too",
                 "art": "look over the newest things you've made, hung up on the wall"}
 # News of a big change to the world, told once (Ember and Vega notice it on their next thought)
-WORLD_NEWS = ("Overnight the roof grew to four times its size and became a little village: the terminal is in a net café "
-              "now, the charging pod in a home of your own, the radio in a studio and your art in a gallery, around a "
-              "square with the bulletin board in the middle. Vega's trading floor is full-sized at last.")
+WORLD_NEWS = ("Paper lanterns have started appearing over the roof: every wish that hasn't come true yet hangs up there, "
+              "glowing, until the builder gets to it. Anyone who looks up can see them.")
 MAX_RADIO_PER_DAY = 30  # after that, only static (each broadcast is a small Haiku call)
 PRACTICE_XP = 10  # doubled if Ember looked something up about it first
 RESEARCH_XP = 5
 MAX_WISHES_PER_DAY = 2
+OPEN_WISHES = 3  # with this many lanterns still up, Ember stops being asked what else it would love
 MAX_FORM_CHANGES_PER_DAY = 2
 MAX_SELF_LINES = 10  # per section of the character sheet
 MEMORY_SLOTS = 24  # per memory section: when it's full, a new memory has to beat the weakest one to get in
@@ -268,7 +268,7 @@ def add_xp(hobby: dict, amount: int) -> None:
 def add_wish(text: str) -> None:
     if state["wishes_today"] >= MAX_WISHES_PER_DAY:
         return
-    if any(w["text"].lower()[:30] == text.lower()[:30] for w in state["wishes"]):
+    if any(w["text"].lower()[:30] == text.lower()[:30] or same_thought(text, w["text"]) for w in state["wishes"]):
         return
     state["wishes"] = (state["wishes"] + [{"text": text, "date": now().strftime("%Y-%m-%d"), "granted": False, "issue_url": ""}])[-20:]
     state["wishes_today"] += 1
@@ -300,6 +300,7 @@ def notice_new_buildings() -> None:
         for wish in state["wishes"]:
             if granted and not wish["granted"] and granted in wish["text"].lower():
                 wish["granted"] = True
+                keep_memory("moments", f"Something I wished for came true: {wish['text'][:140]}", 4)
                 log_event(f'A wish came true: "{wish["text"]}"', "wish")
     state["known_buildings"] = list(buildings)
     if state["location"] not in buildings:
@@ -803,6 +804,14 @@ def describe_situation() -> str:
     made = "\n".join(f'- "{w["title"]}" ({w["type"]})' for w in gallery[-4:]) or "- nothing yet"
     wishes = "\n".join(f'- {w["text"]} ({"came true!" if w["granted"] else "still waiting"})'
                        for w in state["wishes"][-6:]) or "- none yet"
+    waiting = sum(not w["granted"] for w in state["wishes"])
+    came_true = len(state["wishes"]) - waiting
+    proof = f"{came_true} of your wishes came true, so the builder really does read them. " if came_true else ""
+    lanterns = f"{waiting} lantern{' is' if waiting == 1 else 's are'} still up over the roof, waiting on the builder."
+    wish_pull = ("" if waiting >= OPEN_WISHES
+                 else f"{proof}{lanterns} There's room for more if something else comes to you, big or small, for the sky or anything else."
+                 if waiting else
+                 f"{proof}There's no lantern over the roof right now. What would you love up here that isn't here yet? Big or small, for the sky or anything else.")
     long_term = "\n".join(f"- {m['text']}" for m in strongest_memories(10)) or "- nothing yet"
     read = "\n".join(f"- {m['text'][:220]} (looked up: {m['query']})"
                      for m in [m for m in state["learned"] if m.get("query")][-5:]) or "- nothing yet"
@@ -874,6 +883,7 @@ Things you've made (newest last):
 
 Your wishes:
 {wishes}
+{wish_pull}
 
 Your strongest memories:
 {long_term}
@@ -971,14 +981,18 @@ def apply_decision(decision: dict, brain) -> None:
     friend.after_ember_thinks(brain, decision, came_from=here)
 
 
+def same_thought(a: str, b: str) -> bool:
+    """Two bits of text saying much the same thing, in whatever words."""
+    def gist(text: str) -> set[str]:
+        return set(re.findall(r"[a-z][a-z-]{2,}", text.lower().replace("'", ""))) - STOPWORDS
+
+    a, b = gist(a), gist(b)
+    return bool(a) and len(a & b) >= 0.4 * len(a | b)
+
+
 def repeats_a_note(text: str) -> bool:
     """Ember re-notes the same thought in new words, which pushes everything else it has noted out of mind."""
-    def gist(note: str) -> set[str]:
-        return set(re.findall(r"[a-z][a-z-]{2,}", note.lower().replace("'", ""))) - STOPWORDS
-
-    words = gist(text)
-    recent = [m["text"] for m in state["learned"] if not m.get("query")][-6:]
-    return any(len(words & gist(note)) >= 0.4 * len(words | gist(note)) for note in recent if words)
+    return any(same_thought(text, m["text"]) for m in [m for m in state["learned"] if not m.get("query")][-6:])
 
 
 def add_learned(entry: dict) -> None:
@@ -1142,7 +1156,7 @@ def tick(brain, next_think_in_seconds: float, wake_now: bool = False, dream_now:
         if state["news_seen"] != WORLD_NEWS:
             state["news_seen"] = WORLD_NEWS
             log_event(WORLD_NEWS, "event")
-            friend.log_own(WORLD_NEWS.replace("your own", "Ember's own").replace("your art", "Ember's art"), "note")
+            friend.log_own(WORLD_NEWS, "note")
         check_weather()
         plan_city(brain)
         friend.tick(brain)  # before Ember thinks, so it hears anything Vega calls out
