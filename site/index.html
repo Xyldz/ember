@@ -481,6 +481,13 @@
   .sky-card[hidden] { display: none; }
   .sky-card h2 { margin-bottom: 3px; color: var(--ember); }
 
+  @media (min-width: 761px) and (max-width: 1180px) { /* room for the sky card beside the cards, and for the toolbar beside the drawer */
+    .sky-card { left: 368px; width: calc(100% - 380px); transform: none; }
+    .drawer-open .sky-card { display: none; }
+    .drawer-open .cam .lbl { display: none; }
+  }
+  @media (min-width: 1181px) { .drawer-open .sky-card { left: calc(50% - 34px); width: min(460px, calc(100% - 804px)); } }
+
   /* Walking: where everyone is */
   #world canvas.minimap { position: absolute; left: 16px; bottom: 16px; z-index: 4; width: 124px; height: 124px; border-radius: var(--radius); filter: none; pointer-events: none; }
   #world canvas.minimap[hidden] { display: none; }
