@@ -66,8 +66,10 @@ ACTION_WORDS = {"search": "search the internet", "rest": "recharge faster", "rad
                 "telescope": "see the real night sky up close, fainter planets too",
                 "art": "look over the newest things you've made, hung up on the wall"}
 # News of a big change to the world, told once (Ember and Vega notice it on their next thought)
-WORLD_NEWS = ("Paper lanterns have started appearing over the roof: every wish that hasn't come true yet hangs up there, "
-              "glowing, until the builder gets to it. Anyone who looks up can see them.")
+WORLD_NEWS = ("Two new things on the roof. Every morning the real world's paper gets pinned to the bulletin board: a story, "
+              "a bit of history, a picture. And you can build little websites of your own now, a page about anything you "
+              "love, a toy, a game: they go up for anyone to visit.")
+PAPER_URL = "https://en.wikipedia.org/api/rest_v1/feed/featured/{:%Y/%m/%d}"
 MAX_RADIO_PER_DAY = 30  # after that, only static (each broadcast is a small Haiku call)
 PRACTICE_XP = 10  # doubled if Ember looked something up about it first
 RESEARCH_XP = 5
@@ -126,7 +128,7 @@ def new_state() -> dict:
         "weather": None,   # the real weather, from config.json's location
         "city": [], "city_planned": "",  # what's on in the city
         "routine": [], "in_rut": False,  # recent kind|place pairs, for spotting ruts
-        "felt": "", "asleep": False, "sleep": None, "status": "", "tick_seconds": 600,
+        "felt": "", "paper": {}, "asleep": False, "sleep": None, "status": "", "tick_seconds": 600,
         "day": "", "thinks_today": 0, "searches_today": 0, "wishes_today": 0, "form_changes_today": 0, "radio_today": 0,
         "costs": {"month": "", "usd": 0.0, "total_usd": 0.0},
         "tick_started_at": 0, "next_think_at": 0,
@@ -585,6 +587,60 @@ def check_weather() -> None:
         log_event(f"The weather turned: {weather['description']}, {weather['temp']}°C.", "weather")
 
 
+def fetch_paper() -> None:
+    """Once a day the real world's paper is pinned to the bulletin board (Wikipedia's front page: the featured article,
+    a day in history, the picture of the day). Something new Ember didn't choose, the way a stray page blows onto a roof."""
+    today = now().strftime("%Y-%m-%d")
+    if state["paper"].get("date") == today:
+        return
+    request = urllib.request.Request(PAPER_URL.format(now()), headers={"User-Agent": "EmberRooftop/1.0 (https://xyldz.github.io/ember/)"})
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            feed = json.load(response)
+    except (OSError, ValueError):
+        return  # no paper today yet: the next tick tries again
+    plain = lambda html: re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", html)).strip()[:420]
+    page = lambda item: item.get("content_urls", {}).get("desktop", {}).get("page", "")
+    stories = []
+    if feed.get("tfa"):
+        stories.append({"title": feed["tfa"].get("titles", {}).get("normalized", "Today's featured article"),
+                        "text": plain(feed["tfa"].get("extract", "")), "url": page(feed["tfa"])})
+    for day in feed.get("onthisday", [])[:1]:
+        stories.append({"title": f"On this day in {day.get('year', 'history')}", "text": plain(day.get("text", "")),
+                        "url": page((day.get("pages") or [{}])[0])})
+    if feed.get("image"):  # the picture of the day, rather than the news: something to be inspired by
+        stories.append({"title": "Picture of the day", "text": plain(feed["image"].get("description", {}).get("text", "")),
+                        "url": feed["image"].get("file_page", "")})
+    stories = [story for story in stories if story["text"]]
+    if stories:
+        state["paper"] = {"date": today, "stories": stories, "read": False}
+        log_event(f"Today's paper was pinned to the bulletin board: {stories[0]['title']}, and more.", "event")
+
+
+def read_paper() -> None:
+    """Ember reads today's paper at the board: each story becomes something it has read, like a search."""
+    paper = state["paper"]
+    if not paper.get("stories") or paper.get("read"):
+        return
+    paper["read"] = True
+    for story in paper["stories"]:
+        add_learned({"date": now().strftime("%Y-%m-%d"), "time": now().strftime("%H:%M"), "query": "the morning paper",
+                     "text": f"{story['title']}: {story['text']}", "sources": [story["url"]] if story["url"] else []})
+    log_event(f"Read the morning paper: {'; '.join(story['title'] for story in paper['stories'])}.", "learned")
+
+
+def paper_line() -> str:
+    """Today's paper: in full when Ember's at the board, just the headlines from elsewhere, nothing once it's read."""
+    paper, board = state["paper"], notice_board()
+    if not paper.get("stories") or not board:
+        return ""
+    if can(state["location"], "board"):
+        return "Today's paper is pinned here on the board:\n" + "\n".join(f"- {s['title']}: {s['text']}" for s in paper["stories"])
+    if paper.get("read"):
+        return ""
+    return f"Today's paper is pinned on the {buildings[board]['name'].lower()}, unread: " + "; ".join(s["title"] for s in paper["stories"]) + "."
+
+
 # ---------------------------------------------------------------------------
 # The real sky over the same place: how dark it is, the moon and the planets (astronomy-engine, worked out here)
 # ---------------------------------------------------------------------------
@@ -873,6 +929,7 @@ def describe_situation() -> str:
 The sky over the roof: {sky(close_up=can(state["location"], "telescope"))}
 You are at: {here['name']} ({state['location']}). {here['about']} {friend.presence() or friend.whereabouts()}
 {message}
+{paper_line()}
 Your form: shape {state['form']['shape']}, colour {state['form']['color']}. In your words: {state['form']['about']}
 Your needs (0-100, higher is better): {needs}. {feelings} {felt} {stale}
 
@@ -939,6 +996,8 @@ def apply_decision(decision: dict, brain) -> None:
     if note and screen in (None, here):  # it was in front of Ember as it thought: its reaction goes back to the builder
         note.update(read=True, read_at=int(time.time()), reply=decision["say"].strip() or state["thought"])
         log_event(f'Read a note from the builder: "{note["text"][:160]}"', "message")
+    if can(here, "board"):
+        read_paper()
 
     if decision["say"].strip():
         state["say"], state["said_at"] = decision["say"].strip(), time.time()
@@ -1071,7 +1130,34 @@ def tune_in(brain) -> None:
     log_event(f"On the radio ({broadcast['station'].strip()}): {broadcast['heard'].strip()}", "radio")
 
 
+SITE_RULES = ("<meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; style-src 'unsafe-inline'; "
+              "script-src 'unsafe-inline'; img-src data:; font-src data:; media-src data:; form-action 'none'\">")
+
+
+def publish_site(work: dict) -> None:
+    """A website Ember made goes up at a real address of its own (data/sites/<its name>.html on the site). Rules at the
+    top of the file stop it loading anything from elsewhere or sending anything anywhere."""
+    html = work["html"]
+    tag = re.search(r"<head[^>]*>", html, re.I) or re.search(r"<html[^>]*>", html, re.I)
+    html = html[:tag.end()] + SITE_RULES + html[tag.end():] if tag else "<!doctype html>" + SITE_RULES + html
+    folder = DATA_DIR / "sites"
+    folder.mkdir(parents=True, exist_ok=True)
+    name = re.sub(r"[^a-z0-9]+", "-", work["title"].lower()).strip("-")[:40] or "site"
+    path, n = folder / f"{name}.html", 2
+    while path.exists():
+        path, n = folder / f"{name}-{n}.html", n + 1
+    path.write_text(html, encoding="utf-8")
+    work["page"] = f"data/sites/{path.name}"
+
+
 def make_creation(brain, kind: str, activity: str, hobby: dict | None) -> None:
+    learning = kind == "website" and hobby is None  # building websites is a craft it learns by doing, like any interest
+    if learning:
+        hobby = find_hobby("making websites")
+        if hobby is None:
+            hobby = {"name": "making websites", "xp": 0, "inspired": False}
+            state["hobbies"].append(hobby)
+            log_event("Took up a new interest: making websites!", "hobby")
     level = skill_level(hobby["xp"])[0] if hobby else 1
     state["activity"] = f"Working on a {kind}..."
     save()
@@ -1093,6 +1179,15 @@ def make_creation(brain, kind: str, activity: str, hobby: dict | None) -> None:
         if "xmlns=" not in svg.split(">", 1)[0]:
             svg = svg.replace("<svg", '<svg xmlns="http://www.w3.org/2000/svg"', 1)  # browsers need this to show it
         work["svg"] = svg
+    if kind == "website":
+        html = work["html"].strip()
+        if len(html) > 30_000 or "<" not in html:
+            log_event("Built a website that wouldn't load, and took it down.")
+            return
+        work["html"] = html
+        publish_site(work)
+        if learning:
+            add_xp(hobby, PRACTICE_XP)
 
     t = now()
     gallery.append({"id": int(time.time() * 1000), "date": t.strftime("%Y-%m-%d"), "time": t.strftime("%H:%M"),
@@ -1182,6 +1277,7 @@ def tick(brain, next_think_in_seconds: float, wake_now: bool = False, dream_now:
             log_event(WORLD_NEWS, "event")
             friend.log_own(WORLD_NEWS, "note")
         check_weather()
+        fetch_paper()
         plan_city(brain)
         friend.tick(brain)  # before Ember thinks, so it hears anything Vega calls out
         live(brain, wake_now)

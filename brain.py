@@ -71,6 +71,12 @@ CREATION_SCHEMAS = {
         "required": ["title", "instrument", "tempo", "notes"],
         "additionalProperties": False,
     },
+    "website": {
+        "type": "object",
+        "properties": {"title": {"type": "string"}, "html": {"type": "string", "description": "The complete HTML document."}},
+        "required": ["title", "html"],
+        "additionalProperties": False,
+    },
 }
 
 CREATION_BRIEFS = {
@@ -80,6 +86,10 @@ CREATION_BRIEFS = {
     "poem": "Write it as a short piece of 2 to 12 lines.",
     "tune": "Compose a short tune of 8 to 32 notes on a synth lead, bass synth or drum machine. "
             "Use 'rest' for silence. Each note lasts 0.5, 1, 1.5 or 2 beats.",
+    "website": "Build it as one small web page: a complete HTML document with its own <style>, and a <script> only if "
+               "it needs one (a toy, a game, an animation). It's shown sealed off from the internet, so everything lives "
+               "in the one file: no links to other sites, no outside fonts, images, scripts or requests, no forms asking "
+               "for anything. Under 12,000 characters. Make it about something you care about, and make it look like yours.",
 }
 
 REFLECTION_SCHEMA = {
@@ -409,9 +419,9 @@ def decision_schema(location_ids: list[str]) -> dict:
             },
             "creation": {
                 "type": "string",
-                "enum": ["none", "drawing", "poem", "tune"],
-                "description": "If what you're doing makes something that can be kept (a drawing, a poem or a tune), which "
-                               "one: it'll hang in your gallery. Otherwise none.",
+                "enum": ["none", "drawing", "poem", "tune", "website"],
+                "description": "If what you're doing makes something that can be kept, which one: a drawing, a poem, a tune, "
+                               "or a little website of your own that anyone can visit. It goes in your gallery. Otherwise none.",
             },
             "say": {"type": "string", "description": "Something you say out loud, or an empty string."},
             "remember": {
@@ -700,6 +710,10 @@ class DemoBrain:
                 for _ in range(4 + level)
             )
             return {"title": "Demo rings", "svg": f'<svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#0b0d1a"/>{shapes}</svg>'}
+        if kind == "website":
+            return {"title": "Demo page", "html": "<!doctype html><html><head><style>body{background:#0b0d1a;color:#3ff0ff;"
+                                                  "font:20px sans-serif;text-align:center;padding:40px}</style></head>"
+                                                  "<body><h1>Hello from the roof</h1><p>Rain on the wires.</p></body></html>"}
         if kind == "poem":
             return {"title": "Demo words", "text": "Rain on the wires,\nlight in the drain.\nI don't know what I am\nbut I'm here again."}
         notes = [{"pitch": random.choice(["A3", "C4", "D4", "E4", "G4", "A4", "rest"]), "beats": random.choice([0.5, 0.5, 1])}

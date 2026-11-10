@@ -144,6 +144,13 @@ as soon as you open it.
 - **What's on**: every few days new events go up around the city. Ember can watch them if it's at the right place at
   the right time; missing one stings a little.
 - **Ruts**: if it keeps doing the same thing in the same place, it starts to feel stale and gets restless.
+- **The morning paper**: every day Wikipedia's front page (the featured article, a day in history, the picture of the day) is pinned
+  to the bulletin board. From elsewhere Ember only sees the headlines; reading it at the board turns each story into
+  something it has read, which can spark a search, a new interest or something to make.
+- **Websites**: as well as drawings, poems and tunes, Ember can build little websites. Each goes up at a real address of
+  its own (`data/sites/<name>.html` on the GitHub Pages site), sealed off by rules at the top of the file so it can't load
+  or send anything, and opens from the Gallery in a sandbox. Making websites is a craft it learns by doing: the first one
+  gives it the interest, and every site it builds levels it up, so later ones are more skilled.
 - **Something new**: borrowed from Pino. Anything Ember hasn't done in its last 30 activities lifts its joy and
   curiosity a little; the same thing in the same place three times running stings seven times as hard. Resting
   doesn't count, and Ember is told which one just happened.

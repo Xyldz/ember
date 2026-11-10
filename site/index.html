@@ -488,6 +488,17 @@
   }
   @media (min-width: 1181px) { .drawer-open .sky-card { left: calc(50% - 34px); width: min(460px, calc(100% - 804px)); } }
 
+  /* Ember's websites, opened sealed off in a sandbox */
+  .site-viewer { position: fixed; inset: 5% 6%; z-index: 30; display: flex; flex-direction: column; overflow: hidden; border-radius: var(--radius);
+    pointer-events: auto; box-shadow: 0 30px 90px rgba(0, 0, 0, .55); }
+  .site-viewer[hidden] { display: none; }
+  .site-top { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 18px; }
+  .site-top h2 { margin: 0; color: var(--ember); }
+  .site-top span { color: var(--muted); font-size: 11.5px; }
+  .site-top a { color: var(--ember); }
+  .site-viewer iframe { flex: 1; width: 100%; border: 0; background: #fff; }
+  @media (max-width: 760px) { .site-viewer { inset: 0; border-radius: 0; } }
+
   /* Walking: where everyone is */
   #world canvas.minimap { position: absolute; left: 16px; bottom: 16px; z-index: 4; width: 124px; height: 124px; border-radius: var(--radius); filter: none; pointer-events: none; }
   #world canvas.minimap[hidden] { display: none; }
@@ -667,6 +678,10 @@
         <button id="away-more" class="go-btn">Read the whole story</button>
       </div>
       <canvas id="minimap" class="minimap glass" width="248" height="248" hidden></canvas>
+      <div id="site-viewer" class="site-viewer glass" role="dialog" aria-labelledby="site-title" hidden>
+        <div class="site-top"><div><h2 id="site-title"></h2><span id="site-meta"></span></div><button id="site-close" class="close" title="Close">✕</button></div>
+        <iframe id="site-frame" sandbox="allow-scripts" referrerpolicy="no-referrer" title="A website Ember made"></iframe>
+      </div>
       <div class="hud">
         <div id="ember-card" class="who-card glass" data-who="ember" role="button" tabindex="0" title="Open Ember's story">
           <div id="avatar" class="avatar"></div>
@@ -1819,6 +1834,17 @@ function paintFrame({ canvas, texture }, work) {
     ctx.fillStyle = '#4a4352';
     wrapText(ctx, work.text, W / 2, y + 12, W - 34, 16, H - 16);
     texture.needsUpdate = true;
+    return;
+  } else if (work.type === 'website') { // a little browser window
+    ctx.strokeStyle = ctx.fillStyle = '#2b2733';
+    ctx.lineWidth = 3;
+    ctx.fillRect(18, 18, W - 36, 24);
+    ctx.strokeRect(18, 18, W - 36, H - 78);
+    ['#ff6b6b', '#f6d743', '#5bf0a0'].forEach((colour, i) => { ctx.fillStyle = colour; ctx.beginPath(); ctx.arc(32 + i * 14, 30, 4, 0, 7); ctx.fill(); });
+    ctx.fillStyle = '#6d6577';
+    ctx.font = 'italic 16px Georgia, serif';
+    ctx.fillText('a website', W / 2, (H - 40) / 2 + 12);
+    label();
     return;
   } else if (work.type === 'tune') {
     ctx.font = '600 17px Georgia, serif';
@@ -3095,7 +3121,22 @@ function when(entry, today) {
 }
 
 let galleryItems = [], galleryKey = null;
-const WORK_TYPES = { drawing: 'Drawing', poem: 'Poem', tune: 'Tune' };
+// A website Ember made opens sealed off: a sandbox with no way into this page (its own file also has rules that stop it
+// loading or sending anything anywhere). #site-<id> opens it straight away.
+function openSite(work) { // its real page (world.publish_site), in a sandbox here as well
+  $('site-frame').src = work.page;
+  $('site-title').textContent = work.title;
+  $('site-meta').replaceChildren(`A website ${latest?.name ?? 'Ember'} made · ${when(work, latest?.today)} · `,
+    safeLink(new URL(work.page, location.href).href, 'its own page ↗'));
+  $('site-viewer').hidden = false;
+  history.replaceState(null, '', `#site-${work.id}`);
+}
+$('site-close').addEventListener('click', () => {
+  $('site-viewer').hidden = true;
+  $('site-frame').src = 'about:blank';
+  history.replaceState(null, '', location.pathname + location.search);
+});
+const WORK_TYPES = { drawing: 'Drawing', poem: 'Poem', tune: 'Tune', website: 'Website' };
 function galleryCards(s) {
   if (!galleryItems.length) return [el('p', 'empty', `Nothing yet. If ${s.name} ever makes something, it lands here.`)];
   return galleryItems.slice().reverse().map((work) => {
@@ -3111,6 +3152,10 @@ function galleryCards(s) {
     } else if (work.type === 'tune') {
       const button = el('button', 'play', `▶ Play (${work.instrument})`);
       button.addEventListener('click', () => playTune(work, button));
+      card.append(button);
+    } else if (work.type === 'website') {
+      const button = el('button', 'play', '↗ Visit the site');
+      button.addEventListener('click', () => openSite(work));
       card.append(button);
     }
     const skill = work.hobby ? `${work.hobby} lv ${work.level}` : 'beginner';
@@ -3655,6 +3700,10 @@ function showPlace(id, s = latest) {
       ...(trade ? [el('p', 'about', `Last trade: ${trade.side} $${trade.dollars.toLocaleString()} of ${trade.symbol} at ${trade.time}. "${trade.why}"`)] : []),
       button("Vega's trades", () => { setWho('vega'); setDrawer(true); selectTab('v-portfolio'); }));
   }
+  if (actions.includes('board') && s.paper?.stories?.length) {
+    extra("Today's paper", ...s.paper.stories.map((story) => { const p = el('p'); p.append(safeLink(story.url, story.title)); return p; }),
+      el('p', 'about', s.paper.read ? `${s.name} has read it.` : `${s.name} hasn't read it yet.`));
+  }
   if (actions.includes('board')) {
     const waiting = (desk) => (desk ?? []).filter((n) => !n.read).length;
     extra('Your notes', el('p', '', `For ${s.name}: ${waiting(s.desk)} waiting${v ? ` · For ${v.name}: ${waiting(v.desk)} waiting` : ''}`),
@@ -3992,6 +4041,8 @@ async function refresh() {
       galleryKey = s.gallery_key;
       paintArt(galleryItems.findLast((work) => work.type === 'drawing')?.svg);
       paintWall();
+      const linked = galleryItems.find((work) => work.type === 'website' && location.hash === `#site-${work.id}`);
+      if (linked && $('site-viewer').hidden) openSite(linked); // someone followed a link to one of its websites
     }
     latest = s;
     applyLive(s);
