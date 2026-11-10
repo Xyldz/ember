@@ -144,6 +144,9 @@ as soon as you open it.
 - **What's on**: every few days new events go up around the city. Ember can watch them if it's at the right place at
   the right time; missing one stings a little.
 - **Ruts**: if it keeps doing the same thing in the same place, it starts to feel stale and gets restless.
+- **Something new**: borrowed from Pino. Anything Ember hasn't done in its last 30 activities lifts its joy and
+  curiosity a little; the same thing in the same place three times running stings seven times as hard. Resting
+  doesn't count, and Ember is told which one just happened.
 - **Memory**: three small shelves (places & things, facts, moments) of 24 slots each. A memory's strength halves every
   three weeks unless something brings it back, and when a shelf is full a new memory must beat the weakest to get in.
   The nightly dream decides what's worth keeping. See the **Memory** tab.

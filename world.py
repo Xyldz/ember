@@ -34,6 +34,7 @@ GALLERY_FILE = DATA_DIR / "gallery.json"
 
 NEEDS = ["charge", "curiosity", "joy", "calm", "connection"]
 DECAY = {"charge": 2, "curiosity": 3, "joy": 1, "calm": 1, "connection": 2}  # lost every tick
+NOVELTY_LIFT, REPEAT_STING = 2, 14  # Pino's rule: doing the same thing again stings seven times harder than something new lifts
 STARVING, STARVING_PULL = 20, 4  # a need left below 20 wears joy and calm down by 4 a tick, so it can't be ignored forever
 # What each kind of activity tends to do to Ember's needs. The real effect varies each time,
 # and places add their own "boosts", so Ember has to find out what works for it.
@@ -125,7 +126,7 @@ def new_state() -> dict:
         "weather": None,   # the real weather, from config.json's location
         "city": [], "city_planned": "",  # what's on in the city
         "routine": [], "in_rut": False,  # recent kind|place pairs, for spotting ruts
-        "recent_kinds": [], "asleep": False, "sleep": None, "status": "", "tick_seconds": 600,
+        "felt": "", "asleep": False, "sleep": None, "status": "", "tick_seconds": 600,
         "day": "", "thinks_today": 0, "searches_today": 0, "wishes_today": 0, "form_changes_today": 0, "radio_today": 0,
         "costs": {"month": "", "usd": 0.0, "total_usd": 0.0},
         "tick_started_at": 0, "next_think_at": 0,
@@ -322,9 +323,14 @@ def live_through(kind: str) -> None:
             effects[need] = effects.get(need, 0) + bonus
     if kind == "rest" and can(here, "rest"):
         effects["charge"] = effects.get("charge", 0) + 12
-    if state["recent_kinds"][-2:] == [kind, kind]:  # the same thing three times running gets dull
-        effects["joy"] = effects.get("joy", 0) - 6
-        effects["curiosity"] = effects.get("curiosity", 0) - 4
+    done, state["felt"] = f"{kind}|{here}", ""
+    if kind != "rest":  # recharging is never boring
+        if done not in state["routine"]:  # nothing like it in its last 30 activities
+            state["felt"] = "fresh"
+        elif state["routine"][-2:] == [done, done]:  # the same thing, in the same place, three times running
+            state["felt"] = "same"
+        for need in ("joy", "curiosity") if state["felt"] else ():
+            effects[need] = effects.get(need, 0) + (NOVELTY_LIFT if state["felt"] == "fresh" else -REPEAT_STING)
 
     record = state["experience"].setdefault(f"{kind}|{here}", {"count": 0, "totals": {}})
     record["count"] += 1
@@ -332,7 +338,6 @@ def live_through(kind: str) -> None:
         before = state["needs"][need]
         change_need(need, amount * random.uniform(0.6, 1.4))
         record["totals"][need] = record["totals"].get(need, 0) + state["needs"][need] - before
-    state["recent_kinds"] = (state["recent_kinds"] + [kind])[-5:]
     state["routine"] = (state["routine"] + [f"{kind}|{here}"])[-30:]
     update_beliefs()
 
@@ -848,6 +853,8 @@ def describe_situation() -> str:
     finished_goals = ", ".join(f"{g['text']} ({g['status']})" for g in [g for g in state["goals"] if g["status"] != "active"][-3:])
     chapter = state["chapters"][-1] if state["chapters"] else None
     stale = rut()
+    felt = {"fresh": "Doing something you hadn't done lately lifted you a little.",
+            "same": "Doing the same thing in the same place three times running stung: your joy and curiosity dropped."}.get(state["felt"], "")
     hung = min(4, len(gallery))
     gallery_line = (f"Your gallery has {hung} of its 4 frames filled; the newest things you make hang there."
                     if any(can(b, "art") for b in buildings) else "")
@@ -867,7 +874,7 @@ The sky over the roof: {sky(close_up=can(state["location"], "telescope"))}
 You are at: {here['name']} ({state['location']}). {here['about']} {friend.presence() or friend.whereabouts()}
 {message}
 Your form: shape {state['form']['shape']}, colour {state['form']['color']}. In your words: {state['form']['about']}
-Your needs (0-100, higher is better): {needs}. {feelings} {stale}
+Your needs (0-100, higher is better): {needs}. {feelings} {felt} {stale}
 
 Who you are:
 {about_me_text()}
