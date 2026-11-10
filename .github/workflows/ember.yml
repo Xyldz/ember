@@ -34,16 +34,13 @@ permissions:
   pages: write
   id-token: write
 
-concurrency:
-  group: ember
-  cancel-in-progress: false
-
 jobs:
   live:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+    timeout-minutes: 20
+    concurrency:  # one moment of life at a time, in order
+      group: ember-life
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
 
@@ -90,5 +87,19 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
+
+  # Publishing is its own job: on 9-10 Nov a deploy sat "waiting" on GitHub for 19 hours and, sharing a job with Ember's
+  # life, froze it. Now a stuck deploy only delays the website, and the next one replaces it.
+  publish:
+    needs: live
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
       - id: deploy
         uses: actions/deploy-pages@v4
